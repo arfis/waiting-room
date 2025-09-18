@@ -1,0 +1,101 @@
+openapi: 3.0.3
+info: { title: Waiting Room API, version: 0.1.0 }
+servers: [{ url: http://localhost:8080/v1 }]
+tags: [{ name: Kiosk }, { name: Queue }, { name: TV }]
+paths:
+  /waiting-rooms/{roomId}/swipe:
+    post:
+      tags: [Kiosk]
+      summary: Kiosk swipe to join queue
+      security: [{ ApiKeyAuth: [] }]
+      parameters:
+        - in: path
+          name: roomId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                idCardRaw: { type: string }
+              required: [idCardRaw]
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JoinResult'
+  /queue-entries/token/{qrToken}:
+    get:
+      tags: [Queue]
+      summary: Resolve QR token to public entry data
+      parameters:
+        - in: path
+          name: qrToken
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicEntry' }
+        '404': { description: Not found }
+  /waiting-rooms/{roomId}/next:
+    post:
+      tags: [Queue]
+      summary: Call next entry
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - in: path
+          name: roomId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/QueueEntry'
+                  - type: object
+components:
+  securitySchemes:
+    ApiKeyAuth: { type: apiKey, in: header, name: X-API-Key }
+    BearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  schemas:
+    QueueEntryStatus:
+      type: string
+      enum: [WAITING, CALLED, IN_SERVICE, COMPLETED, SKIPPED, CANCELLED, NO_SHOW]
+    JoinResult:
+      type: object
+      properties:
+        entryId: { type: string, format: uuid }
+        ticketNumber: { type: string, example: "A-073" }
+        qrUrl: { type: string, example: "http://localhost:4201/q/abc..." }
+      required: [entryId, ticketNumber, qrUrl]
+    PublicEntry:
+      type: object
+      properties:
+        entryId: { type: string, format: uuid }
+        ticketNumber: { type: string }
+        status: { $ref: '#/components/schemas/QueueEntryStatus' }
+        position: { type: integer, minimum: 0 }
+        etaMinutes: { type: integer, minimum: 0 }
+        canCancel: { type: boolean }
+      required: [entryId, ticketNumber, status, position, etaMinutes, canCancel]
+    QueueEntry:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        waitingRoomId: { type: string, format: uuid }
+        ticketNumber: { type: string }
+        status: { $ref: '#/components/schemas/QueueEntryStatus' }
+        position: { type: integer }
+      required: [id, waitingRoomId, ticketNumber, status, position]
+
