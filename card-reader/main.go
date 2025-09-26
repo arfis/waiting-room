@@ -16,6 +16,8 @@ import (
 	"strings"
 	"time"
 
+	"crypto/sha256"
+
 	"github.com/ebfe/scard"
 	"github.com/miekg/pkcs11"
 )
@@ -93,7 +95,7 @@ func main() {
 		}
 
 		// Read while the card is present
-		cardData := readCardData(*ctx, reader, proto)
+		cardData := readCardData(*ctx, reader, proto, atr)
 		if cardData != nil {
 			pl.CardData = cardData
 		}
@@ -225,7 +227,7 @@ type CertInfo struct {
 }
 
 // readCardData tries (1) PKCS#11 certs, then (2) CPLC serial, then (3) UID.
-func readCardData(ctx scard.Context, reader string, protocol string) *CardData {
+func readCardData(ctx scard.Context, reader string, protocol string, atr []byte) *CardData {
 	log.Printf("Reading card data (protocol: %s)", protocol)
 
 	// 1) Public certificates via PKCS#11 (no PIN needed to read certs)
@@ -267,9 +269,11 @@ func readCardData(ctx scard.Context, reader string, protocol string) *CardData {
 			log.Printf("UID read failed: %v", err)
 		}
 	}
-
-	// Nothing accessible without auth
-	return nil
+	// 4) ATR hash
+	return &CardData{
+		IDNumber: atrID(atr),
+		Source:   "atr-hash",
+	}
 }
 
 // ----- PKCS#11 cert reading -----
@@ -313,10 +317,10 @@ func readCardData(ctx scard.Context, reader string, protocol string) *CardData {
 func readPublicCertsPKCS11(modulePath string) ([]CertInfo, error) {
 	p := pkcs11.New(modulePath)
 	if p == nil {
-		return nil, errors.New("pkcs11.New failed")
+		return nil, fmt.Errorf("pkcs11.New returned nil for %q (CGO disabled or bad module?)", modulePath)
 	}
 	if err := p.Initialize(); err != nil {
-		return nil, fmt.Errorf("pkcs11 initialize: %w", err)
+		return nil, fmt.Errorf("pkcs11 initialize %q failed: %w", modulePath, err)
 	}
 	defer func() {
 		p.Destroy()
@@ -510,54 +514,67 @@ func firstExistingPath(paths ...string) string {
 	return ""
 }
 
-// REPLACE your defaultPKCS11ModulePath() WITH THIS VERSION
-func defaultPKCS11ModulePath() string {
+// OPTIONAL: SMALL LOGGING TWEAK — REPLACE readCertSubject()’s module resolution with this snippet
+func readCertSubject() (CertInfo, bool) {
+	cands := pkcs11ModuleCandidates()
+	if len(cands) == 0 {
+		log.Println("PKCS#11: no candidate module paths; set PKCS11_MODULE or install OpenSC.")
+		return CertInfo{}, false
+	}
+	for _, mod := range cands {
+		if mod == "" {
+			continue
+		}
+		if _, err := os.Stat(mod); err != nil {
+			continue
+		}
+		log.Printf("Trying PKCS#11 module: %s", mod)
+		certs, err := readPublicCertsPKCS11(mod)
+		if err != nil {
+			log.Printf("PKCS#11 attempt failed (%s): %v", mod, err)
+			continue
+		}
+		if len(certs) == 0 {
+			log.Printf("PKCS#11 found no certificates (%s)", mod)
+			continue
+		}
+		// success
+		return certs[0], true
+	}
+	log.Println("PKCS#11: no usable module initialized; all candidates failed.")
+	return CertInfo{}, false
+}
+
+func atrID(atr []byte) string {
+	sum := sha256.Sum256(atr)
+	// short stable ID: first 8 bytes (16 hex chars)
+	return "ATR-" + strings.ToUpper(hex.EncodeToString(sum[:8]))
+}
+
+// ADD: candidate list helper (near your utils)
+func pkcs11ModuleCandidates() []string {
+	// Respect explicit override first
+	if m := strings.TrimSpace(os.Getenv("PKCS11_MODULE")); m != "" {
+		return []string{m}
+	}
 	switch runtime.GOOS {
 	case "darwin":
-		// Try OpenSC first (works for many eID cards, incl. SK, when OpenSC is installed)
-		return firstExistingPath(
-			"/opt/homebrew/lib/opensc-pkcs11.dylib",     // Apple Silicon Homebrew
-			"/usr/local/lib/opensc-pkcs11.dylib",        // Intel Homebrew
-			"/Library/OpenSC/lib/opensc-pkcs11.so",      // OpenSC pkg
-			"/Library/OpenSC/lib/opensc-pkcs11.dylib",   // OpenSC pkg (alt)
-			"/usr/local/lib/eOPCZE/libeopproxy11.dylib", // CZ eObčanka (fallback)
-		)
+		return []string{
+			"/Library/OpenSC/lib/opensc-pkcs11.so", // ← cask (correct)
+			"/Library/OpenSC/lib/opensc-pkcs11.dylib",
+			"/opt/homebrew/lib/opensc-pkcs11.dylib",
+			"/usr/local/lib/opensc-pkcs11.dylib",
+			"/usr/local/lib/eOPCZE/libeopproxy11.dylib",
+		}
 	case "linux":
-		return firstExistingPath(
+		return []string{
 			"/usr/lib/x86_64-linux-gnu/opensc-pkcs11.so",
 			"/usr/lib64/opensc-pkcs11.so",
 			"/usr/lib/opensc-pkcs11.so",
 			"/usr/local/lib/opensc-pkcs11.so",
-			"/usr/lib/x86_64-linux-gnu/libeopproxy11.so", // CZ eObčanka (fallback)
-		)
-	case "windows":
-		// No sensible default; require PKCS11_MODULE env to be set to the vendor DLL.
-		return ""
-	default:
-		return ""
-	}
-}
-
-// OPTIONAL: SMALL LOGGING TWEAK — REPLACE readCertSubject()’s module resolution with this snippet
-func readCertSubject() (CertInfo, bool) {
-	module := strings.TrimSpace(os.Getenv("PKCS11_MODULE"))
-	if module == "" {
-		module = defaultPKCS11ModulePath()
-	}
-	if module == "" {
-		log.Println("PKCS#11 module path not found; set PKCS11_MODULE to your driver or install OpenSC.")
-		return CertInfo{}, false
-	}
-	log.Printf("Using PKCS#11 module: %s", module)
-
-	certs, err := readPublicCertsPKCS11(module)
-	if err != nil || len(certs) == 0 {
-		if err != nil {
-			log.Printf("PKCS#11 cert read failed (%s): %v", module, err)
-		} else {
-			log.Printf("PKCS#11 found no certificates (%s)", module)
+			"/usr/lib/x86_64-linux-gnu/libeopproxy11.so",
 		}
-		return CertInfo{}, false
+	default:
+		return nil
 	}
-	return certs[0], true
 }
