@@ -77,6 +77,13 @@ export class WebSocketService {
               try {
                 const textData = reader.result as string;
                 console.log('Received Blob data as text:', textData);
+                
+                // Handle ping/pong messages
+                if (textData === 'pong') {
+                  console.log('Received pong from Blob, connection is healthy');
+                  return;
+                }
+                
                 const payload: CardReaderPayload = JSON.parse(textData);
                 console.log('Parsed payload:', payload);
                 this.routePayload(payload);
@@ -99,6 +106,13 @@ export class WebSocketService {
           }
           
           console.log('Received string data:', data);
+          
+          // Handle ping/pong messages
+          if (data === 'pong') {
+            console.log('Received pong, connection is healthy');
+            return;
+          }
+          
           const payload: CardReaderPayload = JSON.parse(data);
           console.log('Parsed payload:', payload);
           this.routePayload(payload);
@@ -164,17 +178,21 @@ export class WebSocketService {
   }
 
   private routePayload(payload: CardReaderPayload): void {
-    // Route based on whether it's a state update or card data
+    // Route based on payload content
     if (payload.cardData) {
-      // This is card data (prioritize card data over state updates)
+      // This is card data - send to card data subject
       console.log('Card data received:', payload.cardData);
       this.cardDataSubject.next(payload);
-    } else if (payload.state && payload.message) {
-      // This is a state update (only if no card data)
+    }
+    
+    if (payload.state && payload.message) {
+      // This is also a state update - send to state update subject
       console.log('State update:', payload.state, '-', payload.message);
       this.stateUpdateSubject.next(payload);
-    } else {
-      // Fallback - send to both
+    }
+    
+    // If neither cardData nor state/message, send to both as fallback
+    if (!payload.cardData && !(payload.state && payload.message)) {
       console.log('Unknown payload type, sending to both subjects');
       this.stateUpdateSubject.next(payload);
       this.cardDataSubject.next(payload);

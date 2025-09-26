@@ -124,13 +124,6 @@ func main() {
 		// Also print to console for debugging
 		b, _ := json.MarshalIndent(pl, "", "  ")
 		fmt.Println(string(b))
-
-		// Send success state
-		if cardData != nil {
-			sendStateUpdate(wsURL, deviceID, roomID, reader, "success", "Card read successfully - please remove card")
-		} else {
-			sendStateUpdate(wsURL, deviceID, roomID, reader, "error", "Failed to read card - please try again")
-		}
 	}, func() {
 		// Card removed callback
 		sendStateUpdate(wsURL, deviceID, roomID, reader, "removed", "Card removed - ready for next card")
