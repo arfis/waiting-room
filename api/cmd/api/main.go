@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/rs/cors"
 
 	"github.com/arfis/waiting-room/internal/api"
@@ -18,47 +19,53 @@ type server struct {
 	cardService *cardreader.Service
 }
 
-func (s *server) PostWaitingRoomsRoomIdSwipe(w http.ResponseWriter, r *http.Request, roomId api.UUID, body api.PostWaitingRoomsRoomIdSwipeJSONRequestBody) {
+func (s *server) PostWaitingRoomsRoomIdSwipe(w http.ResponseWriter, r *http.Request, roomId openapi_types.UUID) {
 	// TODO: create entry, ticket, QR URL
+	entryId := uuid.MustParse("00000000-0000-0000-0000-000000000001")
 	res := api.JoinResult{
-		EntryId:      "00000000-0000-0000-0000-000000000001",
+		EntryId:      entryId,
 		TicketNumber: "A-001",
 		QrUrl:        "http://localhost:4201/q/demo",
 	}
 	w.WriteHeader(http.StatusCreated)
-	api.EncodeJSONResponse(res, nil, w)
+	json.NewEncoder(w).Encode(res)
 }
 
 func (s *server) GetQueueEntriesTokenQrToken(w http.ResponseWriter, r *http.Request, qrToken string) {
 	// TODO: resolve token
+	entryId := uuid.MustParse("00000000-0000-0000-0000-000000000001")
 	resp := api.PublicEntry{
-		EntryId:      "00000000-0000-0000-0000-000000000001",
+		EntryId:      entryId,
 		TicketNumber: "A-001",
-		Status:       api.QueueEntryStatusWAITING,
+		Status:       api.WAITING,
 		Position:     5,
 		EtaMinutes:   12,
 		CanCancel:    false,
 	}
-	api.EncodeJSONResponse(resp, nil, w)
+	json.NewEncoder(w).Encode(resp)
 }
 
-func (s *server) PostWaitingRoomsRoomIdNext(w http.ResponseWriter, r *http.Request, roomId api.UUID) {
+func (s *server) PostWaitingRoomsRoomIdNext(w http.ResponseWriter, r *http.Request, roomId openapi_types.UUID) {
 	// TODO: call next
+	entryId := uuid.MustParse("00000000-0000-0000-0000-000000000001")
 	resp := api.QueueEntry{
-		Id:            "00000000-0000-0000-0000-000000000001",
+		Id:            entryId,
 		WaitingRoomId: roomId,
 		TicketNumber:  "A-001",
-		Status:        api.QueueEntryStatusCALLED,
+		Status:        api.CALLED,
 		Position:      0,
 	}
-	api.EncodeJSONResponse(resp, nil, w)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // Card reader endpoints
 func (s *server) GetCardReaderStatus(w http.ResponseWriter, r *http.Request) {
+	// For now, always return false since we're using the standalone card-reader app
+	// The real card reader status should come from the WebSocket connection
 	status := map[string]interface{}{
-		"connected": s.cardService.IsConnected(),
-		"status":    "ready",
+		"connected": false,
+		"status":    "standalone-card-reader-mode",
+		"message":   "Using standalone card reader app via WebSocket",
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(status)
@@ -96,7 +103,13 @@ func main() {
 	}
 
 	s := &server{cardService: cardService}
-	api.RegisterHandlers(r, s)
+	r.Mount("/", api.HandlerFromMux(s, r))
+
+	// Add health check endpoint
+	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	})
 
 	// Add card reader routes
 	r.Get("/api/card-reader/status", s.GetCardReaderStatus)

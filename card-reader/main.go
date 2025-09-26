@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
@@ -11,14 +12,14 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"runtime"
 	"strings"
 	"time"
 
-	"crypto/sha256"
-
 	"github.com/ebfe/scard"
+	"github.com/gorilla/websocket"
 	"github.com/miekg/pkcs11"
 )
 
@@ -31,6 +32,8 @@ type Payload struct {
 	Protocol   string    `json:"protocol"`   // T=0/T=1/unknown
 	OccurredAt string    `json:"occurredAt"` // RFC3339
 	CardData   *CardData `json:"cardData,omitempty"`
+	State      string    `json:"state"`   // "waiting", "reading", "success", "error"
+	Message    string    `json:"message"` // Human readable message
 }
 
 type CardData struct {
@@ -51,6 +54,7 @@ func main() {
 	roomID := envOr("ROOM_ID", "triage-1")
 	deviceID := envOr("DEVICE_ID", "reader-01")
 	wantReader := strings.TrimSpace(os.Getenv("READER_NAME"))
+	wsURL := envOr("WS_URL", "ws://localhost:4201/ws/card-reader")
 
 	// PC/SC context
 	ctx, err := scard.EstablishContext()
@@ -80,14 +84,23 @@ func main() {
 		reader = readers[0]
 	}
 	log.Printf("Using reader: %s", reader)
+	log.Printf("WebSocket URL: %s", wsURL)
 	log.Println("Waiting for card...")
+
+	// Send initial waiting state
+	sendStateUpdate(wsURL, deviceID, roomID, reader, "waiting", "Please insert your ID card")
 
 	// Event-driven monitor (no polling races)
 	monitor(context.Background(), *ctx, reader, func(atr []byte, proto string) {
+		token := randToken(16)
+
+		// Send reading state
+		sendStateUpdate(wsURL, deviceID, roomID, reader, "reading", "Reading card data...")
+
 		pl := Payload{
 			DeviceID:   deviceID,
 			RoomID:     roomID,
-			Token:      randToken(16),
+			Token:      token,
 			Reader:     reader,
 			ATR:        strings.ToUpper(hex.EncodeToString(atr)),
 			Protocol:   proto,
@@ -98,11 +111,29 @@ func main() {
 		cardData := readCardData(*ctx, reader, proto, atr)
 		if cardData != nil {
 			pl.CardData = cardData
+			pl.State = "success"
+			pl.Message = "Card read successfully"
+		} else {
+			pl.State = "error"
+			pl.Message = "Failed to read card data"
 		}
 
-		// TODO: send pl to backend (HTTP/WebSocket/etc.)
+		// Send final result to WebSocket
+		sendToWebSocket(wsURL, pl)
+
+		// Also print to console for debugging
 		b, _ := json.MarshalIndent(pl, "", "  ")
 		fmt.Println(string(b))
+
+		// Send success state
+		if cardData != nil {
+			sendStateUpdate(wsURL, deviceID, roomID, reader, "success", "Card read successfully - please remove card")
+		} else {
+			sendStateUpdate(wsURL, deviceID, roomID, reader, "error", "Failed to read card - please try again")
+		}
+	}, func() {
+		// Card removed callback
+		sendStateUpdate(wsURL, deviceID, roomID, reader, "removed", "Card removed - ready for next card")
 	})
 }
 
@@ -114,7 +145,7 @@ func main() {
 // On insert -> onInsert(); then blocks until removal; then goes back to waiting.
 // REPLACE your monitor(...) with this version.
 // (Fix: copy updated ReaderState back from the slice after GetStatusChange.)
-func monitor(_ context.Context, c scard.Context, reader string, onInsert func(atr []byte, proto string)) {
+func monitor(_ context.Context, c scard.Context, reader string, onInsert func(atr []byte, proto string), onRemove func()) {
 	state := scard.ReaderState{
 		Reader:       reader,
 		CurrentState: scard.StateUnaware,
@@ -129,6 +160,25 @@ func monitor(_ context.Context, c scard.Context, reader string, onInsert func(at
 		states := []scard.ReaderState{state}
 		if err := c.GetStatusChange(states, 2000); err != nil && !errors.Is(err, scard.ErrTimeout) {
 			log.Printf("GetStatusChange error: %v", err)
+			// If service is not available, try to reconnect
+			if strings.Contains(err.Error(), "Service not available") {
+				log.Println("PC/SC service not available, attempting to reconnect...")
+				time.Sleep(5 * time.Second)
+				// Try to establish a new context
+				newCtx, err := scard.EstablishContext()
+				if err != nil {
+					log.Printf("Failed to re-establish context: %v", err)
+					time.Sleep(time.Second)
+					continue
+				}
+				c = *newCtx
+				// Reset state
+				state = scard.ReaderState{
+					Reader:       reader,
+					CurrentState: scard.StateUnaware,
+				}
+				seenATR = ""
+			}
 			time.Sleep(time.Second)
 			continue
 		}
@@ -167,6 +217,9 @@ func monitor(_ context.Context, c scard.Context, reader string, onInsert func(at
 		if state.EventState&scard.StateEmpty != 0 && seenATR != "" {
 			seenATR = ""
 			log.Println("Card removed")
+			if onRemove != nil {
+				onRemove()
+			}
 			log.Println("Waiting for card...")
 		}
 	}
@@ -576,5 +629,61 @@ func pkcs11ModuleCandidates() []string {
 		}
 	default:
 		return nil
+	}
+}
+
+// -----------------------------
+// WebSocket Communication
+// -----------------------------
+
+func sendStateUpdate(wsURL string, deviceID, roomID, reader, state, message string) {
+	payload := Payload{
+		DeviceID:   deviceID,
+		RoomID:     roomID,
+		Token:      randToken(8), // Shorter token for state updates
+		Reader:     reader,
+		ATR:        "",
+		Protocol:   "",
+		OccurredAt: time.Now().Format(time.RFC3339),
+		State:      state,
+		Message:    message,
+	}
+
+	sendToWebSocket(wsURL, payload)
+}
+
+func sendToWebSocket(wsURL string, payload Payload) {
+	// Parse WebSocket URL
+	u, err := url.Parse(wsURL)
+	if err != nil {
+		log.Printf("Invalid WebSocket URL: %v", err)
+		return
+	}
+
+	// Connect to WebSocket
+	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	if err != nil {
+		log.Printf("Failed to connect to WebSocket: %v", err)
+		return
+	}
+	defer conn.Close()
+
+	// Send payload
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		log.Printf("Failed to marshal payload: %v", err)
+		return
+	}
+
+	err = conn.WriteMessage(websocket.TextMessage, payloadBytes)
+	if err != nil {
+		log.Printf("Failed to send message: %v", err)
+		return
+	}
+
+	if payload.State != "" {
+		log.Printf("State update sent: %s - %s", payload.State, payload.Message)
+	} else {
+		log.Printf("Card data sent to WebSocket successfully")
 	}
 }

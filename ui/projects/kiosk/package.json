@@ -1,0 +1,17 @@
+{
+  "name": "kiosk-websocket-server",
+  "version": "1.0.0",
+  "description": "WebSocket server for kiosk card reader communication",
+  "main": "websocket-server.js",
+  "scripts": {
+    "start": "node websocket-server.js",
+    "dev": "nodemon websocket-server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.14.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
