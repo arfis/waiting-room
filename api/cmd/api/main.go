@@ -6,9 +6,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 	"github.com/rs/cors"
 
 	"github.com/arfis/waiting-room/internal/api"
@@ -19,6 +21,9 @@ import (
 type server struct {
 	cardService  *cardreader.Service
 	queueService *queue.Service
+	upgrader     websocket.Upgrader
+	clients      map[string]map[*websocket.Conn]bool
+	clientsMux   sync.RWMutex
 }
 
 func (s *server) PostWaitingRoomsRoomIdSwipe(w http.ResponseWriter, r *http.Request, roomId string) {
@@ -130,6 +135,109 @@ func (s *server) PostWaitingRoomsRoomIdNext(w http.ResponseWriter, r *http.Reque
 		Position:      entry.Position,
 	}
 	json.NewEncoder(w).Encode(resp)
+	
+	// Broadcast queue update to all connected clients
+	s.broadcastQueueUpdate(roomId)
+}
+
+// WebSocket handler for queue updates
+func (s *server) handleQueueWebSocket(w http.ResponseWriter, r *http.Request) {
+	roomId := chi.URLParam(r, "roomId")
+	if roomId == "" {
+		http.Error(w, "Room ID is required", http.StatusBadRequest)
+		return
+	}
+
+	conn, err := s.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("Failed to upgrade WebSocket connection: %v", err)
+		return
+	}
+	defer conn.Close()
+
+	// Add client to the room
+	s.clientsMux.Lock()
+	if s.clients[roomId] == nil {
+		s.clients[roomId] = make(map[*websocket.Conn]bool)
+	}
+	s.clients[roomId][conn] = true
+	s.clientsMux.Unlock()
+
+	log.Printf("WebSocket client connected to room: %s", roomId)
+
+	// Send initial queue data
+	s.sendQueueUpdate(conn, roomId)
+
+	// Keep connection alive and handle client messages
+	for {
+		_, _, err := conn.ReadMessage()
+		if err != nil {
+			log.Printf("WebSocket read error: %v", err)
+			break
+		}
+	}
+
+	// Remove client when connection closes
+	s.clientsMux.Lock()
+	delete(s.clients[roomId], conn)
+	if len(s.clients[roomId]) == 0 {
+		delete(s.clients, roomId)
+	}
+	s.clientsMux.Unlock()
+	
+	log.Printf("WebSocket client disconnected from room: %s", roomId)
+}
+
+// sendQueueUpdate sends the current queue state to a specific client
+func (s *server) sendQueueUpdate(conn *websocket.Conn, roomId string) {
+	entries, err := s.queueService.GetQueueEntries(roomId)
+	if err != nil {
+		log.Printf("Failed to get queue entries for WebSocket: %v", err)
+		return
+	}
+
+	update := map[string]interface{}{
+		"type":    "queue_update",
+		"roomId":  roomId,
+		"entries": entries,
+	}
+
+	if err := conn.WriteJSON(update); err != nil {
+		log.Printf("Failed to send queue update: %v", err)
+	}
+}
+
+// broadcastQueueUpdate sends queue updates to all connected clients for a room
+func (s *server) broadcastQueueUpdate(roomId string) {
+	s.clientsMux.RLock()
+	clients, exists := s.clients[roomId]
+	if !exists {
+		s.clientsMux.RUnlock()
+		return
+	}
+	s.clientsMux.RUnlock()
+
+	entries, err := s.queueService.GetQueueEntries(roomId)
+	if err != nil {
+		log.Printf("Failed to get queue entries for broadcast: %v", err)
+		return
+	}
+
+	update := map[string]interface{}{
+		"type":    "queue_update",
+		"roomId":  roomId,
+		"entries": entries,
+	}
+
+	s.clientsMux.RLock()
+	for conn := range clients {
+		if err := conn.WriteJSON(update); err != nil {
+			log.Printf("Failed to broadcast to client: %v", err)
+			conn.Close()
+			delete(clients, conn)
+		}
+	}
+	s.clientsMux.RUnlock()
 }
 
 // Card reader endpoints
@@ -208,6 +316,12 @@ func main() {
 	s := &server{
 		cardService:  cardService,
 		queueService: queueService,
+		upgrader: websocket.Upgrader{
+			CheckOrigin: func(r *http.Request) bool {
+				return true // Allow all origins for development
+			},
+		},
+		clients: make(map[string]map[*websocket.Conn]bool),
 	}
 	r.Mount("/", api.HandlerFromMux(s, r))
 
@@ -223,6 +337,9 @@ func main() {
 
 	// Add queue routes
 	r.Get("/api/waiting-rooms/{roomId}/queue", s.GetWaitingRoomQueue)
+	
+	// Add WebSocket route for real-time queue updates
+	r.Get("/ws/queue/{roomId}", s.handleQueueWebSocket)
 
 	addr := ":8080"
 	if v := os.Getenv("ADDR"); v != "" {

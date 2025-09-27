@@ -211,7 +211,7 @@ func (s *Service) GetQueueEntries(waitingRoomID string) ([]QueueEntry, error) {
 }
 
 func (s *Service) CallNext(waitingRoomID string) (*QueueEntry, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	// First, complete any currently served person (CALLED or IN_SERVICE)
@@ -257,7 +257,66 @@ func (s *Service) CallNext(waitingRoomID string) (*QueueEntry, error) {
 		return nil, fmt.Errorf("failed to call next: %w", err)
 	}
 
+	// Recalculate positions for all remaining WAITING entries
+	log.Printf("About to recalculate positions for room: %s", waitingRoomID)
+	err = s.recalculatePositions(waitingRoomID)
+	if err != nil {
+		log.Printf("Failed to recalculate positions: %v", err)
+		// Don't fail the whole operation, but log the error
+	} else {
+		log.Printf("Successfully recalculated positions for room: %s", waitingRoomID)
+	}
+
 	return &entry, nil
+}
+
+// recalculatePositions updates the position field for all WAITING entries
+func (s *Service) recalculatePositions(waitingRoomID string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Get all WAITING entries sorted by creation time
+	cursor, err := s.entries.Find(
+		ctx,
+		bson.M{
+			"waitingRoomId": waitingRoomID,
+			"status":        "WAITING",
+		},
+		options.Find().SetSort(bson.D{{Key: "createdAt", Value: 1}}),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to find waiting entries: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	position := 1
+	for cursor.Next(ctx) {
+		var entry QueueEntry
+		if err := cursor.Decode(&entry); err != nil {
+			log.Printf("Failed to decode entry: %v", err)
+			continue
+		}
+
+		// Update position if it's different
+		if entry.Position != position {
+			_, err := s.entries.UpdateOne(
+				ctx,
+				bson.M{"_id": entry.ID},
+				bson.M{
+					"$set": bson.M{
+						"position":  position,
+						"updatedAt": time.Now(),
+					},
+				},
+			)
+			if err != nil {
+				log.Printf("Failed to update position for entry %s: %v", entry.ID, err)
+			}
+		}
+		position++
+	}
+
+	return cursor.Err()
 }
 
 func (s *Service) generateTicketNumber(waitingRoomID string) (string, error) {

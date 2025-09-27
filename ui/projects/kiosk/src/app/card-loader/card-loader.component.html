@@ -109,15 +109,6 @@
         }
       </div>
 
-      <!-- Card Data Display -->
-      @if (cardData()) {
-        <div class="mt-8">
-          <ui-card title="Card Information" variant="success">
-            <ui-data-grid [fields]="cardDataFields()"></ui-data-grid>
-          </ui-card>
-        </div>
-      }
-
       <!-- Ticket Display -->
       @if (ticketData()) {
         <div class="mt-8">
@@ -163,6 +154,15 @@
         </div>
       }
 
+      <!-- Card Data Display -->
+      @if (cardData()) {
+        <div class="mt-8">
+          <ui-card title="Card Information" variant="success">
+            <ui-data-grid [fields]="cardDataFields()"></ui-data-grid>
+          </ui-card>
+        </div>
+      }
+      
       <!-- Loading State -->
       @if (isReading()) {
         <div class="mt-6">
@@ -179,6 +179,7 @@
       }
     </ui-card>
 
+    
     <!-- Footer -->
     <div class="text-center mt-8 text-sm text-gray-500">
       <p>Waiting Room Management System</p>
