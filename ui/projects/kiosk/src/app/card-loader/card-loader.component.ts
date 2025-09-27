@@ -4,6 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { CardComponent, DataGridComponent, DataField } from 'ui';
 import { WebSocketService, CardReaderPayload } from '../websocket.service';
 import { Subscription } from 'rxjs';
+import * as QRCode from 'qrcode';
 
 interface CardData {
   id_number: string;
@@ -25,6 +26,13 @@ interface CardReaderStatus {
   status: string;
 }
 
+interface TicketData {
+  entryId: string;
+  ticketNumber: string;
+  qrUrl: string;
+  qrCodeDataUrl?: string;
+}
+
 @Component({
   selector: 'card-loader',
   standalone: true,
@@ -40,6 +48,7 @@ export class CardLoaderPageComponent implements OnInit, OnDestroy {
 
   // State signals
   cardData = signal<CardData | null>(null);
+  ticketData = signal<TicketData | null>(null);
   error = signal<string | null>(null);
   isReading = signal<boolean>(false);
   cardReaderStatus = signal<CardReaderStatus>({ connected: false, status: 'disconnected' });
@@ -151,9 +160,10 @@ export class CardLoaderPageComponent implements OnInit, OnDestroy {
           this.cardReaderMessage.set('Please insert your ID card');
         }, 2000);
         
-        // Clear card data when card is actually removed
+        // Clear card data and ticket when card is actually removed
         setTimeout(() => {
           this.cardData.set(null);
+          this.ticketData.set(null);
         }, 3000); // 3 seconds after card removal
       } else if (payload.state === 'error') {
         this.error.set(payload.message);
@@ -182,8 +192,66 @@ export class CardLoaderPageComponent implements OnInit, OnDestroy {
       console.log('Setting card data signal:', cardData);
       this.cardData.set(cardData);
       this.error.set(null);
+      
+      // Generate ticket
+      this.generateTicket(cardData);
     } else {
       console.log('No card data in payload');
+    }
+  }
+
+  private generateTicket(cardData: CardData) {
+    console.log('Generating ticket for card data:', cardData);
+    
+    // Create a mock ID card raw data for the API
+    const idCardRaw = JSON.stringify({
+      id_number: cardData.id_number,
+      first_name: cardData.first_name,
+      last_name: cardData.last_name
+    });
+
+    console.log('Calling API with idCardRaw:', idCardRaw);
+
+    // Call the API to create a ticket
+    this.http.post<any>('http://localhost:8080/waiting-rooms/triage-1/swipe', {
+      idCardRaw: idCardRaw
+    }).subscribe({
+      next: (response) => {
+        console.log('Ticket generated successfully:', response);
+        this.generateQRCode(response.qrUrl).then(qrDataUrl => {
+          console.log('QR code generated:', qrDataUrl);
+          this.ticketData.set({
+            entryId: response.entryId,
+            ticketNumber: response.ticketNumber,
+            qrUrl: response.qrUrl,
+            qrCodeDataUrl: qrDataUrl
+          });
+        }).catch(qrError => {
+          console.error('Failed to generate QR code:', qrError);
+          this.error.set('Failed to generate QR code');
+        });
+      },
+      error: (error) => {
+        console.error('Failed to generate ticket:', error);
+        console.error('Error details:', error.status, error.statusText, error.message);
+        this.error.set(`Failed to generate ticket: ${error.status} ${error.statusText}`);
+      }
+    });
+  }
+
+  private async generateQRCode(qrUrl: string): Promise<string> {
+    try {
+      return await QRCode.toDataURL(qrUrl, {
+        width: 200,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      });
+    } catch (error) {
+      console.error('Failed to generate QR code:', error);
+      return '';
     }
   }
 

@@ -10,7 +10,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oapi-codegen/runtime"
-	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // ServerInterface represents all server handlers.
@@ -20,10 +19,10 @@ type ServerInterface interface {
 	GetQueueEntriesTokenQrToken(w http.ResponseWriter, r *http.Request, qrToken string)
 	// Call next entry
 	// (POST /waiting-rooms/{roomId}/next)
-	PostWaitingRoomsRoomIdNext(w http.ResponseWriter, r *http.Request, roomId openapi_types.UUID)
+	PostWaitingRoomsRoomIdNext(w http.ResponseWriter, r *http.Request, roomId string)
 	// Kiosk swipe to join queue
 	// (POST /waiting-rooms/{roomId}/swipe)
-	PostWaitingRoomsRoomIdSwipe(w http.ResponseWriter, r *http.Request, roomId openapi_types.UUID)
+	PostWaitingRoomsRoomIdSwipe(w http.ResponseWriter, r *http.Request, roomId string)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -38,13 +37,13 @@ func (_ Unimplemented) GetQueueEntriesTokenQrToken(w http.ResponseWriter, r *htt
 
 // Call next entry
 // (POST /waiting-rooms/{roomId}/next)
-func (_ Unimplemented) PostWaitingRoomsRoomIdNext(w http.ResponseWriter, r *http.Request, roomId openapi_types.UUID) {
+func (_ Unimplemented) PostWaitingRoomsRoomIdNext(w http.ResponseWriter, r *http.Request, roomId string) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Kiosk swipe to join queue
 // (POST /waiting-rooms/{roomId}/swipe)
-func (_ Unimplemented) PostWaitingRoomsRoomIdSwipe(w http.ResponseWriter, r *http.Request, roomId openapi_types.UUID) {
+func (_ Unimplemented) PostWaitingRoomsRoomIdSwipe(w http.ResponseWriter, r *http.Request, roomId string) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -88,7 +87,7 @@ func (siw *ServerInterfaceWrapper) PostWaitingRoomsRoomIdNext(w http.ResponseWri
 	var err error
 
 	// ------------- Path parameter "roomId" -------------
-	var roomId openapi_types.UUID
+	var roomId string
 
 	err = runtime.BindStyledParameterWithOptions("simple", "roomId", chi.URLParam(r, "roomId"), &roomId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {
@@ -119,7 +118,7 @@ func (siw *ServerInterfaceWrapper) PostWaitingRoomsRoomIdSwipe(w http.ResponseWr
 	var err error
 
 	// ------------- Path parameter "roomId" -------------
-	var roomId openapi_types.UUID
+	var roomId string
 
 	err = runtime.BindStyledParameterWithOptions("simple", "roomId", chi.URLParam(r, "roomId"), &roomId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
 	if err != nil {

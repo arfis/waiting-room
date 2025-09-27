@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info: { title: Waiting Room API, version: 0.1.0 }
-servers: [{ url: http://localhost:8080/v1 }]
+servers: [{ url: http://localhost:8080 }]
 tags: [{ name: Kiosk }, { name: Queue }, { name: TV }]
 paths:
   /waiting-rooms/{roomId}/swipe:
@@ -12,7 +12,7 @@ paths:
         - in: path
           name: roomId
           required: true
-          schema: { type: string, format: uuid }
+          schema: { type: string }
       requestBody:
         required: true
         content:
@@ -54,7 +54,7 @@ paths:
         - in: path
           name: roomId
           required: true
-          schema: { type: string, format: uuid }
+          schema: { type: string }
       responses:
         '200':
           description: OK

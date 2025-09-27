@@ -1,0 +1,57 @@
+# Kiosk Application Dockerfile
+FROM node:18-alpine AS builder
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package.json pnpm-lock.yaml ./
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy source code
+COPY . .
+
+# Build the UI library first
+RUN pnpm build ui
+
+# Build the kiosk application
+RUN pnpm build kiosk
+
+# Production stage
+FROM node:18-alpine AS production
+
+# Install serve for static file serving
+RUN npm install -g serve
+
+# Create app directory
+WORKDIR /app
+
+# Copy built application
+COPY --from=builder /app/dist/kiosk ./dist
+
+# Create WebSocket server
+COPY projects/kiosk/websocket-server.js ./
+COPY projects/kiosk/package.json ./
+
+# Install WebSocket server dependencies
+RUN npm install
+
+# Create non-root user
+RUN adduser -D -s /bin/sh appuser
+RUN chown -R appuser:appuser /app
+USER appuser
+
+# Expose port
+EXPOSE 4201
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:4201/health || exit 1
+
+# Start both static server and WebSocket server
+CMD ["sh", "-c", "node websocket-server.js & serve -s dist -l 4201"]

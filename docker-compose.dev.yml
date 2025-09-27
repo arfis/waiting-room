@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  # API Server
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: waiting-room-api-dev
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      MONGODB_URI: mongodb://host.docker.internal:27017/waiting_room
+      ADDR: ":8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - waiting-room-network
+
+  # Kiosk Application
+  kiosk:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile.kiosk
+    container_name: waiting-room-kiosk-dev
+    restart: unless-stopped
+    ports:
+      - "4201:4201"
+    depends_on:
+      - api
+    networks:
+      - waiting-room-network
+
+  # Mobile Application
+  mobile:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile.mobile
+    container_name: waiting-room-mobile-dev
+    restart: unless-stopped
+    ports:
+      - "4202:4202"
+    depends_on:
+      - api
+    networks:
+      - waiting-room-network
+
+  # TV Display
+  tv:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile.tv
+    container_name: waiting-room-tv-dev
+    restart: unless-stopped
+    ports:
+      - "4203:4203"
+    depends_on:
+      - api
+    networks:
+      - waiting-room-network
+
+  # Backoffice
+  backoffice:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile.backoffice
+    container_name: waiting-room-backoffice-dev
+    restart: unless-stopped
+    ports:
+      - "4200:4200"
+    depends_on:
+      - api
+    networks:
+      - waiting-room-network
+
+  # Card Reader (optional - for development)
+  card-reader:
+    build:
+      context: ./card-reader
+      dockerfile: Dockerfile
+    container_name: waiting-room-card-reader-dev
+    restart: unless-stopped
+    privileged: true  # Required for smart card access
+    devices:
+      - /dev/bus/usb:/dev/bus/usb  # USB device access for card readers
+    environment:
+      ROOM_ID: triage-1
+      DEVICE_ID: reader-01
+      WS_URL: ws://kiosk:4201/ws/card-reader
+    depends_on:
+      - kiosk
+    networks:
+      - waiting-room-network
+
+networks:
+  waiting-room-network:
+    driver: bridge
