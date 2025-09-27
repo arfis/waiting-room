@@ -1,9 +1,9 @@
 import { Component, signal } from '@angular/core';
-import { KioskComponent } from './kiosk.component';
+import { CardLoaderPageComponent } from './card-loader/card-loader.component';
 
 @Component({
   selector: 'app-root',
-  imports: [KioskComponent],
+  imports: [CardLoaderPageComponent],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })

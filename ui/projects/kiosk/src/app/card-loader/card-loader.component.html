@@ -7,7 +7,7 @@
     </div>
 
     <!-- Main Card -->
-    <div class="bg-white rounded-2xl shadow-xl p-8">
+    <ui-card title="Card Reader Interface" subtitle="Please scan your ID card to check in">
       <!-- Connection Status -->
       <div class="mb-6 p-4 rounded-lg" 
            [class]="wsConnectionStatus() === 'connected' ? 'bg-green-50 border border-green-200' : 
@@ -111,84 +111,43 @@
 
       <!-- Card Data Display -->
       @if (cardData()) {
-        <div class="mt-8 p-6 bg-slate-100 rounded-lg">
-          <h3 class="text-lg font-semibold mb-4">Card Information</h3>
-          <div class="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span class="font-medium">Name:</span>
-              <span class="ml-2">{{ cardData()?.first_name }} {{ cardData()?.last_name }}</span>
-            </div>
-            <div>
-              <span class="font-medium">ID Number:</span>
-              <span class="ml-2">{{ cardData()?.id_number }}</span>
-            </div>
-            <div>
-              <span class="font-medium">Date of Birth:</span>
-              <span class="ml-2">{{ formatDate(cardData()?.date_of_birth) }}</span>
-            </div>
-            <div>
-              <span class="font-medium">Gender:</span>
-              <span class="ml-2">{{ cardData()?.gender }}</span>
-            </div>
-            <div>
-              <span class="font-medium">Nationality:</span>
-              <span class="ml-2">{{ cardData()?.nationality }}</span>
-            </div>
-            <div>
-              <span class="font-medium">Address:</span>
-              <span class="ml-2">{{ cardData()?.address }}</span>
-            </div>
-            <div>
-              <span class="font-medium">Issued Date:</span>
-              <span class="ml-2">{{ formatDate(cardData()?.issued_date) }}</span>
-            </div>
-            <div>
-              <span class="font-medium">Expiry Date:</span>
-              <span class="ml-2">{{ formatDate(cardData()?.expiry_date) }}</span>
-            </div>
-          </div>
-          
-          @if (cardData()?.photo) {
-            <div class="mt-4">
-              <span class="font-medium">Photo:</span>
-              <div class="mt-2">
-                <img [src]="cardData()?.photo" alt="Card Photo" class="w-24 h-32 object-cover rounded border">
-              </div>
-            </div>
-          }
-          
-          <div class="mt-4 text-xs text-gray-500">
-            Read at: {{ formatDateTime(cardData()?.read_time) }}
-          </div>
+        <div class="mt-8">
+          <ui-card title="Card Information" variant="success">
+            <ui-data-grid [fields]="getCardDataFields()"></ui-data-grid>
+          </ui-card>
         </div>
       }
 
       <!-- Error Display -->
       @if (error()) {
-        <div class="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <div class="flex items-center gap-2">
-            <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            <span class="text-red-800 font-medium">Error</span>
-          </div>
-          <p class="text-red-700 mt-1">{{ error() }}</p>
+        <div class="mt-6">
+          <ui-card title="Error" variant="error">
+            <div class="flex items-center gap-2">
+              <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <span class="text-red-800 font-medium">Error</span>
+            </div>
+            <p class="text-red-700 mt-1">{{ error() }}</p>
+          </ui-card>
         </div>
       }
 
       <!-- Loading State -->
       @if (isReading()) {
-        <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <div class="flex items-center gap-2">
-            <svg class="animate-spin w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <span class="text-blue-800 font-medium">Reading Card...</span>
-          </div>
+        <div class="mt-6">
+          <ui-card title="Reading Card" variant="warning">
+            <div class="flex items-center gap-2">
+              <svg class="animate-spin w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span class="text-blue-800 font-medium">Reading Card...</span>
+            </div>
+          </ui-card>
         </div>
       }
-    </div>
+    </ui-card>
 
     <!-- Footer -->
     <div class="text-center mt-8 text-sm text-gray-500">

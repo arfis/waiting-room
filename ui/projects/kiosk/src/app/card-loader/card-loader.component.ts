@@ -1,8 +1,8 @@
 import { Component, signal, inject, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { CardComponent } from 'ui';
-import { WebSocketService, CardReaderPayload } from './websocket.service';
+import { CardComponent, DataGridComponent, DataField } from 'ui';
+import { WebSocketService, CardReaderPayload } from '../websocket.service';
 import { Subscription } from 'rxjs';
 
 interface CardData {
@@ -25,14 +25,14 @@ interface CardReaderStatus {
 }
 
 @Component({
-  selector: 'app-kiosk',
+  selector: 'card-loader',
   standalone: true,
-  imports: [CommonModule, CardComponent],
-  templateUrl: './kiosk.component.html',
-  styleUrls: ['./kiosk.component.scss'],
+  imports: [CommonModule, CardComponent, DataGridComponent],
+  templateUrl: './card-loader.component.html',
+  styleUrls: ['./card-loader.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class KioskComponent implements OnInit, OnDestroy {
+export class CardLoaderPageComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   private wsService = inject(WebSocketService);
   private wsSubscription?: Subscription;
@@ -110,7 +110,6 @@ export class KioskComponent implements OnInit, OnDestroy {
         return;
       }
 
-      console.log('State update received:', payload.state, '-', payload.message);
       this.lastStateChange = now;
       this.cardReaderState.set(payload.state);
       this.cardReaderMessage.set(payload.message);
@@ -206,5 +205,23 @@ export class KioskComponent implements OnInit, OnDestroy {
     } catch {
       return dateStr;
     }
+  }
+
+  getCardDataFields(): DataField[] {
+    const data = this.cardData();
+    if (!data) return [];
+
+    return [
+      { label: 'Name', value: `${data.first_name || ''} ${data.last_name || ''}`.trim() || null },
+      { label: 'ID Number', value: data.id_number || null },
+      { label: 'Date of Birth', value: data.date_of_birth || null, type: 'date' as const },
+      { label: 'Gender', value: data.gender || null },
+      { label: 'Nationality', value: data.nationality || null },
+      { label: 'Address', value: data.address || null },
+      { label: 'Issued Date', value: data.issued_date || null, type: 'date' as const },
+      { label: 'Expiry Date', value: data.expiry_date || null, type: 'date' as const },
+      { label: 'Photo', value: data.photo || null, type: 'image' as const, imageAlt: 'Card Photo' },
+      { label: 'Read Time', value: data.read_time || null, type: 'datetime' as const }
+    ].filter(field => field.value !== null);
   }
 }

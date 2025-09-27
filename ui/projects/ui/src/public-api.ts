@@ -4,3 +4,4 @@
 
 export * from './lib/ui';
 export * from './lib/card.component';
+export * from './lib/card-data.component';
