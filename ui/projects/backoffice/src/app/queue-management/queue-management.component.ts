@@ -1,22 +1,10 @@
-import { Component, signal, inject, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
+import { Component, signal, inject, OnInit, OnDestroy, ChangeDetectionStrategy, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { CardComponent } from 'ui';
+import { QueueWebSocketService, WebSocketQueueEntry } from 'api-client';
 
-interface QueueEntry {
-  id: string;
-  waitingRoomId: string;
-  ticketNumber: string;
-  status: string;
-  position: number;
-  createdAt: string;
-  cardData?: {
-    idNumber: string;
-    firstName: string;
-    lastName: string;
-    source: string;
-  };
-}
+// Using WebSocketQueueEntry from api-client
 
 @Component({
   selector: 'app-queue-management',
@@ -206,37 +194,44 @@ interface QueueEntry {
 })
 export class QueueManagementComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
-  private refreshInterval?: number;
-
-  // State signals
-  queueEntries = signal<QueueEntry[]>([]);
+  private queueWebSocket = inject(QueueWebSocketService);
   lastUpdated = signal<Date>(new Date());
-  isLoading = signal<boolean>(true);
+
+  // Use WebSocket service signals directly
+  queueEntries = this.queueWebSocket.queueEntries;
+  isConnected = this.queueWebSocket.isConnected;
+  error = this.queueWebSocket.error;
+  isLoading = signal<boolean>(false); // Only for API calls
   recentActivity = signal<Array<{id: string, ticketNumber: string, action: string, timestamp: Date}>>([]);
 
-  // Computed signals
-  currentEntry = signal<QueueEntry | null>(null);
-  waitingEntries = signal<QueueEntry[]>([]);
+  // Computed signals using WebSocket service methods
+  currentEntry = signal<WebSocketQueueEntry | null>(null);
+  waitingEntries = signal<WebSocketQueueEntry[]>([]);
 
-  ngOnInit() {
-    this.loadQueue();
-    
-    // Auto-refresh every 30 seconds
-    this.refreshInterval = window.setInterval(() => {
-      this.loadQueue();
-    }, 30000);
+  constructor() {
+    // Update computed signals when queue entries change
+    // Use effect to watch for changes in the signal - must be in constructor
+    effect(() => {
+      const entries = this.queueEntries();
+      this.lastUpdated.set(new Date());
+      this.updateComputedSignals(entries);
+    });
+  }
+
+  async ngOnInit() {
+    // Initialize with HTTP API first, then connect WebSocket
+    await this.queueWebSocket.initialize('triage-1');
   }
 
   ngOnDestroy() {
-    if (this.refreshInterval) {
-      clearInterval(this.refreshInterval);
-    }
+    // Disconnect from WebSocket
+    this.queueWebSocket.disconnect();
   }
 
   private loadQueue() {
     this.isLoading.set(true);
 
-    this.http.get<QueueEntry[]>('http://localhost:8080/api/waiting-rooms/triage-1/queue')
+    this.http.get<WebSocketQueueEntry[]>('http://localhost:8080/api/waiting-rooms/triage-1/queue')
       .subscribe({
         next: (entries) => {
           console.log('Queue entries loaded:', entries);
@@ -254,7 +249,7 @@ export class QueueManagementComponent implements OnInit, OnDestroy {
       });
   }
 
-  private updateComputedSignals(entries: QueueEntry[]) {
+  private updateComputedSignals(entries: WebSocketQueueEntry[]) {
     // Find currently being served (CALLED or IN_SERVICE)
     const current = entries.find(entry => 
       entry.status === 'CALLED' || entry.status === 'IN_SERVICE'
@@ -285,7 +280,7 @@ export class QueueManagementComponent implements OnInit, OnDestroy {
       });
   }
 
-  callSpecificEntry(entry: QueueEntry) {
+  callSpecificEntry(entry: WebSocketQueueEntry) {
     // For now, just call the next person
     // In a real implementation, you might want a specific endpoint for calling a particular entry
     this.callNext();

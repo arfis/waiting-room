@@ -1,11 +1,8 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { QueueEntry as BaseQueueEntry, QueueEntryStatus } from './api';
 
-export interface QueueEntry {
-  id: string;
-  waitingRoomId: string;
-  ticketNumber: string;
-  status: string;
-  position: number;
+export interface WebSocketQueueEntry extends BaseQueueEntry {
   createdAt: string;
   cardData?: {
     idNumber: string;
@@ -18,26 +15,56 @@ export interface QueueEntry {
 export interface QueueUpdate {
   type: 'queue_update';
   roomId: string;
-  entries: QueueEntry[];
+  entries: WebSocketQueueEntry[];
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class QueueWebSocketService {
+  private http = inject(HttpClient);
   private ws: WebSocket | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000;
 
   // Signals for reactive state
-  queueEntries = signal<QueueEntry[]>([]);
+  queueEntries = signal<WebSocketQueueEntry[]>([]);
   isConnected = signal<boolean>(false);
   error = signal<string | null>(null);
+
+  async initialize(roomId: string): Promise<void> {
+    // First, load initial data via HTTP API
+    await this.loadInitialData(roomId);
+    
+    // Then connect WebSocket for real-time updates
+    this.connect(roomId);
+  }
+
+  private async loadInitialData(roomId: string): Promise<void> {
+    try {
+      console.log('Loading initial queue data via HTTP API...');
+      const entries = await this.http.get<WebSocketQueueEntry[]>(`http://localhost:8080/api/waiting-rooms/${roomId}/queue`).toPromise();
+      if (entries) {
+        console.log('Initial queue data loaded:', entries);
+        this.queueEntries.set(entries);
+      }
+    } catch (error) {
+      console.error('Failed to load initial queue data:', error);
+      this.error.set('Failed to load initial queue data');
+    }
+  }
 
   connect(roomId: string): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
       console.log('WebSocket already connected');
+      return;
+    }
+
+    // Don't connect if we're in a browser environment that doesn't support WebSocket
+    if (typeof WebSocket === 'undefined') {
+      console.warn('WebSocket not supported in this environment');
+      this.error.set('WebSocket not supported');
       return;
     }
 

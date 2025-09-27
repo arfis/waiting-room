@@ -92,6 +92,9 @@ func (s *server) PostWaitingRoomsRoomIdSwipe(w http.ResponseWriter, r *http.Requ
 
 	log.Printf("Sending response: %+v", res)
 
+	// Broadcast queue update to all connected clients
+	s.broadcastQueueUpdate(roomId)
+
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(res)
 }
@@ -135,7 +138,7 @@ func (s *server) PostWaitingRoomsRoomIdNext(w http.ResponseWriter, r *http.Reque
 		Position:      entry.Position,
 	}
 	json.NewEncoder(w).Encode(resp)
-	
+
 	// Broadcast queue update to all connected clients
 	s.broadcastQueueUpdate(roomId)
 }
@@ -184,7 +187,7 @@ func (s *server) handleQueueWebSocket(w http.ResponseWriter, r *http.Request) {
 		delete(s.clients, roomId)
 	}
 	s.clientsMux.Unlock()
-	
+
 	log.Printf("WebSocket client disconnected from room: %s", roomId)
 }
 
@@ -209,12 +212,16 @@ func (s *server) sendQueueUpdate(conn *websocket.Conn, roomId string) {
 
 // broadcastQueueUpdate sends queue updates to all connected clients for a room
 func (s *server) broadcastQueueUpdate(roomId string) {
+	log.Printf("Broadcasting queue update for room: %s", roomId)
+
 	s.clientsMux.RLock()
 	clients, exists := s.clients[roomId]
 	if !exists {
+		log.Printf("No clients connected to room: %s", roomId)
 		s.clientsMux.RUnlock()
 		return
 	}
+	log.Printf("Found %d clients connected to room: %s", len(clients), roomId)
 	s.clientsMux.RUnlock()
 
 	entries, err := s.queueService.GetQueueEntries(roomId)
@@ -222,6 +229,8 @@ func (s *server) broadcastQueueUpdate(roomId string) {
 		log.Printf("Failed to get queue entries for broadcast: %v", err)
 		return
 	}
+
+	log.Printf("Broadcasting %d queue entries to %d clients", len(entries), len(clients))
 
 	update := map[string]interface{}{
 		"type":    "queue_update",
@@ -235,6 +244,8 @@ func (s *server) broadcastQueueUpdate(roomId string) {
 			log.Printf("Failed to broadcast to client: %v", err)
 			conn.Close()
 			delete(clients, conn)
+		} else {
+			log.Printf("Successfully broadcasted to client")
 		}
 	}
 	s.clientsMux.RUnlock()
@@ -337,7 +348,7 @@ func main() {
 
 	// Add queue routes
 	r.Get("/api/waiting-rooms/{roomId}/queue", s.GetWaitingRoomQueue)
-	
+
 	// Add WebSocket route for real-time queue updates
 	r.Get("/ws/queue/{roomId}", s.handleQueueWebSocket)
 
