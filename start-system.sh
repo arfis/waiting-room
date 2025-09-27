@@ -114,22 +114,22 @@ wait_for_service "http://localhost:4201/health" "Kiosk WebSocket Server" || {
 
 # Start Mobile app server
 echo "📱 Starting Mobile app server..."
-cd ui
-npx serve -s dist/mobile -l 4204 &
+cd ui/projects/mobile
+node server.js &
 MOBILE_PID=$!
-cd ..
+cd ../..
 
 # Start TV app server
 echo "📺 Starting TV app server..."
 cd ui
-npx serve -s dist/tv -l 4203 &
+npx serve -s dist/tv/browser -l 4203 &
 TV_PID=$!
 cd ..
 
 # Start Backoffice app server
 echo "🏢 Starting Backoffice app server..."
 cd ui
-npx serve -s dist/backoffice -l 4200 &
+npx serve -s dist/backoffice/browser -l 4200 &
 BACKOFFICE_PID=$!
 cd ..
 

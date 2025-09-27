@@ -21,7 +21,7 @@ RUN pnpm build ui
 
 # Development stage
 FROM base AS development
-EXPOSE 4200 4201 4202 4203
+EXPOSE 4200 4201 4203 4204
 CMD ["pnpm", "start"]
 
 # Production stage

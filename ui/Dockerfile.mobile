@@ -40,11 +40,11 @@ RUN chown -R appuser:appuser /app
 USER appuser
 
 # Expose port
-EXPOSE 4202
+EXPOSE 4204
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:4202 || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:4204 || exit 1
 
 # Start static server
-CMD ["serve", "-s", "dist", "-l", "4202"]
+CMD ["serve", "-s", "dist", "-l", "4204"]
