@@ -1,4 +1,4 @@
-import { Component, signal, inject, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
+import { Component, signal, inject, OnInit, OnDestroy, ChangeDetectionStrategy, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { CardComponent, DataGridComponent, DataField } from 'ui';
@@ -16,6 +16,7 @@ interface CardData {
   issued_date: string;
   expiry_date: string;
   photo?: string;
+  source?: string;
   read_time: string;
 }
 
@@ -49,6 +50,28 @@ export class CardLoaderPageComponent implements OnInit, OnDestroy {
   // Debouncing for state changes
   private lastStateChange = 0;
   private stateChangeDebounce = 1000; // 1 second debounce
+
+  // Computed signals for better performance
+  cardDataFields = computed(() => {
+    const data = this.cardData();
+    if (!data) return [];
+
+    const name = `${data.first_name || ''} ${data.last_name || ''}`.trim();
+    
+    return [
+      { label: 'Name', value: name || null },
+      { label: 'ID Number', value: data.id_number || null },
+      { label: 'Date of Birth', value: data.date_of_birth || null, type: 'date' as const },
+      { label: 'Gender', value: data.gender || null },
+      { label: 'Nationality', value: data.nationality || null },
+      { label: 'Address', value: data.address || null },
+      { label: 'Issued Date', value: data.issued_date || null, type: 'date' as const },
+      { label: 'Expiry Date', value: data.expiry_date || null, type: 'date' as const },
+      { label: 'Photo', value: data.photo || null, type: 'image' as const, imageAlt: 'Card Photo' },
+      { label: 'Source', value: data.source || null },
+      { label: 'Read Time', value: data.read_time || null, type: 'datetime' as const }
+    ].filter(field => field.value !== null && field.value !== '');
+  });
 
   ngOnInit() {
     // Connect to WebSocket
@@ -153,6 +176,7 @@ export class CardLoaderPageComponent implements OnInit, OnDestroy {
         issued_date: payload.cardData.issued_date || '',
         expiry_date: payload.cardData.expiry_date || '',
         photo: payload.cardData.photo,
+        source: payload.cardData.source,
         read_time: payload.occurredAt
       };
       console.log('Setting card data signal:', cardData);
@@ -185,43 +209,5 @@ export class CardLoaderPageComponent implements OnInit, OnDestroy {
       this.isReading.set(false);
       this.error.set('Manual card reading not implemented. Use the card reader app.');
     }, 2000);
-  }
-
-  formatDate(dateStr?: string): string {
-    if (!dateStr) return '';
-    try {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString();
-    } catch {
-      return dateStr;
-    }
-  }
-
-  formatDateTime(dateStr?: string): string {
-    if (!dateStr) return '';
-    try {
-      const date = new Date(dateStr);
-      return date.toLocaleString();
-    } catch {
-      return dateStr;
-    }
-  }
-
-  getCardDataFields(): DataField[] {
-    const data = this.cardData();
-    if (!data) return [];
-
-    return [
-      { label: 'Name', value: `${data.first_name || ''} ${data.last_name || ''}`.trim() || null },
-      { label: 'ID Number', value: data.id_number || null },
-      { label: 'Date of Birth', value: data.date_of_birth || null, type: 'date' as const },
-      { label: 'Gender', value: data.gender || null },
-      { label: 'Nationality', value: data.nationality || null },
-      { label: 'Address', value: data.address || null },
-      { label: 'Issued Date', value: data.issued_date || null, type: 'date' as const },
-      { label: 'Expiry Date', value: data.expiry_date || null, type: 'date' as const },
-      { label: 'Photo', value: data.photo || null, type: 'image' as const, imageAlt: 'Card Photo' },
-      { label: 'Read Time', value: data.read_time || null, type: 'datetime' as const }
-    ].filter(field => field.value !== null);
   }
 }
