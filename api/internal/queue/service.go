@@ -214,9 +214,28 @@ func (s *Service) CallNext(waitingRoomID string) (*QueueEntry, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Find the next waiting entry
+	// First, complete any currently served person (CALLED or IN_SERVICE)
+	_, err := s.entries.UpdateMany(
+		ctx,
+		bson.M{
+			"waitingRoomId": waitingRoomID,
+			"status":        bson.M{"$in": []string{"CALLED", "IN_SERVICE"}},
+		},
+		bson.M{
+			"$set": bson.M{
+				"status":    "COMPLETED",
+				"updatedAt": time.Now(),
+			},
+		},
+	)
+	if err != nil {
+		log.Printf("Failed to complete current entries: %v", err)
+		// Continue anyway, don't fail the whole operation
+	}
+
+	// Find the next waiting entry and call them
 	var entry QueueEntry
-	err := s.entries.FindOneAndUpdate(
+	err = s.entries.FindOneAndUpdate(
 		ctx,
 		bson.M{
 			"waitingRoomId": waitingRoomID,
