@@ -270,6 +270,61 @@ func (s *Service) CallNext(waitingRoomID string) (*QueueEntry, error) {
 	return &entry, nil
 }
 
+// FinishCurrent completes the currently served person without calling the next
+func (s *Service) FinishCurrent(waitingRoomID string) (*QueueEntry, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	log.Printf("Finishing current person for room: %s", waitingRoomID)
+
+	// First, get the currently served person to return their info
+	var entry QueueEntry
+	err := s.entries.FindOne(
+		ctx,
+		bson.M{
+			"waitingRoomId": waitingRoomID,
+			"status":        bson.M{"$in": []string{"CALLED", "IN_SERVICE"}},
+		},
+	).Decode(&entry)
+
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			log.Printf("No one is currently being served in room: %s", waitingRoomID)
+			return nil, nil // No error, just no one to finish
+		}
+		return nil, fmt.Errorf("failed to find current person: %w", err)
+	}
+
+	log.Printf("Found current person: %s (ticket: %s), updating to COMPLETED", entry.ID, entry.TicketNumber)
+
+	// Update the status using UpdateMany (same as CallNext)
+	result, err := s.entries.UpdateMany(
+		ctx,
+		bson.M{
+			"waitingRoomId": waitingRoomID,
+			"status":        bson.M{"$in": []string{"CALLED", "IN_SERVICE"}},
+		},
+		bson.M{
+			"$set": bson.M{
+				"status":    "COMPLETED",
+				"updatedAt": time.Now(),
+			},
+		},
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to update person status: %w", err)
+	}
+
+	if result.ModifiedCount == 0 {
+		log.Printf("No entries were modified for room: %s", waitingRoomID)
+		return nil, nil
+	}
+
+	log.Printf("Successfully finished person: %s (ticket: %s)", entry.ID, entry.TicketNumber)
+	return &entry, nil
+}
+
 // recalculatePositions updates the position field for all WAITING entries
 func (s *Service) recalculatePositions(waitingRoomID string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

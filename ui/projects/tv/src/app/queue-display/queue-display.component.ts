@@ -111,7 +111,6 @@ import { QueueWebSocketService, WebSocketQueueEntry } from 'api-client';
       <!-- Footer -->
       <div class="text-center py-8 text-blue-300">
         <p class="text-xl">Waiting Room Management System</p>
-        <p class="text-sm mt-2">Auto-refreshing every 10 seconds</p>
       </div>
     </div>
   `,

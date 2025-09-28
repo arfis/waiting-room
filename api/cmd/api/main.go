@@ -143,6 +143,47 @@ func (s *server) PostWaitingRoomsRoomIdNext(w http.ResponseWriter, r *http.Reque
 	s.broadcastQueueUpdate(roomId)
 }
 
+func (s *server) PostWaitingRoomsRoomIdFinish(w http.ResponseWriter, r *http.Request) {
+	roomId := chi.URLParam(r, "roomId")
+	if roomId == "" {
+		http.Error(w, "Room ID is required", http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("Received finish request for room: %s", roomId)
+
+	// Complete any currently served person (CALLED or IN_SERVICE) without calling the next
+	entry, err := s.queueService.FinishCurrent(roomId)
+	if err != nil {
+		log.Printf("Failed to finish current person: %v", err)
+		http.Error(w, "Failed to finish current person: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if entry == nil {
+		// No one is currently being served
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{"message": "No one is currently being served"})
+		return
+	}
+
+	resp := api.QueueEntry{
+		Id:            uuid.MustParse(entry.ID),
+		WaitingRoomId: uuid.MustParse("00000000-0000-0000-0000-000000000001"), // Use a fixed UUID for triage-1
+		TicketNumber:  entry.TicketNumber,
+		Status:        api.COMPLETED,
+		Position:      entry.Position,
+	}
+
+	log.Printf("Finished person: %s (ticket: %s)", entry.ID, entry.TicketNumber)
+
+	// Broadcast queue update to all connected clients
+	s.broadcastQueueUpdate(roomId)
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
+}
+
 // WebSocket handler for queue updates
 func (s *server) handleQueueWebSocket(w http.ResponseWriter, r *http.Request) {
 	roomId := chi.URLParam(r, "roomId")
@@ -348,6 +389,7 @@ func main() {
 
 	// Add queue routes
 	r.Get("/api/waiting-rooms/{roomId}/queue", s.GetWaitingRoomQueue)
+	r.Post("/api/waiting-rooms/{roomId}/finish", s.PostWaitingRoomsRoomIdFinish)
 
 	// Add WebSocket route for real-time queue updates
 	r.Get("/ws/queue/{roomId}", s.handleQueueWebSocket)
