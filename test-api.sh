@@ -14,7 +14,7 @@ fi
 
 # Test 2: Simple POST without MongoDB
 echo "2. Testing simple POST endpoint..."
-simple_response=$(curl -s -X POST http://localhost:8080/v1/waiting-rooms/triage-1/swipe \
+simple_response=$(curl -s -X POST http://localhost:8080/waiting-rooms/triage-1/swipe \
   -H "Content-Type: application/json" \
   -d '{"idCardRaw": "test"}' \
   --max-time 5)

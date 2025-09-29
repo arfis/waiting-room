@@ -300,7 +300,7 @@ export class QueueManagementComponent implements OnInit, OnDestroy {
   finishCurrent() {
     this.isLoading.set(true);
 
-    this.http.post<any>('http://localhost:8080/waiting-rooms/triage-1/finish', {})
+    this.http.post<any>('http://localhost:8080/api/waiting-rooms/triage-1/finish', {})
       .subscribe({
         next: (response) => {
           console.log('Finished current person:', response);
