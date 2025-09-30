@@ -1,0 +1,45 @@
+openapi: 3.0.0
+info:
+  title: test
+  version: 0.0.1
+x-errors:
+  NAME_TOO_SHORT:
+    description: "Validates that the name is 10 characters or longer."
+    message: "The provided name is too short."
+    httpCode: 400
+paths:
+  /test-endpoint:
+    post:
+      tags:
+        - test
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestReq'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestResp"
+          description: OK
+      operationId: Test
+components:
+  schemas:
+    TestReq:
+      title: TestReq
+      type: object
+      required:
+        - test
+      properties:
+        test:
+          type: string
+    TestResp:
+      title: TestResp
+      type: object
+      required:
+        - test
+      properties:
+        test:
+          type: string

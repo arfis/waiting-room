@@ -59,6 +59,9 @@ export class CardLoaderPageComponent implements OnInit, OnDestroy {
   // Debouncing for state changes
   private lastStateChange = 0;
   private stateChangeDebounce = 1000; // 1 second debounce
+  
+  // Track processed card data to prevent duplicate API calls
+  private processedCardData = new Set<string>();
 
   // Computed signals for better performance
   cardDataFields = computed(() => {
@@ -164,6 +167,8 @@ export class CardLoaderPageComponent implements OnInit, OnDestroy {
         setTimeout(() => {
           this.cardData.set(null);
           this.ticketData.set(null);
+          // Clear processed card data to allow new cards to be processed
+          this.processedCardData.clear();
         }, 3000); // 3 seconds after card removal
       } else if (payload.state === 'error') {
         this.error.set(payload.message);
@@ -175,6 +180,19 @@ export class CardLoaderPageComponent implements OnInit, OnDestroy {
     console.log('handleCardData called with payload:', payload);
     if (payload.cardData) {
       console.log('Processing card data:', payload.cardData);
+      
+      // Create a unique key for this card data to prevent duplicate processing
+      const cardKey = `${payload.cardData.id_number}_${payload.cardData.first_name}_${payload.cardData.last_name}_${payload.occurredAt}`;
+      
+      // Check if we've already processed this card data
+      if (this.processedCardData.has(cardKey)) {
+        console.log('Card data already processed, skipping duplicate API call');
+        return;
+      }
+      
+      // Mark this card data as processed
+      this.processedCardData.add(cardKey);
+      
       const cardData: CardData = {
         id_number: payload.cardData.id_number || '',
         first_name: payload.cardData.first_name || '',
@@ -193,7 +211,7 @@ export class CardLoaderPageComponent implements OnInit, OnDestroy {
       this.cardData.set(cardData);
       this.error.set(null);
       
-      // Generate ticket
+      // Generate ticket (only once per unique card data)
       this.generateTicket(cardData);
     } else {
       console.log('No card data in payload');
@@ -213,7 +231,7 @@ export class CardLoaderPageComponent implements OnInit, OnDestroy {
     console.log('Calling API with idCardRaw:', idCardRaw);
 
     // Call the API to create a ticket
-    this.http.post<any>('http://localhost:8080/waiting-rooms/triage-1/swipe', {
+    this.http.post<any>('http://localhost:8080/api/waiting-rooms/triage-1/swipe', {
       idCardRaw: idCardRaw
     }).subscribe({
       next: (response) => {

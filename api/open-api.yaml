@@ -1,0 +1,332 @@
+openapi: 3.0.0
+info:
+  title: waiting-room-service-api
+  version: 1.0.0
+  x-artifact-name: waiting-room-service
+  x-clients:
+    - typescript-angular
+    - go
+x-configuration:
+  module: github.com/arfis/waiting-room
+  executables:
+    - shortname: waiting-room
+      modules:
+        - api
+        - postgres-sqlc
+x-errors:
+  QUEUE_ENTRY_NOT_FOUND:
+    message: "Queue entry not found: %s"
+    description: "When trying to find a queue entry that doesn't exist."
+    httpCode: 404
+  INVALID_ROOM_ID:
+    message: "Invalid room ID: %s"
+    description: "When room ID is invalid or doesn't exist."
+    httpCode: 400
+  CARD_READ_FAILED:
+    message: "Failed to read card data"
+    description: "When card reading fails."
+    httpCode: 400
+  QUEUE_EMPTY:
+    message: "Queue is empty"
+    description: "When trying to call next but no one is waiting."
+    httpCode: 400
+paths:
+  /waiting-rooms/{roomId}/swipe:
+    post:
+      x-generated:
+        package: kiosk
+      tags:
+        - Kiosk
+      operationId: SwipeCard
+      summary: Kiosk swipe to join queue
+      parameters:
+        - in: path
+          name: roomId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SwipeRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JoinResult'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationError'
+        '500':
+          description: Internal errors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationError'
+  /queue-entries/token/{qrToken}:
+    get:
+      x-generated:
+        package: queue
+      tags:
+        - Queue
+      operationId: GetQueueEntryByToken
+      summary: Resolve QR token to public entry data
+      parameters:
+        - in: path
+          name: qrToken
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicEntry' }
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationError'
+        '500':
+          description: Internal errors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationError'
+  /waiting-rooms/{roomId}/next:
+    post:
+      x-generated:
+        package: queue
+      tags:
+        - Queue
+      operationId: CallNext
+      summary: Call next entry
+      parameters:
+        - in: path
+          name: roomId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueEntry'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationError'
+        '500':
+          description: Internal errors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationError'
+  /waiting-rooms/{roomId}/finish:
+    post:
+      x-generated:
+        package: queue
+      tags:
+        - Queue
+      operationId: FinishCurrent
+      summary: Finish current person
+      parameters:
+        - in: path
+          name: roomId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueEntry'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationError'
+        '500':
+          description: Internal errors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationError'
+  /waiting-rooms/{roomId}/queue:
+    get:
+      x-generated:
+        package: queue
+      tags:
+        - Queue
+      operationId: GetQueueEntries
+      summary: Get queue entries
+      parameters:
+        - in: path
+          name: roomId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/QueueEntry'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationError'
+        '500':
+          description: Internal errors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationError'
+components:
+  securitySchemes:
+    ApiKeyAuth: { type: apiKey, in: header, name: X-API-Key }
+    BearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  schemas:
+    QueueEntryStatus:
+      x-group: queue
+      title: QueueEntryStatus
+      type: string
+      enum: [WAITING, CALLED, IN_SERVICE, COMPLETED, SKIPPED, CANCELLED, NO_SHOW]
+    SwipeRequest:
+      x-group: kiosk
+      title: SwipeRequest
+      type: object
+      required:
+        - idCardRaw
+      properties:
+        idCardRaw:
+          type: string
+          description: Raw card data from card reader
+    JoinResult:
+      x-group: kiosk
+      title: JoinResult
+      type: object
+      required:
+        - entryId
+        - ticketNumber
+        - qrUrl
+      properties:
+        entryId:
+          type: string
+          format: uuid
+          description: Unique identifier for the queue entry
+        ticketNumber:
+          type: string
+          example: "A-073"
+          description: Generated ticket number
+        qrUrl:
+          type: string
+          example: "http://localhost:4204/q/abc..."
+          description: QR code URL for mobile app
+    PublicEntry:
+      x-group: queue
+      title: PublicEntry
+      type: object
+      required:
+        - entryId
+        - ticketNumber
+        - status
+        - position
+        - etaMinutes
+        - canCancel
+      properties:
+        entryId:
+          type: string
+          format: uuid
+          description: Unique identifier for the queue entry
+        ticketNumber:
+          type: string
+          description: Ticket number
+        status:
+          $ref: '#/components/schemas/QueueEntryStatus'
+        position:
+          type: integer
+          minimum: 0
+          description: Position in queue
+        etaMinutes:
+          type: integer
+          minimum: 0
+          description: Estimated wait time in minutes
+        canCancel:
+          type: boolean
+          description: Whether the entry can be cancelled
+    QueueEntry:
+      x-group: queue
+      title: QueueEntry
+      type: object
+      required:
+        - id
+        - waitingRoomId
+        - ticketNumber
+        - status
+        - position
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier
+        waitingRoomId:
+          type: string
+          format: uuid
+          description: Waiting room identifier
+        ticketNumber:
+          type: string
+          description: Generated ticket number
+        status:
+          $ref: '#/components/schemas/QueueEntryStatus'
+        position:
+          type: integer
+          description: Position in queue
+    ApplicationError:
+      x-group: errors
+      title: ApplicationError
+      type: object
+      description: The same type for all errors returned from API.
+      required:
+        - text
+        - code
+      properties:
+        text:
+          type: string
+          description: Error message
+        code:
+          type: string
+          description: Error code
+          enum:
+            - BUSINESS_ERROR
+            - VALIDATION_ERROR
+            - MISSING_REQUIRED_FIELD_ERROR
+            - OBJECT_VERSION_MISMATCH_ERROR
+            - NOT_FOUND_ERROR
+            - SERVICE_CALL_ERROR
+            - FORBIDDEN_ERROR
+            - INTERNAL_SERVER_ERROR
+            - MISSING_TENANT
+            - AUTH_HEADER
+            - UNPROCESSABLE_ENTITY_FOREIGN_KEY
+            - UNPROCESSABLE_ENTITY_UNIQUE
+            - QUEUE_ENTRY_NOT_FOUND
+            - INVALID_ROOM_ID
+            - CARD_READ_FAILED
+            - QUEUE_EMPTY
