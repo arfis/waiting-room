@@ -1,12 +1,12 @@
-import { Component, signal } from '@angular/core';
-import { CardLoaderPageComponent } from './card-loader/card-loader.component';
+import { Component } from '@angular/core';
+import { CardLoaderComponent } from './card-loader/card-loader.component';
 
 @Component({
   selector: 'app-root',
-  imports: [CardLoaderPageComponent],
+  imports: [CardLoaderComponent],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
-export class App {
-  protected readonly title = signal('kiosk');
+export class AppComponent {
+  protected readonly title = 'kiosk';
 }

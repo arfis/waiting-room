@@ -1,0 +1,43 @@
+<div class="min-h-screen bg-gray-50 p-6">
+  <div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <app-queue-header
+      title="Queue Management"
+      subtitle="Manage the waiting room queue for Triage Room 1"
+      [lastUpdated]="lastUpdated()"
+    />
+
+    <!-- Action Buttons -->
+    <app-queue-actions
+      [isLoading]="isLoading()"
+      [canCallNext]="waitingEntries().length > 0"
+      [canFinishCurrent]="!!currentEntry()"
+      (callNextClick)="onCallNext()"
+      (finishCurrentClick)="onFinishCurrent()"
+      (refreshClick)="onRefresh()"
+    />
+
+    <!-- Currently Being Served -->
+    <app-current-entry-card
+      [entry]="currentEntry()"
+      [statusText]="getStatusText(currentEntry()?.status || '')"
+    />
+
+    <!-- Queue Statistics -->
+    <app-queue-statistics
+      [totalWaiting]="waitingEntries().length"
+      [estimatedWaitTime]="estimatedWaitTime()"
+    />
+
+    <!-- Waiting Queue -->
+    <app-waiting-queue-list
+      [entries]="waitingEntries()"
+      (callEntry)="onCallSpecificEntry($event)"
+    />
+
+    <!-- Recent Activity -->
+    <app-activity-log
+      [activities]="recentActivity()"
+    />
+  </div>
+</div>

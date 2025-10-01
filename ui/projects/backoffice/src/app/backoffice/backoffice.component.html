@@ -1,0 +1,25 @@
+<div class="min-h-screen bg-slate-50 p-6">
+  <ui-card>
+    <h1 class="text-xl font-semibold mb-4">Backoffice</h1>
+    <div class="flex gap-2">
+      <button 
+        class="px-4 py-2 rounded bg-black text-white hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
+        (click)="callNext()"
+        [disabled]="isLoading()">
+        Call Next
+      </button>
+      <button class="px-4 py-2 rounded bg-gray-300" disabled>Skip</button>
+      <button class="px-4 py-2 rounded bg-gray-300" disabled>Cancel</button>
+    </div>
+    @if (lastCalled(); as entry) {
+      <div class="mt-4">
+        <p>Called ticket: <strong>{{ entry.ticketNumber }}</strong></p>
+      </div>
+    }
+    @if (error(); as errorMsg) {
+      <div class="mt-4 p-3 bg-red-100 text-red-700 rounded">
+        {{ errorMsg }}
+      </div>
+    }
+  </ui-card>
+</div>

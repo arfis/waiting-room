@@ -37,23 +37,23 @@
       <div class="text-center">
         <div class="mb-4">
           <!-- Different icons based on state -->
-          @if (cardReaderState() === 'waiting') {
+          @if (readerState() === 'waiting') {
             <svg class="mx-auto w-16 h-16 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
             </svg>
-          } @else if (cardReaderState() === 'reading') {
+          } @else if (readerState() === 'reading') {
             <svg class="mx-auto w-16 h-16 text-yellow-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
             </svg>
-          } @else if (cardReaderState() === 'success') {
+          } @else if (readerState() === 'success') {
             <svg class="mx-auto w-16 h-16 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
-          } @else if (cardReaderState() === 'error') {
+          } @else if (readerState() === 'error') {
             <svg class="mx-auto w-16 h-16 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
-          } @else if (cardReaderState() === 'removed') {
+          } @else if (readerState() === 'removed') {
             <svg class="mx-auto w-16 h-16 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
             </svg>
@@ -67,15 +67,15 @@
         <h2 class="text-xl font-semibold mb-2">{{ cardReaderMessage() }}</h2>
         <p class="text-slate-600 mb-6">
           @if (wsConnectionStatus() === 'connected') {
-            @if (cardReaderState() === 'waiting') {
+            @if (readerState() === 'waiting') {
               Card reader is ready. Insert your card to automatically read it.
-            } @else if (cardReaderState() === 'reading') {
+            } @else if (readerState() === 'reading') {
               Reading your card data, please wait...
-            } @else if (cardReaderState() === 'success') {
+            } @else if (readerState() === 'success') {
               Card read successfully! Please remove your card.
-            } @else if (cardReaderState() === 'removed') {
+            } @else if (readerState() === 'removed') {
               Card removed successfully. Ready for next card.
-            } @else if (cardReaderState() === 'error') {
+            } @else if (readerState() === 'error') {
               There was an error reading your card. Please try again.
             }
           } @else if (wsConnectionStatus() === 'connecting') {
@@ -87,25 +87,13 @@
           }
         </p>
         
-        <!-- Fallback manual read button -->
+        <!-- Card reader connection instructions -->
         @if (wsConnectionStatus() !== 'connected') {
-          <button 
-            class="px-8 py-4 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            (click)="readCard()"
-            [disabled]="!cardReaderStatus().connected || isReading()"
-          >
-            @if (!isReading()) {
-              Read Card Manually
-            } @else {
-              <span class="flex items-center gap-2">
-                <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Reading Card...
-              </span>
-            }
-          </button>
+          <div class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p class="text-sm text-blue-800">
+              <strong>Note:</strong> The card reader is not connected. Please ensure the card reader service is running.
+            </p>
+          </div>
         }
       </div>
 
