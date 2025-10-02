@@ -1,168 +1,406 @@
-# Waiting Room Management System
+# Waiting Room System
 
-A complete waiting room management system with smart card reading, queue management, and real-time updates.
+A complete waiting room management system with real-time queue updates, card reader integration, and multiple client applications.
 
-## 🏗️ System Architecture
+## System Architecture
 
-The system consists of several components:
+The system consists of several interconnected components:
 
-- **Card Reader** (Go): Standalone smart card reader that communicates via WebSocket
-- **API Server** (Go): REST API with MongoDB for queue management
-- **Kiosk App** (Angular): Card reading interface with ticket generation
-- **Mobile App** (Angular): Queue position tracking via QR codes
-- **TV Display** (Angular): Real-time queue status display
-- **Backoffice** (Angular): Queue management interface
-
-## 🚀 Quick Start
-
-### Option 1: Docker (Recommended)
-
-1. **Prerequisites**:
-   - Docker & Docker Compose
-   - Smart card reader hardware (optional)
-
-2. **Start with Docker (full setup)**:
-   ```bash
-   chmod +x start-docker.sh
-   ./start-docker.sh
-   ```
-
-3. **Start with Docker (using existing MongoDB)**:
-   ```bash
-   chmod +x start-docker-dev.sh
-   ./start-docker-dev.sh
-   ```
-
-### Option 2: Local Development
-
-1. **Prerequisites**:
-   - Go 1.25+
-   - Node.js 18+
-   - MongoDB (or Docker MongoDB)
-   - Smart card reader hardware
-
-2. **Start the system**:
-   ```bash
-   chmod +x start-system.sh
-   ./start-system.sh
-   ```
-
-### Access the applications:
-- **Kiosk**: http://localhost:4201
-- **Mobile**: http://localhost:4204
-- **TV Display**: http://localhost:4203
-- **Backoffice**: http://localhost:4200
-- **API**: http://localhost:8080
-
-## 📱 User Flow
-
-1. **Card Reading**: User inserts smart card at kiosk
-2. **Ticket Generation**: System generates ticket number and QR code
-3. **Queue Entry**: User is added to waiting queue
-4. **Mobile Tracking**: User scans QR code to track position
-5. **Queue Management**: Staff uses backoffice to call next person
-6. **TV Display**: Shows current queue status to all users
-
-## 🔧 Technical Details
-
-### Card Reader
-- Reads smart cards via PC/SC
-- Supports PKCS#11 certificates and CPLC data
-- Real-time WebSocket communication
-- Automatic state management
-
-### API Endpoints
-- `POST /waiting-rooms/{roomId}/swipe` - Create queue entry
-- `GET /queue-entries/token/{qrToken}` - Get queue position
-- `POST /waiting-rooms/{roomId}/next` - Call next person
-- `GET /api/waiting-rooms/{roomId}/queue` - Get current queue
-
-### Database Schema
-```javascript
-{
-  _id: ObjectId,
-  waitingRoomId: String,
-  ticketNumber: String,
-  qrToken: String,
-  status: String, // WAITING, CALLED, IN_SERVICE, COMPLETED, etc.
-  position: Number,
-  createdAt: Date,
-  updatedAt: Date,
-  cardData: {
-    idNumber: String,
-    firstName: String,
-    lastName: String,
-    // ... other card fields
-  }
-}
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Card Reader   │    │   Kiosk App     │    │   Mobile App    │
+│   (Hardware)    │───▶│   (Angular)     │    │   (Angular)     │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                │                        │
+                                ▼                        ▼
+                       ┌─────────────────────────────────────────┐
+                       │           API Server (Go)              │
+                       │  - REST API endpoints                  │
+                       │  - WebSocket for real-time updates     │
+                       │  - MongoDB integration                 │
+                       └─────────────────────────────────────────┘
+                                │
+                                ▼
+                       ┌─────────────────┐    ┌─────────────────┐
+                       │   Backoffice    │    │   TV Display    │
+                       │   (Angular)     │    │   (Angular)     │
+                       └─────────────────┘    └─────────────────┘
 ```
 
-## 🛠️ Development
+## Components Overview
 
-### Docker Management
+### 1. API Server (Go)
+- **Port**: 8080
+- **Technology**: Go with Chi router, WebSocket support
+- **Database**: MongoDB
+- **Features**:
+  - REST API for queue management
+  - WebSocket for real-time updates
+  - Card reader integration
+  - Queue position management
+
+### 2. Kiosk Application (Angular)
+- **Port**: 4200
+- **Purpose**: Card reading and ticket generation
+- **Features**:
+  - Card reader integration
+  - QR code generation
+  - Ticket display
+
+### 3. Mobile Application (Angular)
+- **Port**: 4204
+- **Purpose**: Queue status for patients
+- **Features**:
+  - QR code scanning
+  - Queue position display
+  - Estimated wait time
+
+### 4. Backoffice Application (Angular)
+- **Port**: 4201
+- **Purpose**: Queue management for staff
+- **Features**:
+  - Call next patient
+  - Finish current patient
+  - Queue overview
+  - Real-time updates
+
+### 5. TV Display (Angular)
+- **Port**: 4203
+- **Purpose**: Public queue display
+- **Features**:
+  - Current patient display
+  - Waiting queue
+  - Real-time updates
+
+## Prerequisites
+
+- **Go** 1.21+
+- **Node.js** 18+
+- **MongoDB** 6.0+
+- **Angular CLI** 17+
+
+## Quick Start
+
+### 1. Clone and Setup
+
+```bash
+git clone <repository-url>
+cd waiting-room
+```
+
+### 2. Start MongoDB
+
+```bash
+# Using Docker
+docker run -d --name mongodb \
+  -p 27017:27017 \
+  -e MONGO_INITDB_ROOT_USERNAME=admin \
+  -e MONGO_INITDB_ROOT_PASSWORD=admin \
+  mongodb:6.0
+
+# Or using local MongoDB installation
+mongod --dbpath /path/to/your/db
+```
+
+### 3. Start the System
 
 ```bash
 # Start all services
-docker-compose up -d
-
-# Start with existing MongoDB
-docker-compose -f docker-compose.dev.yml up -d
-
-# View logs
-docker-compose logs -f [service-name]
-
-# Stop all services
-docker-compose down
-
-# Rebuild and restart
-docker-compose up --build -d
-
-# Access container shell
-docker-compose exec [service-name] sh
+./start-system.sh
 ```
 
-### Building Individual Components
+This script will:
+- Build the UI library
+- Build all Angular applications
+- Start the API server
+- Start all frontend applications
+
+### 4. Access the Applications
+
+- **Kiosk**: http://localhost:4200
+- **Backoffice**: http://localhost:4201
+- **TV Display**: http://localhost:4203
+- **Mobile**: http://localhost:4204
+- **API**: http://localhost:8080
+
+## Manual Setup
+
+### 1. API Server
 
 ```bash
-# API
-cd api && go build ./cmd/api
-
-# Card Reader
-cd card-reader && go run main.go
-
-# Angular Apps
-cd ui
-ng build kiosk
-ng build mobile
-ng build tv
-ng build backoffice
+cd api
+go mod download
+go run cmd/api/main.go
 ```
 
-### Environment Variables
+### 2. Frontend Applications
 
-- `MONGODB_URI`: MongoDB connection string (default: mongodb://localhost:27017)
-- `ROOM_ID`: Waiting room identifier (default: triage-1)
-- `DEVICE_ID`: Card reader device ID (default: reader-01)
+```bash
+cd ui
 
-## 📋 Features
+# Build shared UI library
+ng build ui
 
-- ✅ Smart card reading with multiple data sources
-- ✅ Real-time WebSocket communication
-- ✅ QR code generation and scanning
-- ✅ Queue position tracking
-- ✅ Staff queue management interface
-- ✅ Public queue display
-- ✅ MongoDB persistence
-- ✅ Responsive design
-- ✅ Auto-refresh and real-time updates
+# Start individual applications
+ng serve kiosk --port 4200
+ng serve backoffice --port 4201
+ng serve tv --port 4203
+ng serve mobile --port 4204
+```
 
-## 🔒 Security Considerations
+## Configuration
 
-- Card data is stored securely in MongoDB
-- QR tokens are UUIDs for security
-- API endpoints include proper validation
-- CORS configured for development
+The system uses a YAML configuration file for all settings. The server looks for `config.yaml` in the API directory by default.
 
-## 📝 License
+### Configuration Files
 
-This project is for demonstration purposes.
+- `config.yaml` - Main configuration file
+- `config.example.yaml` - Example configuration with all options
+- `config.dev.yaml` - Development configuration
+- `config.prod.yaml` - Production configuration
+
+### Basic Configuration
+
+```yaml
+server:
+  port: 8080
+  host: "localhost"
+  
+database:
+  mongodb:
+    uri: "mongodb://admin:admin@localhost:27017/waiting_room?authSource=admin"
+    database: "waiting_room"
+    
+cors:
+  allowed_origins:
+    - "http://localhost:4200"
+    - "http://localhost:4201"
+    - "http://localhost:4203"
+    - "http://localhost:4204"
+  allowed_methods:
+    - "GET"
+    - "POST"
+    - "PUT"
+    - "DELETE"
+    - "OPTIONS"
+  allowed_headers:
+    - "*"
+
+websocket:
+  enabled: true
+  path: "/ws/queue"
+
+rooms:
+  default_room: "triage-1"  # Default room ID - any room can be created dynamically
+  allow_wildcard: true      # Allow any room ID (.* pattern) - set to false for strict mode
+
+logging:
+  level: "info"
+  format: "text"
+```
+
+### Configuration Sections
+
+#### Server Configuration
+- `port`: Server port (default: 8080)
+- `host`: Server host (default: localhost)
+
+#### Database Configuration
+- `mongodb.uri`: MongoDB connection string
+- `mongodb.database`: Database name
+
+#### CORS Configuration
+- `allowed_origins`: List of allowed origins for CORS
+- `allowed_methods`: List of allowed HTTP methods
+- `allowed_headers`: List of allowed headers
+
+#### WebSocket Configuration
+- `enabled`: Enable/disable WebSocket support
+- `path`: WebSocket endpoint path
+
+#### Rooms Configuration
+- `default_room`: Default room ID used by the system
+- `allow_wildcard`: Allow any room ID (.* pattern) - set to false for strict mode
+
+**Dynamic Room Management**: The system supports dynamic room creation. When `allow_wildcard: true` (default), any valid room ID can be used in API endpoints without pre-configuration. Rooms are created automatically when the first person joins the queue for that room.
+
+**Strict Mode**: Set `allow_wildcard: false` to only allow the default room for enhanced security.
+
+#### Logging Configuration
+- `level`: Log level (debug, info, warn, error)
+- `format`: Log format (text, json)
+
+### Using Different Configuration Files
+
+```bash
+# Use development configuration
+CONFIG_PATH=config.dev.yaml go run cmd/api/main.go
+
+# Use production configuration
+CONFIG_PATH=config.prod.yaml go run cmd/api/main.go
+```
+
+## API Endpoints
+
+### Queue Management
+- `GET /api/waiting-rooms/{roomId}/queue` - Get queue entries for any room
+- `POST /api/waiting-rooms/{roomId}/swipe` - Create new queue entry in any room
+- `POST /api/waiting-rooms/{roomId}/next` - Call next patient in any room
+- `POST /api/waiting-rooms/{roomId}/finish` - Finish current patient in any room
+
+### WebSocket
+- `WS /ws/queue/{roomId}` - Real-time queue updates for any room
+
+### Dynamic Room Examples
+```bash
+# Use different rooms dynamically
+curl -X POST http://localhost:8080/api/waiting-rooms/emergency/swipe
+curl -X POST http://localhost:8080/api/waiting-rooms/pediatrics/swipe
+curl -X POST http://localhost:8080/api/waiting-rooms/consultation-1/swipe
+
+# Get queue for any room
+curl http://localhost:8080/api/waiting-rooms/emergency/queue
+curl http://localhost:8080/api/waiting-rooms/pediatrics/queue
+```
+
+### Health Check
+- `GET /health` - Server health status
+
+## Usage Flow
+
+### 1. Patient Arrival
+1. Patient approaches kiosk
+2. Staff swipes patient's card
+3. System generates ticket number and QR code
+4. Patient receives ticket with QR code
+
+### 2. Queue Management
+1. Staff uses backoffice to call next patient
+2. System updates queue positions
+3. All displays update in real-time
+4. Patient can scan QR code to check position
+
+### 3. Service Completion
+1. Staff finishes current patient
+2. System marks patient as completed
+3. Queue positions recalculate automatically
+
+## Development
+
+### Project Structure
+
+```
+waiting-room/
+├── api/                    # Go API server
+│   ├── cmd/api/           # Main application
+│   ├── internal/          # Internal packages
+│   │   ├── queue/         # Queue service
+│   │   ├── rest/          # HTTP handlers
+│   │   ├── repository/    # Data access layer
+│   │   └── service/       # Business logic
+│   └── config.yaml        # Configuration file
+├── ui/                    # Angular applications
+│   ├── projects/
+│   │   ├── kiosk/         # Kiosk application
+│   │   ├── mobile/        # Mobile application
+│   │   ├── backoffice/    # Backoffice application
+│   │   ├── tv/            # TV display
+│   │   └── ui/            # Shared UI library
+│   └── dist/              # Built applications
+└── start-system.sh        # System startup script
+```
+
+### Building for Production
+
+```bash
+# Build API server
+cd api
+go build -o waiting-room-api cmd/api/main.go
+
+# Build Angular applications
+cd ui
+ng build kiosk --configuration production
+ng build mobile --configuration production
+ng build backoffice --configuration production
+ng build tv --configuration production
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Port already in use**
+   ```bash
+   # Kill processes on specific ports
+   lsof -ti:8080 | xargs kill -9
+   lsof -ti:4200 | xargs kill -9
+   ```
+
+2. **MongoDB connection failed**
+   - Check if MongoDB is running
+   - Verify connection string in config.yaml
+   - Check firewall settings
+
+3. **WebSocket connection failed**
+   - Check if API server is running
+   - Verify CORS settings
+   - Check browser console for errors
+
+4. **Angular build errors**
+   ```bash
+   # Clean and rebuild
+   cd ui
+   rm -rf dist/
+   ng build ui
+   ```
+
+### Logs
+
+- **API Server**: Check terminal output
+- **Angular Apps**: Check browser console
+- **MongoDB**: Check MongoDB logs
+
+## Environment Variables
+
+You can override configuration using environment variables:
+
+```bash
+# Server configuration
+export WAITING_ROOM_PORT=8080
+export WAITING_ROOM_HOST=localhost
+
+# Database configuration
+export MONGODB_URI="mongodb://admin:admin@localhost:27017/waiting_room?authSource=admin"
+export MONGODB_DATABASE="waiting_room"
+
+# Logging configuration
+export LOG_LEVEL="debug"
+export LOG_FORMAT="json"
+
+# WebSocket configuration
+export WEBSOCKET_ENABLED="true"
+
+# Room configuration
+export DEFAULT_ROOM="triage-1"
+
+# Configuration file path
+export CONFIG_PATH="config.dev.yaml"
+```
+
+### Environment Variable Priority
+
+1. Environment variables (highest priority)
+2. Configuration file values
+3. Default values (lowest priority)
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## License
+
+[Add your license information here]

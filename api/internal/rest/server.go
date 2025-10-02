@@ -3,7 +3,6 @@ package rest
 import (
 	"log"
 	"net/http"
-	"os"
 	"sync"
 	"time"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/gorilla/websocket"
 	"go.uber.org/dig"
 
+	"github.com/arfis/waiting-room/internal/config"
 	queueService "github.com/arfis/waiting-room/internal/queue"
 	"github.com/arfis/waiting-room/internal/rest/register"
 	kioskService "github.com/arfis/waiting-room/internal/service/kiosk"
@@ -26,7 +26,7 @@ type Server struct {
 }
 
 // NewServer creates and configures the HTTP server with all routes and middleware
-func NewServer(diContainer *dig.Container) *http.Server {
+func NewServer(diContainer *dig.Container, cfg *config.Config) *http.Server {
 	// Create main router
 	r := chi.NewRouter()
 
@@ -34,15 +34,26 @@ func NewServer(diContainer *dig.Container) *http.Server {
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Skip CORS for WebSocket routes
-			if r.URL.Path == "/ws/queue/triage-1" || r.URL.Path == "/health" {
+			if r.URL.Path == cfg.WebSocket.Path+"/"+cfg.GetDefaultRoom() || r.URL.Path == "/health" {
 				next.ServeHTTP(w, r)
 				return
 			}
 
-			// Apply CORS for other routes
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "*")
+			// Apply CORS for other routes using configuration
+			origin := r.Header.Get("Origin")
+			allowedOrigins := cfg.GetAvailableCORSOrigins()
+
+			// Check if the origin is in the allowed list
+			if origin != "" && contains(allowedOrigins, origin) {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+			} else if len(allowedOrigins) > 0 {
+				// If no origin or origin not in list, use the first allowed origin as fallback
+				w.Header().Set("Access-Control-Allow-Origin", allowedOrigins[0])
+			}
+
+			w.Header().Set("Access-Control-Allow-Methods", cfg.GetCORSMethods())
+			w.Header().Set("Access-Control-Allow-Headers", cfg.GetCORSHeaders())
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 			if r.Method == "OPTIONS" {
 				w.WriteHeader(http.StatusOK)
@@ -86,22 +97,19 @@ func NewServer(diContainer *dig.Container) *http.Server {
 	})
 
 	// Add WebSocket routes AFTER middleware (like the original working version)
-	if wsServer != nil {
-		r.Get("/ws/queue/{roomId}", wsServer.handleQueueWebSocket)
+	if wsServer != nil && cfg.WebSocket.Enabled {
+		r.Get(cfg.WebSocket.Path+"/{roomId}", wsServer.handleQueueWebSocket)
 		r.Get("/health", wsServer.healthCheck)
-		log.Println("WebSocket routes registered")
+		log.Printf("WebSocket routes registered at %s/{roomId}", cfg.WebSocket.Path)
+	} else if !cfg.WebSocket.Enabled {
+		log.Println("WebSocket disabled in configuration")
 	} else {
 		log.Println("ERROR: wsServer is nil, cannot register WebSocket routes")
 	}
 
-	// Start server
-	addr := ":8080"
-	if v := os.Getenv("ADDR"); v != "" {
-		addr = v
-	}
-
+	// Create server with configuration
 	return &http.Server{
-		Addr:              addr,
+		Addr:              cfg.GetAddress(),
 		Handler:           r,
 		ReadHeaderTimeout: 2 * time.Second,
 	}
@@ -232,4 +240,14 @@ func (s *Server) broadcastQueueUpdate(roomId string) {
 		}
 	}
 	s.clientsMux.RUnlock()
+}
+
+// contains checks if a string slice contains a specific string
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
 }

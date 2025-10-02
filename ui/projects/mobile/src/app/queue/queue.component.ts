@@ -149,7 +149,7 @@ export class QueueComponent implements OnInit {
     this.isLoading.set(true);
     this.error.set(null);
 
-    this.http.get<QueueEntry>(`http://localhost:8080/queue-entries/token/${qrToken}`)
+    this.http.get<QueueEntry>(`http://localhost:8080/api/queue-entries/token/${qrToken}`)
       .subscribe({
         next: (entry) => {
           console.log('Queue entry loaded:', entry);

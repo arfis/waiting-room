@@ -1,0 +1,40 @@
+# Production configuration for Waiting Room System
+
+server:
+  port: 8080
+  host: "0.0.0.0"  # Listen on all interfaces
+  
+database:
+  mongodb:
+    uri: "mongodb://admin:admin@mongodb:27017/waiting_room?authSource=admin"
+    database: "waiting_room"
+    
+cors:
+  allowed_origins:
+    - "https://yourdomain.com"  # Replace with your actual domain
+    - "https://kiosk.yourdomain.com"
+    - "https://backoffice.yourdomain.com"
+    - "https://tv.yourdomain.com"
+    - "https://mobile.yourdomain.com"
+  allowed_methods:
+    - "GET"
+    - "POST"
+    - "PUT"
+    - "DELETE"
+    - "OPTIONS"
+  allowed_headers:
+    - "Content-Type"
+    - "Authorization"
+    - "X-Requested-With"
+
+websocket:
+  enabled: true
+  path: "/ws/queue"
+
+rooms:
+  default_room: "triage-1"  # Default room for production
+  allow_wildcard: true      # Allow any room ID for production
+
+logging:
+  level: "info"   # Less verbose logging for production
+  format: "json"  # JSON format for log aggregation

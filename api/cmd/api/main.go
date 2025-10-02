@@ -13,6 +13,7 @@ import (
 	"go.uber.org/dig"
 
 	"github.com/arfis/waiting-room/internal/cardreader"
+	"github.com/arfis/waiting-room/internal/config"
 	ngErrors "github.com/arfis/waiting-room/internal/errors"
 	"github.com/arfis/waiting-room/internal/middleware"
 	queueService "github.com/arfis/waiting-room/internal/queue"
@@ -35,7 +36,7 @@ type dependency struct {
 
 // DIContainer collects all constructors below and its dependencies and
 // creates a dependency container with autowired dependencies.
-func DIContainer() *dig.Container {
+func DIContainer(cfg *config.Config) *dig.Container {
 	dependencies := []dependency{
 		// Logger
 		{Constructor: func() *slog.Logger {
@@ -44,13 +45,8 @@ func DIContainer() *dig.Container {
 
 		// Repository - try MongoDB first, fallback to mock
 		{Constructor: func() repository.QueueRepository {
-			// Try to connect to MongoDB
-			mongoURI := os.Getenv("MONGODB_URI")
-			if mongoURI == "" {
-				mongoURI = "mongodb://admin:admin@localhost:27017/waiting_room?authSource=admin"
-			}
-
-			repo, err := repository.NewMongoDBQueueRepository(mongoURI, "waiting_room")
+			// Try to connect to MongoDB using configuration
+			repo, err := repository.NewMongoDBQueueRepository(cfg.GetMongoURI(), cfg.GetMongoDatabase())
 			if err != nil {
 				log.Printf("Failed to connect to MongoDB, using mock repository: %v", err)
 				return repository.NewMockQueueRepository()
@@ -80,9 +76,6 @@ func DIContainer() *dig.Container {
 		// Generated handlers
 		{Constructor: kioskHandler.New},
 		{Constructor: queueHandler.New},
-
-		// Server
-		{Constructor: rest.NewServer},
 	}
 
 	container := dig.New()
@@ -110,25 +103,37 @@ func DIContainer() *dig.Container {
 }
 
 func main() {
-	diContainer := DIContainer()
-	err := diContainer.Invoke(func(
-		server *http.Server,
-	) error {
-		go func() {
-			log.Println("API listening on", server.Addr)
-			if err := server.ListenAndServe(); err != nil {
-				if err != http.ErrServerClosed {
-					log.Fatal("Server failed to start:", err)
-				}
-			}
-		}()
-
-		waitAndGracefullyStop(server)
-		return nil
-	})
-	if err != nil {
-		panic(err)
+	// Load configuration
+	configPath := "config.yaml"
+	if envConfigPath := os.Getenv("CONFIG_PATH"); envConfigPath != "" {
+		configPath = envConfigPath
 	}
+
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
+	}
+
+	log.Printf("Configuration loaded from: %s", configPath)
+	log.Printf("Server will start on: %s", cfg.GetAddress())
+	log.Printf("MongoDB URI: %s", cfg.GetMongoURI())
+	log.Printf("WebSocket enabled: %v", cfg.WebSocket.Enabled)
+
+	diContainer := DIContainer(cfg)
+
+	// Create the server with the container and configuration
+	server := rest.NewServer(diContainer, cfg)
+
+	go func() {
+		log.Println("API listening on", server.Addr)
+		if err := server.ListenAndServe(); err != nil {
+			if err != http.ErrServerClosed {
+				log.Fatal("Server failed to start:", err)
+			}
+		}
+	}()
+
+	waitAndGracefullyStop(server)
 }
 
 func waitAndGracefullyStop(server *http.Server) {

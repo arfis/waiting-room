@@ -1,0 +1,38 @@
+# Example configuration file for Waiting Room System
+# Copy this file to config.yaml and modify as needed
+
+server:
+  port: 8080
+  host: "localhost"
+  
+database:
+  mongodb:
+    uri: "mongodb://admin:admin@localhost:27017/waiting_room?authSource=admin"
+    database: "waiting_room"
+    
+cors:
+  allowed_origins:
+    - "http://localhost:4200"  # Kiosk
+    - "http://localhost:4201"  # Backoffice
+    - "http://localhost:4203"  # TV Display
+    - "http://localhost:4204"  # Mobile
+  allowed_methods:
+    - "GET"
+    - "POST"
+    - "PUT"
+    - "DELETE"
+    - "OPTIONS"
+  allowed_headers:
+    - "*"
+
+websocket:
+  enabled: true
+  path: "/ws/queue"
+
+rooms:
+  default_room: "triage-1"  # Default room ID - any room can be created dynamically
+  allow_wildcard: true      # Allow any room ID (.* pattern) - set to false for strict mode
+
+logging:
+  level: "info"  # debug, info, warn, error
+  format: "text" # text, json

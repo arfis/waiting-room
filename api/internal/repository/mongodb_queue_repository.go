@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -12,6 +13,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/arfis/waiting-room/internal/types"
+	"github.com/google/uuid"
 )
 
 // MongoDBQueueRepository implements QueueRepository using MongoDB
@@ -42,10 +44,11 @@ func NewMongoDBQueueRepository(uri, dbName string) (*MongoDBQueueRepository, err
 	// Create indexes (ignore errors for existing indexes)
 	indexes := []mongo.IndexModel{
 		{
-			Keys: bson.D{{Key: "waiting_room_id", Value: 1}},
+			Keys: bson.D{{Key: "waitingRoomId", Value: 1}},
 		},
 		{
-			Keys: bson.D{{Key: "qr_token", Value: 1}},
+			Keys:    bson.D{{Key: "qrToken", Value: 1}},
+			Options: options.Index().SetUnique(true),
 		},
 		{
 			Keys: bson.D{{Key: "status", Value: 1}},
@@ -92,19 +95,19 @@ func (r *MongoDBQueueRepository) CreateEntry(ctx context.Context, entry *types.E
 
 	// Generate ticket number and QR token if not set
 	if entry.TicketNumber == "" {
-		// Get current count to generate ticket number
+		// Get current count for this specific room to generate ticket number
 		count, err := r.collection.CountDocuments(ctx, bson.M{"waitingRoomId": entry.WaitingRoomID})
 		if err != nil {
-			log.Printf("MongoDB: Failed to count documents: %v", err)
+			log.Printf("MongoDB: Failed to count documents for room %s: %v", entry.WaitingRoomID, err)
 			count = 0 // Fallback to 0 if count fails
 		}
-		entry.TicketNumber = fmt.Sprintf("A-%03d", count+1)
-		log.Printf("MongoDB: Generated ticket number: %s", entry.TicketNumber)
+		entry.TicketNumber = fmt.Sprintf("%s-%03d", strings.ToUpper(entry.WaitingRoomID), count+1)
+		log.Printf("MongoDB: Generated ticket number: %s for room: %s", entry.TicketNumber, entry.WaitingRoomID)
 	}
 
 	if entry.QRToken == "" {
 		// Generate a simple QR token (in production, use a proper UUID)
-		entry.QRToken = fmt.Sprintf("qr-token-%s-%d", entry.WaitingRoomID, time.Now().Unix())
+		entry.QRToken = uuid.NewString()
 		log.Printf("MongoDB: Generated QR token: %s", entry.QRToken)
 	}
 
