@@ -13,6 +13,7 @@ var (
 	WAITING       QueueEntryStatus = "WAITING"
 	CALLED        QueueEntryStatus = "CALLED"
 	IN_SERVICE    QueueEntryStatus = "IN_SERVICE"
+	IN_ROOM       QueueEntryStatus = "IN_ROOM"
 	COMPLETED     QueueEntryStatus = "COMPLETED"
 	SKIPPED       QueueEntryStatus = "SKIPPED"
 	CANCELLED     QueueEntryStatus = "CANCELLED"
@@ -32,6 +33,8 @@ func StringToQueueEntryStatus(source string) (QueueEntryStatus, error) {
 		return CALLED, nil
 	case string(IN_SERVICE):
 		return IN_SERVICE, nil
+	case string(IN_ROOM):
+		return IN_ROOM, nil
 	case string(COMPLETED):
 		return COMPLETED, nil
 	case string(SKIPPED):

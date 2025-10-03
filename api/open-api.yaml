@@ -198,16 +198,256 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApplicationError'
+  /waiting-rooms/{roomId}/service-points:
+    get:
+      x-generated:
+        package: queue
+      tags:
+        - Queue
+      operationId: GetServicePoints
+      summary: Get service points for a room
+      parameters:
+        - in: path
+          name: roomId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Service points retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ServicePoint'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationError'
+        '500':
+          description: Internal errors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationError'
+  /managers/{managerId}/login:
+    post:
+      x-generated:
+        package: servicepoint
+      tags:
+        - ServicePoint
+      operationId: ManagerLogin
+      summary: Manager login to service point
+      parameters:
+        - in: path
+          name: managerId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ManagerLoginRequest'
+      responses:
+        '200':
+          description: Manager logged in successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagerStatus'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /managers/{managerId}/logout:
+    post:
+      x-generated:
+        package: servicepoint
+      tags:
+        - ServicePoint
+      operationId: ManagerLogout
+      summary: Manager logout from service point
+      parameters:
+        - in: path
+          name: managerId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Manager logged out successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagerStatus'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /managers/status:
+    get:
+      x-generated:
+        package: servicepoint
+      tags:
+        - ServicePoint
+      operationId: GetManagerStatus
+      summary: Get status of all managers
+      responses:
+        '200':
+          description: Manager status retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ManagerStatus'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /waiting-rooms/{roomId}/managers/status:
+    get:
+      x-generated:
+        package: servicepoint
+      tags:
+        - ServicePoint
+      operationId: GetManagerStatusForRoom
+      summary: Get status of managers for a specific room
+      parameters:
+        - in: path
+          name: roomId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Manager status for room retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ManagerStatus'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /waiting-rooms/{roomId}/service-points/{servicePointId}/call-next:
+    post:
+      x-generated:
+        package: queue
+      tags:
+        - Queue
+      operationId: CallNextForServicePoint
+      summary: Call next person for a specific service point
+      parameters:
+        - in: path
+          name: roomId
+          required: true
+          schema: { type: string }
+        - in: path
+          name: servicePointId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Next person called successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueEntry'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /waiting-rooms/{roomId}/service-points/{servicePointId}/mark-in-room:
+    post:
+      x-generated:
+        package: queue
+      tags:
+        - Queue
+      operationId: MarkInRoomForServicePoint
+      summary: Mark person as in room for a specific service point
+      parameters:
+        - in: path
+          name: roomId
+          required: true
+          schema: { type: string }
+        - in: path
+          name: servicePointId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MarkInRoomRequest'
+      responses:
+        '200':
+          description: Person marked as in room successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueEntry'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /waiting-rooms/{roomId}/service-points/{servicePointId}/finish-current:
+    post:
+      x-generated:
+        package: queue
+      tags:
+        - Queue
+      operationId: FinishCurrentForServicePoint
+      summary: Finish current person for a specific service point
+      parameters:
+        - in: path
+          name: roomId
+          required: true
+          schema: { type: string }
+        - in: path
+          name: servicePointId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Current person finished successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueEntry'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 components:
   securitySchemes:
     ApiKeyAuth: { type: apiKey, in: header, name: X-API-Key }
     BearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
   schemas:
+    ServicePoint:
+      x-group: queue
+      title: ServicePoint
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the service point
+        name:
+          type: string
+          description: Display name for the service point
+        description:
+          type: string
+          description: Description of the service point
     QueueEntryStatus:
       x-group: queue
       title: QueueEntryStatus
       type: string
-      enum: [WAITING, CALLED, IN_SERVICE, COMPLETED, SKIPPED, CANCELLED, NO_SHOW]
+      enum: [WAITING, CALLED, IN_SERVICE, IN_ROOM, COMPLETED, SKIPPED, CANCELLED, NO_SHOW]
     SwipeRequest:
       x-group: kiosk
       title: SwipeRequest
@@ -298,6 +538,61 @@ components:
         position:
           type: integer
           description: Position in queue
+    ManagerLoginRequest:
+      x-group: servicepoint
+      title: ManagerLoginRequest
+      type: object
+      required:
+        - roomId
+        - servicePointId
+      properties:
+        roomId:
+          type: string
+          description: Room ID where the manager is logging in
+        servicePointId:
+          type: string
+          description: Service point ID where the manager is logging in
+    ManagerStatus:
+      x-group: servicepoint
+      title: ManagerStatus
+      type: object
+      required:
+        - managerId
+        - managerName
+        - servicePointId
+        - roomId
+        - isAvailable
+        - lastSeen
+      properties:
+        managerId:
+          type: string
+          description: Unique identifier for the manager
+        managerName:
+          type: string
+          description: Display name of the manager
+        servicePointId:
+          type: string
+          description: Service point ID where the manager is assigned
+        roomId:
+          type: string
+          description: Room ID where the manager is working
+        isAvailable:
+          type: boolean
+          description: Whether the manager is currently available
+        lastSeen:
+          type: string
+          format: date-time
+          description: Last time the manager was seen (ISO 8601 format)
+    MarkInRoomRequest:
+      x-group: queue
+      title: MarkInRoomRequest
+      type: object
+      required:
+        - entryId
+      properties:
+        entryId:
+          type: string
+          description: ID of the entry to mark as in room
     ApplicationError:
       x-group: errors
       title: ApplicationError
@@ -330,3 +625,22 @@ components:
             - INVALID_ROOM_ID
             - CARD_READ_FAILED
             - QUEUE_EMPTY
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApplicationError'
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApplicationError'
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApplicationError'

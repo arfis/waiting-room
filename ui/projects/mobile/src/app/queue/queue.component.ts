@@ -11,6 +11,7 @@ interface QueueEntry {
   position: number;
   etaMinutes: number;
   canCancel: boolean;
+  servicePoint?: string;
 }
 
 @Component({
@@ -59,6 +60,20 @@ interface QueueEntry {
                   {{ getStatusText(queueEntry()?.status || '') }}
                 </div>
               </div>
+
+              <!-- Service Point -->
+              @if (queueEntry()?.servicePoint) {
+                <div class="mb-6">
+                  <h3 class="text-lg font-semibold text-gray-700 mb-2">Service Point</h3>
+                  <div class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium bg-green-50 text-green-700 border border-green-200">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    {{ getServicePointName(queueEntry()?.servicePoint || '') }}
+                  </div>
+                </div>
+              }
 
               <!-- Position and ETA -->
               @if (queueEntry()?.status === 'WAITING') {
@@ -210,6 +225,20 @@ export class QueueComponent implements OnInit {
     // Simple progress calculation - you might want to make this more sophisticated
     const maxPosition = Math.max(entry.position + 5, 10); // Assume at least 10 people max
     return Math.max(0, Math.min(100, ((maxPosition - entry.position) / maxPosition) * 100));
+  }
+
+  getServicePointName(servicePointId: string): string {
+    // Map service point IDs to display names
+    const servicePointNames: { [key: string]: string } = {
+      'window-1': 'Window 1',
+      'window-2': 'Window 2',
+      'door-1': 'Door 1',
+      'door-2': 'Door 2',
+      'counter-1': 'Counter 1',
+      'counter-2': 'Counter 2'
+    };
+    
+    return servicePointNames[servicePointId] || servicePointId;
   }
 
   cancelTicket() {

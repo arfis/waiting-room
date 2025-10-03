@@ -32,6 +32,12 @@ type QueueRepository interface {
 	// GetCurrentServedEntry gets the currently served entry for a room
 	GetCurrentServedEntry(ctx context.Context, roomId string) (*types.Entry, error)
 
+	// GetNextWaitingEntryForServicePoint gets the next waiting entry for a specific service point
+	GetNextWaitingEntryForServicePoint(ctx context.Context, roomId, servicePointId string) (*types.Entry, error)
+
+	// GetCurrentServedEntryForServicePoint gets the currently served entry for a specific service point
+	GetCurrentServedEntryForServicePoint(ctx context.Context, roomId, servicePointId string) (*types.Entry, error)
+
 	// RecalculatePositions recalculates positions for all waiting entries in a room
 	RecalculatePositions(ctx context.Context, roomId string) error
 

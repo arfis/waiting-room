@@ -29,6 +29,41 @@ websocket:
 rooms:
   default_room: "triage-1"
   allow_wildcard: true  # Allow any room ID (.* pattern)
+  rooms:
+    - id: "triage-1"
+      name: "Triage Room"
+      service_points:
+        - id: "window-1"
+          name: "Window 1"
+          description: "Main triage window"
+          manager_id: "manager-1"
+          manager_name: "John Smith"
+        - id: "window-2"
+          name: "Window 2"
+          description: "Secondary triage window"
+          manager_id: "manager-2"
+          manager_name: "Jane Doe"
+    - id: "emergency"
+      name: "Emergency Room"
+      service_points:
+        - id: "door-1"
+          name: "Door 1"
+          description: "Emergency entrance"
+          manager_id: "manager-3"
+          manager_name: "Dr. Brown"
+        - id: "door-2"
+          name: "Door 2"
+          description: "Emergency exit"
+          manager_id: "manager-4"
+          manager_name: "Dr. Wilson"
+    - id: "pediatrics"
+      name: "Pediatrics"
+      service_points:
+        - id: "window-1"
+          name: "Pediatrics Window"
+          description: "Main pediatrics service point"
+          manager_id: "manager-5"
+          manager_name: "Dr. Johnson"
 
 logging:
   level: "info"

@@ -2,6 +2,7 @@
 package queue
 
 import (
+	"encoding/json"
 	"github.com/arfis/waiting-room/internal/data/dto"
 	ngErrors "github.com/arfis/waiting-room/internal/errors"
 	"github.com/arfis/waiting-room/internal/rest/handler"
@@ -76,6 +77,83 @@ func (h *Handler) GetQueueEntries(w http.ResponseWriter, r *http.Request) {
 	resp, applicationErr = h.svc.GetQueueEntries(
 		r.Context(),
 		roomId,
+	)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)
+		return
+	}
+	handler.WriteJson(r.Context(), w, 200, resp)
+}
+
+func (h *Handler) GetServicePoints(w http.ResponseWriter, r *http.Request) {
+	var applicationErr error
+	roomId := handler.PathParamToString(r, "roomId")
+	var resp []dto.ServicePoint
+	resp, applicationErr = h.svc.GetServicePoints(
+		r.Context(),
+		roomId,
+	)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)
+		return
+	}
+	handler.WriteJson(r.Context(), w, 200, resp)
+}
+
+func (h *Handler) CallNextForServicePoint(w http.ResponseWriter, r *http.Request) {
+	var applicationErr error
+	roomId := handler.PathParamToString(r, "roomId")
+	servicePointId := handler.PathParamToString(r, "servicePointId")
+	var resp *dto.QueueEntry
+	resp, applicationErr = h.svc.CallNextForServicePoint(
+		r.Context(),
+		roomId,
+		servicePointId,
+	)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)
+		return
+	}
+	handler.WriteJson(r.Context(), w, 200, resp)
+}
+
+func (h *Handler) FinishCurrentForServicePoint(w http.ResponseWriter, r *http.Request) {
+	var applicationErr error
+	roomId := handler.PathParamToString(r, "roomId")
+	servicePointId := handler.PathParamToString(r, "servicePointId")
+	var resp *dto.QueueEntry
+	resp, applicationErr = h.svc.FinishCurrentForServicePoint(
+		r.Context(),
+		roomId,
+		servicePointId,
+	)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)
+		return
+	}
+	handler.WriteJson(r.Context(), w, 200, resp)
+}
+
+func (h *Handler) MarkInRoomForServicePoint(w http.ResponseWriter, r *http.Request) {
+	var applicationErr error
+	roomId := handler.PathParamToString(r, "roomId")
+	servicePointId := handler.PathParamToString(r, "servicePointId")
+	req := dto.MarkInRoomRequest{}
+	applicationErr = json.NewDecoder(r.Body).Decode(&req)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, ngErrors.New(ngErrors.InternalServerErrorCode, "problem decoding request body", http.StatusInternalServerError, nil))
+		return
+	}
+	applicationErr = handler.GetValidator().Struct(req)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, ngErrors.RequestValidation(applicationErr))
+		return
+	}
+	var resp *dto.QueueEntry
+	resp, applicationErr = h.svc.MarkInRoomForServicePoint(
+		r.Context(),
+		roomId,
+		servicePointId, &req,
 	)
 	if applicationErr != nil {
 		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)

@@ -48,10 +48,27 @@ type WebSocketConfig struct {
 	Path    string `yaml:"path"`
 }
 
+// ServicePointConfig contains service point configuration
+type ServicePointConfig struct {
+	ID          string `yaml:"id"`
+	Name        string `yaml:"name"`
+	Description string `yaml:"description,omitempty"`
+	ManagerID   string `yaml:"manager_id,omitempty"`
+	ManagerName string `yaml:"manager_name,omitempty"`
+}
+
+// RoomConfig contains configuration for a specific room
+type RoomConfig struct {
+	ID            string               `yaml:"id"`
+	Name          string               `yaml:"name"`
+	ServicePoints []ServicePointConfig `yaml:"service_points"`
+}
+
 // RoomsConfig contains room configuration
 type RoomsConfig struct {
-	DefaultRoom   string `yaml:"default_room"`
-	AllowWildcard bool   `yaml:"allow_wildcard"`
+	DefaultRoom   string       `yaml:"default_room"`
+	AllowWildcard bool         `yaml:"allow_wildcard"`
+	Rooms         []RoomConfig `yaml:"rooms,omitempty"`
 }
 
 // LoggingConfig contains logging configuration
@@ -230,4 +247,28 @@ func (c *Config) IsValidRoom(roomID string) bool {
 
 	// Otherwise, only allow the default room (for strict mode)
 	return roomID == c.Rooms.DefaultRoom
+}
+
+// GetServicePointsForRoom returns the service points configured for a specific room
+func (c *Config) GetServicePointsForRoom(roomID string) []ServicePointConfig {
+	for _, room := range c.Rooms.Rooms {
+		if room.ID == roomID {
+			return room.ServicePoints
+		}
+	}
+
+	// If no specific room config found, return default service points
+	return []ServicePointConfig{
+		{ID: "window-1", Name: "Window 1", Description: "Main service window"},
+		{ID: "window-2", Name: "Window 2", Description: "Secondary service window"},
+	}
+}
+
+// GetDefaultServicePoint returns the first available service point for a room
+func (c *Config) GetDefaultServicePoint(roomID string) string {
+	servicePoints := c.GetServicePointsForRoom(roomID)
+	if len(servicePoints) > 0 {
+		return servicePoints[0].ID
+	}
+	return "window-1" // fallback
 }

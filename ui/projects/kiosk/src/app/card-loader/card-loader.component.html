@@ -109,6 +109,19 @@
                 </div>
               </div>
               
+              @if (ticketData()?.servicePoint) {
+                <div class="mb-6">
+                  <h4 class="text-xl font-semibold text-gray-700 mb-3">Service Point</h4>
+                  <div class="inline-flex items-center px-6 py-3 rounded-lg text-lg font-medium bg-green-50 text-green-700 border border-green-200">
+                    <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    {{ getServicePointName(ticketData()?.servicePoint || '') }}
+                  </div>
+                </div>
+              }
+              
               @if (ticketData()?.qrCodeDataUrl) {
                 <div class="mb-6">
                   <h4 class="text-lg font-semibold text-gray-700 mb-3">Scan QR Code for Queue Updates</h4>

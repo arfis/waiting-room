@@ -58,6 +58,9 @@ func (s *Service) CallNext(ctx context.Context, roomId string) (*dto.QueueEntry,
 		Status:        queueentrystatus.QueueEntryStatus(entry.Status),
 		Position:      entry.Position,
 	}
+	if entry.ServicePoint != "" {
+		queueEntry.ServicePoint = &entry.ServicePoint
+	}
 
 	// Broadcast queue update
 	if s.broadcastFunc != nil {
@@ -85,6 +88,9 @@ func (s *Service) FinishCurrent(ctx context.Context, roomId string) (*dto.QueueE
 		Status:        queueentrystatus.QueueEntryStatus(entry.Status),
 		Position:      entry.Position,
 	}
+	if entry.ServicePoint != "" {
+		queueEntry.ServicePoint = &entry.ServicePoint
+	}
 
 	// Broadcast queue update
 	if s.broadcastFunc != nil {
@@ -110,8 +116,27 @@ func (s *Service) GetQueueEntries(ctx context.Context, roomId string) ([]dto.Que
 			Status:        queueentrystatus.QueueEntryStatus(entry.Status),
 			Position:      entry.Position,
 		}
+		if entry.ServicePoint != "" {
+			queueEntry.ServicePoint = &entry.ServicePoint
+		}
 		queueEntries = append(queueEntries, queueEntry)
 	}
 
 	return queueEntries, nil
+}
+
+func (s *Service) GetServicePoints(ctx context.Context, roomId string) ([]dto.ServicePoint, error) {
+	return s.queueService.GetServicePoints(ctx, roomId)
+}
+
+func (s *Service) CallNextForServicePoint(ctx context.Context, roomId, servicePointId string) (*dto.QueueEntry, error) {
+	return s.queueService.CallNextForServicePoint(ctx, roomId, servicePointId)
+}
+
+func (s *Service) MarkInRoomForServicePoint(ctx context.Context, roomId, servicePointId string, req *dto.MarkInRoomRequest) (*dto.QueueEntry, error) {
+	return s.queueService.MarkInRoomForServicePoint(ctx, roomId, servicePointId, req.EntryId)
+}
+
+func (s *Service) FinishCurrentForServicePoint(ctx context.Context, roomId, servicePointId string) (*dto.QueueEntry, error) {
+	return s.queueService.FinishCurrentForServicePoint(ctx, roomId, servicePointId)
 }

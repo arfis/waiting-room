@@ -81,6 +81,81 @@ The system consists of several interconnected components:
 
 ## Quick Start
 
+### Using Makefile (Recommended)
+
+The system includes comprehensive Makefiles for easy management:
+
+#### Root Level Commands
+```bash
+# Quick start
+make setup          # Complete system setup
+make start          # Start the entire system
+make stop           # Stop the entire system
+make restart        # Restart the entire system
+
+# Development
+make dev            # Start development environment
+make dev-stop       # Stop development environment
+
+# Docker
+make docker-start   # Start with Docker
+make docker-stop    # Stop Docker containers
+make docker-build   # Build Docker images
+
+# Testing
+make test           # Test entire system
+make status         # Show system status
+
+# Utilities
+make clean          # Clean all build artifacts
+make logs           # Show system logs
+make help           # Show all available commands
+```
+
+#### API Level Commands
+```bash
+cd api
+
+# Development
+make gen            # Generate API code from OpenAPI spec
+make build          # Build API server
+make run            # Run API server
+make test           # Run API tests
+
+# UI Management
+make install-ui     # Install UI dependencies
+make build-ui       # Build all UI applications
+make serve-ui       # Start all UI applications
+
+# Individual UI Apps
+make serve-kiosk    # Start Kiosk application
+make serve-mobile   # Start Mobile application
+make serve-tv       # Start TV application
+make serve-backoffice # Start Backoffice application
+
+# System Management
+make start-system   # Start complete system
+make start-docker   # Start with Docker
+make stop-docker    # Stop Docker containers
+
+# Database
+make mongo-start    # Start MongoDB
+make mongo-stop     # Stop MongoDB
+make mongo-shell    # Connect to MongoDB shell
+
+# Testing
+make test-system    # Test system components
+make test-api       # Test API endpoints
+make test-ui        # Test UI applications
+
+# Development Workflow
+make dev-setup      # Set up development environment
+make dev-start      # Start development environment
+make dev-stop       # Stop development environment
+```
+
+### Manual Setup (Alternative)
+
 ### 1. Clone and Setup
 
 ```bash

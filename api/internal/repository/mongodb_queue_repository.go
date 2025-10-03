@@ -353,6 +353,54 @@ func (r *MongoDBQueueRepository) DeleteEntry(ctx context.Context, id string) err
 	return nil
 }
 
+// GetNextWaitingEntryForServicePoint gets the next waiting entry for a specific service point
+func (r *MongoDBQueueRepository) GetNextWaitingEntryForServicePoint(ctx context.Context, roomId, servicePointId string) (*types.Entry, error) {
+	collection := r.database.Collection("queue_entries")
+
+	filter := bson.M{
+		"waitingRoomId": roomId,
+		"servicePoint":  servicePointId,
+		"status":        "WAITING",
+	}
+
+	opts := options.FindOne().SetSort(bson.M{"position": 1})
+
+	var entry types.Entry
+	err := collection.FindOne(ctx, filter, opts).Decode(&entry)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get next waiting entry for service point: %w", err)
+	}
+
+	return &entry, nil
+}
+
+// GetCurrentServedEntryForServicePoint gets the currently served entry for a specific service point
+func (r *MongoDBQueueRepository) GetCurrentServedEntryForServicePoint(ctx context.Context, roomId, servicePointId string) (*types.Entry, error) {
+	collection := r.database.Collection("queue_entries")
+
+	filter := bson.M{
+		"waitingRoomId": roomId,
+		"servicePoint":  servicePointId,
+		"status":        bson.M{"$in": []string{"CALLED", "IN_ROOM", "IN_SERVICE"}},
+	}
+
+	opts := options.FindOne().SetSort(bson.M{"updatedAt": -1})
+
+	var entry types.Entry
+	err := collection.FindOne(ctx, filter, opts).Decode(&entry)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get current served entry for service point: %w", err)
+	}
+
+	return &entry, nil
+}
+
 // Close closes the repository connection
 func (r *MongoDBQueueRepository) Close() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

@@ -42,6 +42,18 @@ import { WebSocketQueueEntry } from 'api-client';
                   </div>
                 }
                 
+                @if (entry.servicePoint) {
+                  <div class="mt-2">
+                    <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-700">
+                      <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                      </svg>
+                      {{ getServicePointName(entry.servicePoint) }}
+                    </span>
+                  </div>
+                }
+                
                 <div class="text-xs text-gray-500">
                   Joined: {{ entry.createdAt | date:'short' }}
                 </div>
@@ -65,4 +77,18 @@ import { WebSocketQueueEntry } from 'api-client';
 export class WaitingQueueListComponent {
   @Input({ required: true }) entries!: WebSocketQueueEntry[];
   @Output() callEntry = new EventEmitter<WebSocketQueueEntry>();
+
+  getServicePointName(servicePointId: string): string {
+    // Map service point IDs to display names
+    const servicePointNames: { [key: string]: string } = {
+      'window-1': 'Window 1',
+      'window-2': 'Window 2',
+      'door-1': 'Door 1',
+      'door-2': 'Door 2',
+      'counter-1': 'Counter 1',
+      'counter-2': 'Counter 2'
+    };
+    
+    return servicePointNames[servicePointId] || servicePointId;
+  }
 }

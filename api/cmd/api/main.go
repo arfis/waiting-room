@@ -21,8 +21,10 @@ import (
 	"github.com/arfis/waiting-room/internal/rest"
 	kioskHandler "github.com/arfis/waiting-room/internal/rest/handler/kiosk"
 	queueHandler "github.com/arfis/waiting-room/internal/rest/handler/queue"
+	servicepointHandler "github.com/arfis/waiting-room/internal/rest/handler/servicepoint"
 	kioskService "github.com/arfis/waiting-room/internal/service/kiosk"
 	queueServiceGenerated "github.com/arfis/waiting-room/internal/service/queue"
+	servicepointService "github.com/arfis/waiting-room/internal/service/servicepoint"
 )
 
 type dependency struct {
@@ -38,6 +40,11 @@ type dependency struct {
 // creates a dependency container with autowired dependencies.
 func DIContainer(cfg *config.Config) *dig.Container {
 	dependencies := []dependency{
+		// Configuration
+		{Constructor: func() *config.Config {
+			return cfg
+		}},
+
 		// Logger
 		{Constructor: func() *slog.Logger {
 			return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
@@ -57,7 +64,12 @@ func DIContainer(cfg *config.Config) *dig.Container {
 		}},
 
 		// Core services
-		{Constructor: queueService.NewService},
+		{Constructor: func(repo repository.QueueRepository, cfg *config.Config, servicePointSvc *servicepointService.Service) *queueService.Service {
+			return queueService.NewService(repo, cfg, servicePointSvc)
+		}},
+		{Constructor: func(cfg *config.Config) *servicepointService.Service {
+			return servicepointService.NewService(cfg)
+		}},
 		{Constructor: cardreader.NewService},
 
 		// Middleware
@@ -76,6 +88,7 @@ func DIContainer(cfg *config.Config) *dig.Container {
 		// Generated handlers
 		{Constructor: kioskHandler.New},
 		{Constructor: queueHandler.New},
+		{Constructor: servicepointHandler.New},
 	}
 
 	container := dig.New()
@@ -123,6 +136,13 @@ func main() {
 
 	// Create the server with the container and configuration
 	server := rest.NewServer(diContainer, cfg)
+
+	// Start the servicepoint cleanup routine
+	diContainer.Invoke(func(servicePointSvc *servicepointService.Service) {
+		ctx := context.Background()
+		servicePointSvc.StartCleanupRoutine(ctx)
+		log.Println("ServicePoint cleanup routine started")
+	})
 
 	go func() {
 		log.Println("API listening on", server.Addr)

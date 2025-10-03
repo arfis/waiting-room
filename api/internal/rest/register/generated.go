@@ -2,32 +2,36 @@
 package register
 
 import (
-	"log"
-
 	"github.com/arfis/waiting-room/internal/middleware"
 	"github.com/arfis/waiting-room/internal/rest/handler/kiosk"
 	"github.com/arfis/waiting-room/internal/rest/handler/queue"
+	"github.com/arfis/waiting-room/internal/rest/handler/servicepoint"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/dig"
 )
 
 func Generated(r chi.Router, diContainer *dig.Container) {
 	err := diContainer.Invoke(func(
+		servicepointHandler *servicepoint.Handler,
 		queueHandler *queue.Handler,
 		kioskHandler *kiosk.Handler,
 		authorizationMiddleware *middleware.AuthorizationMiddleware,
 	) error {
-		log.Println("Successfully injected dependencies for route registration")
-		log.Printf("Queue handler: %v", queueHandler != nil)
-		log.Printf("Kiosk handler: %v", kioskHandler != nil)
-		log.Printf("Auth middleware: %v", authorizationMiddleware != nil)
 
 		// Protected routes (require JWT)
 		r.With(authorizationMiddleware.Middleware()).Group(func(protected chi.Router) {
+			protected.Get("/managers/status", servicepointHandler.GetManagerStatus)
+			protected.Post("/managers/{managerId}/login", servicepointHandler.ManagerLogin)
+			protected.Post("/managers/{managerId}/logout", servicepointHandler.ManagerLogout)
 			protected.Get("/queue-entries/token/{qrToken}", queueHandler.GetQueueEntryByToken)
 			protected.Post("/waiting-rooms/{roomId}/finish", queueHandler.FinishCurrent)
+			protected.Get("/waiting-rooms/{roomId}/managers/status", servicepointHandler.GetManagerStatusForRoom)
 			protected.Post("/waiting-rooms/{roomId}/next", queueHandler.CallNext)
 			protected.Get("/waiting-rooms/{roomId}/queue", queueHandler.GetQueueEntries)
+			protected.Get("/waiting-rooms/{roomId}/service-points", queueHandler.GetServicePoints)
+			protected.Post("/waiting-rooms/{roomId}/service-points/{servicePointId}/call-next", queueHandler.CallNextForServicePoint)
+			protected.Post("/waiting-rooms/{roomId}/service-points/{servicePointId}/finish-current", queueHandler.FinishCurrentForServicePoint)
+			protected.Post("/waiting-rooms/{roomId}/service-points/{servicePointId}/mark-in-room", queueHandler.MarkInRoomForServicePoint)
 			protected.Post("/waiting-rooms/{roomId}/swipe", kioskHandler.SwipeCard)
 
 		})
@@ -36,7 +40,6 @@ func Generated(r chi.Router, diContainer *dig.Container) {
 	})
 
 	if err != nil {
-		log.Printf("Dependency injection failed: %v", err)
 		panic(err)
 	}
 }

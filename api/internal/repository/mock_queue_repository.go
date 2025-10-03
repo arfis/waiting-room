@@ -215,6 +215,33 @@ func (r *MockQueueRepository) DeleteEntry(ctx context.Context, id string) error 
 	return nil
 }
 
+// GetNextWaitingEntryForServicePoint gets the next waiting entry for a specific service point
+func (r *MockQueueRepository) GetNextWaitingEntryForServicePoint(ctx context.Context, roomId, servicePointId string) (*types.Entry, error) {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
+
+	for _, entry := range r.entries {
+		if entry.WaitingRoomID == roomId && entry.ServicePoint == servicePointId && entry.Status == "WAITING" {
+			return entry, nil
+		}
+	}
+	return nil, nil
+}
+
+// GetCurrentServedEntryForServicePoint gets the currently served entry for a specific service point
+func (r *MockQueueRepository) GetCurrentServedEntryForServicePoint(ctx context.Context, roomId, servicePointId string) (*types.Entry, error) {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
+
+	for _, entry := range r.entries {
+		if entry.WaitingRoomID == roomId && entry.ServicePoint == servicePointId &&
+			(entry.Status == "CALLED" || entry.Status == "IN_ROOM" || entry.Status == "IN_SERVICE") {
+			return entry, nil
+		}
+	}
+	return nil, nil
+}
+
 // Close closes the repository connection (no-op for mock)
 func (r *MockQueueRepository) Close() error {
 	return nil

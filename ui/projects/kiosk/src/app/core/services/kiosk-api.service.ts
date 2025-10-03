@@ -22,6 +22,7 @@ export interface TicketResponse {
   entryId: string;
   ticketNumber: string;
   qrUrl: string;
+  servicePoint?: string;
 }
 
 export interface CardReaderStatus {

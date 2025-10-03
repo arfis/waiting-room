@@ -1,8 +1,8 @@
 // Just for demo purposes when the clients dont exist yet
 export interface JoinResult { entryId: string; ticketNumber: string; qrUrl: string; }
 export type QueueEntryStatus = 'WAITING'|'CALLED'|'IN_SERVICE'|'COMPLETED'|'SKIPPED'|'CANCELLED'|'NO_SHOW';
-export interface PublicEntry { entryId: string; ticketNumber: string; status: QueueEntryStatus; position: number; etaMinutes: number; canCancel: boolean; }
-export interface QueueEntry { id: string; waitingRoomId: string; ticketNumber: string; status: QueueEntryStatus; position: number; }
+export interface PublicEntry { entryId: string; ticketNumber: string; status: QueueEntryStatus; position: number; etaMinutes: number; canCancel: boolean; servicePoint?: string; }
+export interface QueueEntry { id: string; waitingRoomId: string; ticketNumber: string; status: QueueEntryStatus; position: number; servicePoint?: string; }
 
 export interface ApiConfig { baseUrl?: string; }
 export class Api {
