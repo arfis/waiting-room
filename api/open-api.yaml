@@ -31,6 +31,21 @@ x-errors:
     description: "When trying to call next but no one is waiting."
     httpCode: 400
 paths:
+  /config:
+    get:
+      x-generated:
+        package: configuration
+      tags:
+        - Configuration
+      summary: Retrieve configuration and available rooms
+      operationId: GetConfiguration
+      responses:
+        '200':
+          description: Configuration payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigurationResponse'
   /waiting-rooms/{roomId}/swipe:
     post:
       x-generated:
@@ -100,7 +115,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApplicationError'
-  /waiting-rooms/{roomId}/next:
+  /waiting-rooms/{roomId}/service-points/{servicePointId}/next:
     post:
       x-generated:
         package: queue
@@ -111,6 +126,10 @@ paths:
       parameters:
         - in: path
           name: roomId
+          required: true
+          schema: { type: string }
+        - in: path
+          name: servicePointId
           required: true
           schema: { type: string }
       responses:
@@ -177,6 +196,20 @@ paths:
           name: roomId
           required: true
           schema: { type: string }
+        - in: query
+          name: state
+          required: false
+          schema: 
+            oneOf:
+              - type: string
+                enum: [WAITING, CALLED, IN_SERVICE, COMPLETED, SKIPPED, CANCELLED, NO_SHOW]
+              - type: array
+                items:
+                  type: string
+                  enum: [WAITING, CALLED, IN_SERVICE, COMPLETED, SKIPPED, CANCELLED, NO_SHOW]
+          description: Filter entries by status. Can be a single state or an array of states
+          style: form
+          explode: true
       responses:
         '200':
           description: OK
@@ -331,34 +364,34 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '500':
           $ref: '#/components/responses/InternalServerError'
-  /waiting-rooms/{roomId}/service-points/{servicePointId}/call-next:
-    post:
-      x-generated:
-        package: queue
-      tags:
-        - Queue
-      operationId: CallNextForServicePoint
-      summary: Call next person for a specific service point
-      parameters:
-        - in: path
-          name: roomId
-          required: true
-          schema: { type: string }
-        - in: path
-          name: servicePointId
-          required: true
-          schema: { type: string }
-      responses:
-        '200':
-          description: Next person called successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/QueueEntry'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+  # /waiting-rooms/{roomId}/service-points/{servicePointId}/call-next:
+  #   post:
+  #     x-generated:
+  #       package: queue
+  #     tags:
+  #       - Queue
+  #     operationId: CallNextForServicePoint
+  #     summary: Call next person for a specific service point
+  #     parameters:
+  #       - in: path
+  #         name: roomId
+  #         required: true
+  #         schema: { type: string }
+  #       - in: path
+  #         name: servicePointId
+  #         required: true
+  #         schema: { type: string }
+  #     responses:
+  #       '200':
+  #         description: Next person called successfully
+  #         content:
+  #           application/json:
+  #             schema:
+  #               $ref: '#/components/schemas/QueueEntry'
+  #       '400':
+  #         $ref: '#/components/responses/BadRequest'
+  #       '500':
+  #         $ref: '#/components/responses/InternalServerError'
   /waiting-rooms/{roomId}/service-points/{servicePointId}/mark-in-room:
     post:
       x-generated:
@@ -426,15 +459,80 @@ components:
     ApiKeyAuth: { type: apiKey, in: header, name: X-API-Key }
     BearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
   schemas:
+    ConfigurationResponse:
+      x-group: configuration
+      title: ConfigurationResponse
+      type: object
+      required:
+        - defaultRoom
+        - allowWildcard
+        - webSocketPath
+        - rooms
+      properties:
+        defaultRoom:
+          type: string
+          description: Default room identifier
+        allowWildcard:
+          type: boolean
+          description: Whether arbitrary room identifiers are accepted
+        webSocketPath:
+          type: string
+          description: Base path for WebSocket connections
+        rooms:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoomConfiguration'
+    RoomConfiguration:
+      x-group: configuration
+      title: RoomConfiguration
+      type: object
+      required:
+        - ID
+        - name
+        - servicePoints
+      properties:
+        ID:
+          type: string
+          description: Room identifier
+        name:
+          type: string
+          description: Human readable room name
+        servicePoints:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServicePointConfiguration'
+    ServicePointConfiguration:
+      x-group: configuration
+      title: ServicePointConfiguration
+      type: object
+      required:
+        - ID
+        - name
+      properties:
+        ID:
+          type: string
+          description: Service point identifier
+        name:
+          type: string
+          description: Display name for the service point
+        description:
+          type: string
+          description: Optional description of the service point
+        managerID:
+          type: string
+          description: Optional manager identifier associated with the service point
+        managerName:
+          type: string
+          description: Optional manager name associated with the service point
     ServicePoint:
       x-group: queue
       title: ServicePoint
       type: object
       required:
-        - id
+        - ID
         - name
       properties:
-        id:
+        ID:
           type: string
           description: Unique identifier for the service point
         name:
@@ -453,7 +551,7 @@ components:
       title: SwipeRequest
       type: object
       required:
-        - idCardRaw
+        - idCardRAW
       properties:
         idCardRaw:
           type: string
@@ -463,11 +561,11 @@ components:
       title: JoinResult
       type: object
       required:
-        - entryId
+        - entryID
         - ticketNumber
         - qrUrl
       properties:
-        entryId:
+        entryID:
           type: string
           format: uuid
           description: Unique identifier for the queue entry
@@ -484,14 +582,14 @@ components:
       title: PublicEntry
       type: object
       required:
-        - entryId
+        - entryID
         - ticketNumber
         - status
         - position
         - etaMinutes
         - canCancel
       properties:
-        entryId:
+        entryID:
           type: string
           format: uuid
           description: Unique identifier for the queue entry
@@ -501,11 +599,13 @@ components:
         status:
           $ref: '#/components/schemas/QueueEntryStatus'
         position:
-          type: integer
+          type: number
+          format: int64
           minimum: 0
           description: Position in queue
         etaMinutes:
-          type: integer
+          type: number
+          format: int64
           minimum: 0
           description: Estimated wait time in minutes
         canCancel:
@@ -516,17 +616,17 @@ components:
       title: QueueEntry
       type: object
       required:
-        - id
-        - waitingRoomId
+        - ID
+        - waitingRoomID
         - ticketNumber
         - status
         - position
       properties:
-        id:
+        ID:
           type: string
           format: uuid
           description: Unique identifier
-        waitingRoomId:
+        waitingRoomID:
           type: string
           format: uuid
           description: Waiting room identifier
@@ -536,20 +636,24 @@ components:
         status:
           $ref: '#/components/schemas/QueueEntryStatus'
         position:
-          type: integer
+          type: number
+          format: int64
           description: Position in queue
+        servicePoint:
+          type: string
+          description: Service point identifier
     ManagerLoginRequest:
       x-group: servicepoint
       title: ManagerLoginRequest
       type: object
       required:
-        - roomId
-        - servicePointId
+        - roomID
+        - servicePointID
       properties:
-        roomId:
+        roomID:
           type: string
           description: Room ID where the manager is logging in
-        servicePointId:
+        servicePointID:
           type: string
           description: Service point ID where the manager is logging in
     ManagerStatus:
@@ -557,23 +661,23 @@ components:
       title: ManagerStatus
       type: object
       required:
-        - managerId
+        - managerID
         - managerName
-        - servicePointId
-        - roomId
+        - servicePointID
+        - roomID
         - isAvailable
         - lastSeen
       properties:
-        managerId:
+        managerID:
           type: string
           description: Unique identifier for the manager
         managerName:
           type: string
           description: Display name of the manager
-        servicePointId:
+        servicePointID:
           type: string
           description: Service point ID where the manager is assigned
-        roomId:
+        roomID:
           type: string
           description: Room ID where the manager is working
         isAvailable:
@@ -588,9 +692,9 @@ components:
       title: MarkInRoomRequest
       type: object
       required:
-        - entryId
+        - entryID
       properties:
-        entryId:
+        entryID:
           type: string
           description: ID of the entry to mark as in room
     ApplicationError:

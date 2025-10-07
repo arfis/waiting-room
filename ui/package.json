@@ -7,7 +7,10 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "serve:ssr:mobile": "node dist/mobile/server/server.mjs"
+    "serve:ssr:mobile": "node dist/mobile/server/server.mjs",
+    "build:api-client": "ng build api-client",
+    "build:all": "./build-all.sh",
+    "build:apps": "ng build backoffice && ng build kiosk && ng build mobile && ng build tv"
   },
   "prettier": {
     "printWidth": 100,

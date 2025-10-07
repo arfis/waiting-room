@@ -9,11 +9,11 @@ import (
 )
 
 type Service struct {
-	queueService  *queue.Service
+	queueService  *queue.WaitingQueue
 	broadcastFunc func(string) // Function to broadcast queue updates
 }
 
-func New(queueService *queue.Service, broadcastFunc func(string)) *Service {
+func New(queueService *queue.WaitingQueue, broadcastFunc func(string)) *Service {
 	return &Service{
 		queueService:  queueService,
 		broadcastFunc: broadcastFunc,
@@ -27,7 +27,7 @@ func (s *Service) SetBroadcastFunc(f func(string)) {
 func (s *Service) SwipeCard(ctx context.Context, roomId string, req *dto.SwipeRequest) (*dto.JoinResult, error) {
 	// Create CardData from the raw card data
 	cardData := queue.CardData{
-		IDNumber: req.IdCardRaw,
+		IDNumber: *req.IdCardRaw,
 		Source:   "card-reader",
 	}
 
@@ -47,7 +47,7 @@ func (s *Service) SwipeCard(ctx context.Context, roomId string, req *dto.SwipeRe
 
 	// Return the join result
 	return &dto.JoinResult{
-		EntryId:      entry.ID,
+		EntryID:      entry.ID,
 		TicketNumber: entry.TicketNumber,
 		QrUrl:        qrUrl,
 	}, nil

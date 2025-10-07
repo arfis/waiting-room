@@ -3,11 +3,12 @@ package queue
 
 import (
 	"encoding/json"
+	"net/http"
+
 	"github.com/arfis/waiting-room/internal/data/dto"
 	ngErrors "github.com/arfis/waiting-room/internal/errors"
 	"github.com/arfis/waiting-room/internal/rest/handler"
 	"github.com/arfis/waiting-room/internal/service/queue"
-	"net/http"
 )
 
 type Handler struct {
@@ -55,28 +56,15 @@ func (h *Handler) FinishCurrent(w http.ResponseWriter, r *http.Request) {
 	handler.WriteJson(r.Context(), w, 200, resp)
 }
 
-func (h *Handler) CallNext(w http.ResponseWriter, r *http.Request) {
-	var applicationErr error
-	roomId := handler.PathParamToString(r, "roomId")
-	var resp *dto.QueueEntry
-	resp, applicationErr = h.svc.CallNext(
-		r.Context(),
-		roomId,
-	)
-	if applicationErr != nil {
-		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)
-		return
-	}
-	handler.WriteJson(r.Context(), w, 200, resp)
-}
-
 func (h *Handler) GetQueueEntries(w http.ResponseWriter, r *http.Request) {
 	var applicationErr error
 	roomId := handler.PathParamToString(r, "roomId")
+	states := handler.QueryParamToArrayString(r, "state")
 	var resp []dto.QueueEntry
 	resp, applicationErr = h.svc.GetQueueEntries(
 		r.Context(),
 		roomId,
+		states,
 	)
 	if applicationErr != nil {
 		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)
@@ -92,23 +80,6 @@ func (h *Handler) GetServicePoints(w http.ResponseWriter, r *http.Request) {
 	resp, applicationErr = h.svc.GetServicePoints(
 		r.Context(),
 		roomId,
-	)
-	if applicationErr != nil {
-		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)
-		return
-	}
-	handler.WriteJson(r.Context(), w, 200, resp)
-}
-
-func (h *Handler) CallNextForServicePoint(w http.ResponseWriter, r *http.Request) {
-	var applicationErr error
-	roomId := handler.PathParamToString(r, "roomId")
-	servicePointId := handler.PathParamToString(r, "servicePointId")
-	var resp *dto.QueueEntry
-	resp, applicationErr = h.svc.CallNextForServicePoint(
-		r.Context(),
-		roomId,
-		servicePointId,
 	)
 	if applicationErr != nil {
 		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)
@@ -154,6 +125,23 @@ func (h *Handler) MarkInRoomForServicePoint(w http.ResponseWriter, r *http.Reque
 		r.Context(),
 		roomId,
 		servicePointId, &req,
+	)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)
+		return
+	}
+	handler.WriteJson(r.Context(), w, 200, resp)
+}
+
+func (h *Handler) CallNext(w http.ResponseWriter, r *http.Request) {
+	var applicationErr error
+	roomId := handler.PathParamToString(r, "roomId")
+	servicePointId := handler.PathParamToString(r, "servicePointId")
+	var resp *dto.QueueEntry
+	resp, applicationErr = h.svc.CallNext(
+		r.Context(),
+		roomId,
+		servicePointId,
 	)
 	if applicationErr != nil {
 		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)

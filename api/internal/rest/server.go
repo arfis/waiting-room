@@ -19,7 +19,7 @@ import (
 
 // Server represents the HTTP server with WebSocket support
 type Server struct {
-	queueService *queueService.Service
+	queueService *queueService.WaitingQueue
 	upgrader     websocket.Upgrader
 	clients      map[string]map[*websocket.Conn]bool
 	clientsMux   sync.RWMutex
@@ -72,7 +72,7 @@ func NewServer(diContainer *dig.Container, cfg *config.Config) *http.Server {
 
 	// Create server instance for WebSocket handling
 	var wsServer *Server
-	diContainer.Invoke(func(queueService *queueService.Service, kioskService *kioskService.Service, queueServiceGenerated *queueServiceGenerated.Service) {
+	diContainer.Invoke(func(queueService *queueService.WaitingQueue, kioskService *kioskService.Service, queueServiceGenerated *queueServiceGenerated.Service) {
 		wsServer = &Server{
 			queueService: queueService,
 			upgrader: websocket.Upgrader{
@@ -199,7 +199,8 @@ func (s *Server) broadcastQueueUpdate(roomId string) {
 	}
 
 	// Get current queue entries
-	entries, err := s.queueService.GetQueueEntries(roomId)
+	// for now we only broadcast waiting entries
+	entries, err := s.queueService.GetQueueEntries(roomId, []string{"WAITING", "CALLED"})
 	if err != nil {
 		log.Printf("Failed to get queue entries for broadcast: %v", err)
 		return
@@ -218,6 +219,7 @@ func (s *Server) broadcastQueueUpdate(roomId string) {
 			"createdAt":     entry.CreatedAt,
 			"updatedAt":     entry.UpdatedAt,
 			"cardData":      entry.CardData,
+			"servicePoint":  entry.ServicePoint,
 		}
 		wsEntries = append(wsEntries, wsEntry)
 	}

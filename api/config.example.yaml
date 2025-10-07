@@ -30,8 +30,22 @@ websocket:
   path: "/ws/queue"
 
 rooms:
-  default_room: "triage-1"  # Default room ID - any room can be created dynamically
-  allow_wildcard: true      # Allow any room ID (.* pattern) - set to false for strict mode
+  default_room: "triage-1"  # Default room ID
+  allow_wildcard: false     # Restrict to configured rooms by default
+  rooms:
+    - id: "triage-1"
+      name: "Triage Room"
+      service_points:
+        - id: "window-1"
+          name: "Main Triage Desk"
+          description: "Primary service desk"
+          manager_id: "manager-1"
+          manager_name: "Alex Johnson"
+        - id: "window-2"
+          name: "Secondary Triage Desk"
+          description: "Overflow service desk"
+          manager_id: "manager-2"
+          manager_name: "Jamie Smith"
 
 logging:
   level: "info"  # debug, info, warn, error

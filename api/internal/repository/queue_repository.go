@@ -12,7 +12,7 @@ type QueueRepository interface {
 	CreateEntry(ctx context.Context, entry *types.Entry) error
 
 	// GetQueueEntries retrieves all queue entries for a room
-	GetQueueEntries(ctx context.Context, roomId string) ([]*types.Entry, error)
+	GetQueueEntries(ctx context.Context, roomId string, states []string) ([]*types.Entry, error)
 
 	// GetEntryByID retrieves a queue entry by ID
 	GetEntryByID(ctx context.Context, id string) (*types.Entry, error)
@@ -25,6 +25,9 @@ type QueueRepository interface {
 
 	// UpdateEntryPosition updates the position of a queue entry
 	UpdateEntryPosition(ctx context.Context, id string, position int) error
+
+	// UpdateEntryServicePoint updates the service point of a queue entry
+	UpdateEntryServicePoint(ctx context.Context, id string, servicePoint string) error
 
 	// GetNextWaitingEntry gets the next waiting entry for a room
 	GetNextWaitingEntry(ctx context.Context, roomId string) (*types.Entry, error)

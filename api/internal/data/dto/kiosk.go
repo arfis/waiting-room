@@ -2,13 +2,13 @@
 package dto
 
 type JoinResult struct {
-	EntryId      string `json:"entryId" validate:"required"`
+	EntryID      string `json:"entryID" validate:"required"`
 	QrUrl        string `json:"qrUrl" validate:"required"`
 	TicketNumber string `json:"ticketNumber" validate:"required"`
 }
 
-func (joinResult JoinResult) GetEntryId() string {
-	return joinResult.EntryId
+func (joinResult JoinResult) GetEntryID() string {
+	return joinResult.EntryID
 }
 
 func (joinResult JoinResult) GetQrUrl() string {
@@ -20,9 +20,13 @@ func (joinResult JoinResult) GetTicketNumber() string {
 }
 
 type SwipeRequest struct {
-	IdCardRaw string `json:"idCardRaw" validate:"required"`
+	IdCardRaw *string `json:"idCardRaw,omitempty"`
 }
 
 func (swipeRequest SwipeRequest) GetIdCardRaw() string {
-	return swipeRequest.IdCardRaw
+	var v string
+	if swipeRequest.IdCardRaw != nil {
+		return *swipeRequest.IdCardRaw
+	}
+	return v
 }

@@ -135,6 +135,10 @@ func overrideFromEnv(config *Config) {
 	if defaultRoom := os.Getenv("DEFAULT_ROOM"); defaultRoom != "" {
 		config.Rooms.DefaultRoom = defaultRoom
 	}
+
+	if allowWildcard := os.Getenv("ALLOW_WILDCARD"); allowWildcard != "" {
+		config.Rooms.AllowWildcard = strings.EqualFold(allowWildcard, "true")
+	}
 }
 
 // setDefaults sets default values for missing configuration
@@ -177,11 +181,15 @@ func setDefaults(config *Config) {
 	}
 
 	if config.Rooms.DefaultRoom == "" {
-		config.Rooms.DefaultRoom = "triage-1"
+		if len(config.Rooms.Rooms) > 0 {
+			config.Rooms.DefaultRoom = config.Rooms.Rooms[0].ID
+		} else {
+			config.Rooms.DefaultRoom = "triage-1"
+		}
 	}
 
-	// Default to allowing wildcard rooms if not specified
-	if !config.Rooms.AllowWildcard {
+	// Default to allowing wildcard rooms only when no rooms are explicitly configured.
+	if len(config.Rooms.Rooms) == 0 && !config.Rooms.AllowWildcard {
 		config.Rooms.AllowWildcard = true
 	}
 
@@ -245,15 +253,37 @@ func (c *Config) IsValidRoom(roomID string) bool {
 		return true
 	}
 
-	// Otherwise, only allow the default room (for strict mode)
-	return roomID == c.Rooms.DefaultRoom
+	if roomID == c.Rooms.DefaultRoom {
+		return true
+	}
+
+	for _, room := range c.Rooms.Rooms {
+		if room.ID == roomID {
+			return true
+		}
+	}
+
+	return false
 }
 
 // GetServicePointsForRoom returns the service points configured for a specific room
 func (c *Config) GetServicePointsForRoom(roomID string) []ServicePointConfig {
 	for _, room := range c.Rooms.Rooms {
 		if room.ID == roomID {
-			return room.ServicePoints
+			if len(room.ServicePoints) > 0 {
+				return room.ServicePoints
+			}
+			break
+		}
+	}
+
+	// Fallback to default room if explicit room not found
+	for _, room := range c.Rooms.Rooms {
+		if room.ID == c.Rooms.DefaultRoom {
+			if len(room.ServicePoints) > 0 {
+				return room.ServicePoints
+			}
+			break
 		}
 	}
 

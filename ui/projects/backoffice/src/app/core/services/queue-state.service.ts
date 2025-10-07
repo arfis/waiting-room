@@ -1,5 +1,5 @@
 import { Injectable, signal, computed, inject, effect } from '@angular/core';
-import { QueueWebSocketService, WebSocketQueueEntry } from 'api-client';
+import { QueueWebSocketService, WebSocketQueueEntry, QueueEntryStatus } from 'api-client';
 import { QueueApiService } from './queue-api.service';
 
 export interface ActivityLog {
@@ -25,7 +25,6 @@ export class QueueStateService {
   readonly isLoading = signal<boolean>(false);
   readonly lastUpdated = signal<Date>(new Date());
   readonly recentActivity = signal<ActivityLog[]>([]);
-  
   // Computed state
   readonly currentEntry = computed(() => {
     const entries = this.queueEntries();
@@ -38,6 +37,13 @@ export class QueueStateService {
     const entries = this.queueEntries();
     return entries
       .filter(entry => entry.status === 'WAITING')
+      .sort((a, b) => a.position - b.position);
+  });
+
+  readonly calledEntries = computed(() => {
+    const entries = this.queueEntries();
+    return entries
+      .filter(entry => entry.status === 'CALLED')
       .sort((a, b) => a.position - b.position);
   });
   
@@ -55,18 +61,18 @@ export class QueueStateService {
     });
   }
 
-  async initialize(roomId: string): Promise<void> {
-    await this.queueWebSocket.initialize(roomId);
+  async initialize(roomId: string, states?: QueueEntryStatus[]): Promise<void> {
+    await this.queueWebSocket.initialize(roomId, states);
   }
 
   disconnect(): void {
     this.queueWebSocket.disconnect();
   }
 
-  callNext(roomId: string): void {
+  callNext(roomId: string, servicePointId: string): void {
     this.isLoading.set(true);
     
-    this.queueApiService.callNext(roomId).subscribe({
+    this.queueApiService.callNext(roomId, servicePointId).subscribe({
       next: (response) => {
         this.addActivity(response.ticketNumber, 'Called to service');
         this.isLoading.set(false);
@@ -109,6 +115,44 @@ export class QueueStateService {
     });
   }
 
+  refreshWaitingEntries(roomId: string): void {
+    this.isLoading.set(true);
+    
+    this.queueApiService.getQueue(roomId, ['WAITING']).subscribe({
+      next: (entries) => {
+        // Update only waiting entries
+        const currentEntries = this.queueEntries();
+        const nonWaitingEntries = currentEntries.filter(entry => entry.status !== 'WAITING');
+        const allEntries = [...nonWaitingEntries, ...entries as WebSocketQueueEntry[]];
+        this.queueEntries.set(allEntries);
+        this.isLoading.set(false);
+      },
+      error: (error) => {
+        console.error('Failed to refresh waiting entries:', error);
+        this.isLoading.set(false);
+      }
+    });
+  }
+
+  refreshCurrentEntry(roomId: string): void {
+    this.isLoading.set(true);
+    
+    this.queueApiService.getQueue(roomId, ['IN_SERVICE']).subscribe({
+      next: (entries) => {
+        // Update current entry (IN_SERVICE)
+        const currentEntries = this.queueEntries();
+        const nonCurrentEntries = currentEntries.filter(entry => entry.status !== 'IN_SERVICE');
+        const allEntries = [...nonCurrentEntries, ...entries as WebSocketQueueEntry[]];
+        this.queueEntries.set(allEntries);
+        this.isLoading.set(false);
+      },
+      error: (error) => {
+        console.error('Failed to refresh current entry:', error);
+        this.isLoading.set(false);
+      }
+    });
+  }
+
   getStatusText(status: string): string {
     const statusMap: Record<string, string> = {
       'WAITING': 'Waiting',
@@ -118,6 +162,10 @@ export class QueueStateService {
       'CANCELLED': 'Cancelled'
     };
     return statusMap[status] || status;
+  }
+
+  getCalledEntriesForServicePoint(servicePointId: string): WebSocketQueueEntry[] {
+    return this.calledEntries().filter(entry => entry.servicePoint === servicePointId);
   }
 
   private addActivity(ticketNumber: string, action: string): void {

@@ -10,11 +10,11 @@ import (
 )
 
 type Service struct {
-	queueService  *queue.Service
+	queueService  *queue.WaitingQueue
 	broadcastFunc func(string) // Function to broadcast queue updates
 }
 
-func New(queueService *queue.Service, broadcastFunc func(string)) *Service {
+func New(queueService *queue.WaitingQueue, broadcastFunc func(string)) *Service {
 	return &Service{
 		queueService:  queueService,
 		broadcastFunc: broadcastFunc,
@@ -33,7 +33,7 @@ func (s *Service) GetQueueEntryByToken(ctx context.Context, qrToken string) (*dt
 
 	// Convert to PublicEntry
 	publicEntry := &dto.PublicEntry{
-		EntryId:      entry.ID,
+		EntryID:      entry.ID,
 		TicketNumber: entry.TicketNumber,
 		Status:       queueentrystatus.QueueEntryStatus(entry.Status),
 		Position:     entry.Position,
@@ -44,19 +44,21 @@ func (s *Service) GetQueueEntryByToken(ctx context.Context, qrToken string) (*dt
 	return publicEntry, nil
 }
 
-func (s *Service) CallNext(ctx context.Context, roomId string) (*dto.QueueEntry, error) {
-	entry, err := s.queueService.CallNext(roomId)
+func (s *Service) CallNext(ctx context.Context, roomId string, servicePointId string) (*dto.QueueEntry, error) {
+
+	entry, err := s.queueService.CallNextForServicePoint(ctx, roomId, servicePointId)
 	if err != nil {
 		return nil, ngErrors.New(ngErrors.InternalServerErrorCode, "failed to call next", 500, nil)
 	}
 
 	// Convert to QueueEntry
 	queueEntry := &dto.QueueEntry{
-		Id:            entry.ID,
-		WaitingRoomId: entry.WaitingRoomID,
+		ID:            entry.ID,
+		WaitingRoomID: entry.WaitingRoomID,
 		TicketNumber:  entry.TicketNumber,
 		Status:        queueentrystatus.QueueEntryStatus(entry.Status),
-		Position:      entry.Position,
+		Position:      int64(entry.Position),
+		ServicePoint:  &entry.ServicePoint,
 	}
 	if entry.ServicePoint != "" {
 		queueEntry.ServicePoint = &entry.ServicePoint
@@ -82,8 +84,8 @@ func (s *Service) FinishCurrent(ctx context.Context, roomId string) (*dto.QueueE
 
 	// Convert to QueueEntry
 	queueEntry := &dto.QueueEntry{
-		Id:            entry.ID,
-		WaitingRoomId: entry.WaitingRoomID,
+		ID:            entry.ID,
+		WaitingRoomID: entry.WaitingRoomID,
 		TicketNumber:  entry.TicketNumber,
 		Status:        queueentrystatus.QueueEntryStatus(entry.Status),
 		Position:      entry.Position,
@@ -100,8 +102,8 @@ func (s *Service) FinishCurrent(ctx context.Context, roomId string) (*dto.QueueE
 	return queueEntry, nil
 }
 
-func (s *Service) GetQueueEntries(ctx context.Context, roomId string) ([]dto.QueueEntry, error) {
-	entries, err := s.queueService.GetQueueEntries(roomId)
+func (s *Service) GetQueueEntries(ctx context.Context, roomId string, states []string) ([]dto.QueueEntry, error) {
+	entries, err := s.queueService.GetQueueEntries(roomId, states)
 	if err != nil {
 		return nil, ngErrors.New(ngErrors.InternalServerErrorCode, "failed to get queue entries", 500, nil)
 	}
@@ -110,11 +112,12 @@ func (s *Service) GetQueueEntries(ctx context.Context, roomId string) ([]dto.Que
 	var queueEntries []dto.QueueEntry
 	for _, entry := range entries {
 		queueEntry := dto.QueueEntry{
-			Id:            entry.ID,
-			WaitingRoomId: entry.WaitingRoomID,
+			ID:            entry.ID,
+			WaitingRoomID: entry.WaitingRoomID,
 			TicketNumber:  entry.TicketNumber,
 			Status:        queueentrystatus.QueueEntryStatus(entry.Status),
 			Position:      entry.Position,
+			ServicePoint:  &entry.ServicePoint,
 		}
 		if entry.ServicePoint != "" {
 			queueEntry.ServicePoint = &entry.ServicePoint
@@ -129,12 +132,8 @@ func (s *Service) GetServicePoints(ctx context.Context, roomId string) ([]dto.Se
 	return s.queueService.GetServicePoints(ctx, roomId)
 }
 
-func (s *Service) CallNextForServicePoint(ctx context.Context, roomId, servicePointId string) (*dto.QueueEntry, error) {
-	return s.queueService.CallNextForServicePoint(ctx, roomId, servicePointId)
-}
-
 func (s *Service) MarkInRoomForServicePoint(ctx context.Context, roomId, servicePointId string, req *dto.MarkInRoomRequest) (*dto.QueueEntry, error) {
-	return s.queueService.MarkInRoomForServicePoint(ctx, roomId, servicePointId, req.EntryId)
+	return s.queueService.MarkInRoomForServicePoint(ctx, roomId, servicePointId, req.EntryID)
 }
 
 func (s *Service) FinishCurrentForServicePoint(ctx context.Context, roomId, servicePointId string) (*dto.QueueEntry, error) {
