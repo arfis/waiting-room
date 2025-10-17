@@ -31,8 +31,10 @@ func (s *Service) SwipeCard(ctx context.Context, roomId string, req *dto.SwipeRe
 		Source:   "card-reader",
 	}
 
+	// this will be later replaced with the actual duration
+	approximateDurationMinutes := int64(5)
 	// Create queue entry using the existing queue service
-	entry, err := s.queueService.CreateEntry(roomId, cardData)
+	entry, err := s.queueService.CreateEntry(roomId, cardData, approximateDurationMinutes)
 	if err != nil {
 		return nil, ngErrors.New(ngErrors.InternalServerErrorCode, "failed to create queue entry", 500, nil)
 	}

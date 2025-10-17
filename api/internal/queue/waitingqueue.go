@@ -33,7 +33,7 @@ func NewWaitingQueue(repo repository.QueueRepository, cfg *config.Config, servic
 }
 
 // CreateEntry creates a new queue entry
-func (s *WaitingQueue) CreateEntry(roomId string, cardData CardData) (*Entry, error) {
+func (s *WaitingQueue) CreateEntry(roomId string, cardData CardData, approximateDurationMinutes int64) (*Entry, error) {
 	ctx := context.Background()
 
 	// Get current WAITING entries to determine position
@@ -49,13 +49,13 @@ func (s *WaitingQueue) CreateEntry(roomId string, cardData CardData) (*Entry, er
 
 	// Create new entry
 	entry := &Entry{
-		WaitingRoomID: roomId,
-		TicketNumber:  "", // Will be set by repository
-		QRToken:       "", // Will be set by repository
-		Status:        "WAITING",
-		Position:      int64(nextPosition),
-		// ServicePoint:  servicePoint,
-		CardData: cardData,
+		WaitingRoomID:              roomId,
+		TicketNumber:               "", // Will be set by repository
+		QRToken:                    "", // Will be set by repository
+		Status:                     "WAITING",
+		Position:                   int64(nextPosition),
+		CardData:                   cardData,
+		ApproximateDurationMinutes: approximateDurationMinutes,
 	}
 
 	// Save to repository
