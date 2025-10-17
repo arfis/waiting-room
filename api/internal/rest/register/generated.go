@@ -27,6 +27,7 @@ func Generated(r chi.Router, diContainer *dig.Container) {
 			protected.Post("/managers/{managerId}/login", servicepointHandler.ManagerLogin)
 			protected.Post("/managers/{managerId}/logout", servicepointHandler.ManagerLogout)
 			protected.Get("/queue-entries/token/{qrToken}", queueHandler.GetQueueEntryByToken)
+			protected.Get("/user-services", kioskHandler.GetUserServices)
 			protected.Post("/waiting-rooms/{roomId}/finish", queueHandler.FinishCurrent)
 			protected.Get("/waiting-rooms/{roomId}/managers/status", servicepointHandler.GetManagerStatusForRoom)
 			protected.Get("/waiting-rooms/{roomId}/queue", queueHandler.GetQueueEntries)

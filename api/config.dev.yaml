@@ -51,3 +51,8 @@ rooms:
 logging:
   level: "debug"  # More verbose logging for development
   format: "text"
+
+external_api:
+  user_services_url: "https://private-4a985-invoice19.apiary-mock.com/waiting-room/medical/services"  # Mock external API for development
+  timeout_seconds: 5
+  retry_attempts: 2

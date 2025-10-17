@@ -84,6 +84,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApplicationError'
+
+  /user-services:
+    get:
+      x-generated:
+        package: kiosk
+      tags:
+        - Kiosk
+      operationId: GetUserServices
+      summary: Get available services for a user
+      parameters:
+        - in: query
+          name: identifier
+          required: true
+          schema: { type: string }
+          description: User identifier (e.g., ID number)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserService'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationError'
+        '500':
+          description: Internal errors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationError'
   /queue-entries/token/{qrToken}:
     get:
       x-generated:
@@ -556,6 +592,32 @@ components:
         idCardRaw:
           type: string
           description: Raw card data from card reader
+        serviceId:
+          type: string
+          description: Selected service ID from user service selection
+        serviceDuration:
+          type: integer
+          format: int64
+          description: Duration of the selected service in minutes
+    UserService:
+      x-group: kiosk
+      title: UserService
+      type: object
+      required:
+        - serviceName
+        - duration
+        - id
+      properties:
+        serviceName:
+          type: string
+          description: Name of the service
+        duration:
+          type: integer
+          format: int64
+          description: Duration of the service in minutes
+        id:
+          type: string
+          description: Unique identifier for the service
     JoinResult:
       x-group: kiosk
       title: JoinResult
@@ -577,6 +639,13 @@ components:
           type: string
           example: "http://localhost:4204/q/abc..."
           description: QR code URL for mobile app
+        serviceDuration:
+          type: integer
+          format: int64
+          description: Duration of the selected service in minutes
+        serviceName:
+          type: string
+          description: Name of the selected service
     PublicEntry:
       x-group: queue
       title: PublicEntry

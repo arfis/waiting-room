@@ -52,3 +52,8 @@ rooms:
 logging:
   level: "info"   # Less verbose logging for production
   format: "json"  # JSON format for log aggregation
+
+external_api:
+  user_services_url: "https://private-4a985-invoice19.apiary-mock.com/waiting-room/medical/services"  # Production external API
+  timeout_seconds: 15
+  retry_attempts: 3

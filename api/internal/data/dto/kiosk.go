@@ -2,9 +2,11 @@
 package dto
 
 type JoinResult struct {
-	EntryID      string `json:"entryID" validate:"required"`
-	QrUrl        string `json:"qrUrl" validate:"required"`
-	TicketNumber string `json:"ticketNumber" validate:"required"`
+	EntryID         string  `json:"entryID" validate:"required"`
+	QrUrl           string  `json:"qrUrl" validate:"required"`
+	ServiceDuration *int64  `json:"serviceDuration,omitempty"`
+	ServiceName     *string `json:"serviceName,omitempty"`
+	TicketNumber    string  `json:"ticketNumber" validate:"required"`
 }
 
 func (joinResult JoinResult) GetEntryID() string {
@@ -15,12 +17,30 @@ func (joinResult JoinResult) GetQrUrl() string {
 	return joinResult.QrUrl
 }
 
+func (joinResult JoinResult) GetServiceDuration() int64 {
+	var v int64
+	if joinResult.ServiceDuration != nil {
+		return *joinResult.ServiceDuration
+	}
+	return v
+}
+
+func (joinResult JoinResult) GetServiceName() string {
+	var v string
+	if joinResult.ServiceName != nil {
+		return *joinResult.ServiceName
+	}
+	return v
+}
+
 func (joinResult JoinResult) GetTicketNumber() string {
 	return joinResult.TicketNumber
 }
 
 type SwipeRequest struct {
-	IdCardRaw *string `json:"idCardRaw,omitempty"`
+	IdCardRaw       *string `json:"idCardRaw,omitempty"`
+	ServiceDuration *int64  `json:"serviceDuration,omitempty"`
+	ServiceId       *string `json:"serviceId,omitempty"`
 }
 
 func (swipeRequest SwipeRequest) GetIdCardRaw() string {
@@ -29,4 +49,38 @@ func (swipeRequest SwipeRequest) GetIdCardRaw() string {
 		return *swipeRequest.IdCardRaw
 	}
 	return v
+}
+
+func (swipeRequest SwipeRequest) GetServiceDuration() int64 {
+	var v int64
+	if swipeRequest.ServiceDuration != nil {
+		return *swipeRequest.ServiceDuration
+	}
+	return v
+}
+
+func (swipeRequest SwipeRequest) GetServiceId() string {
+	var v string
+	if swipeRequest.ServiceId != nil {
+		return *swipeRequest.ServiceId
+	}
+	return v
+}
+
+type UserService struct {
+	Duration    int64  `json:"duration"`
+	Id          string `json:"id" validate:"required"`
+	ServiceName string `json:"serviceName" validate:"required"`
+}
+
+func (userService UserService) GetDuration() int64 {
+	return userService.Duration
+}
+
+func (userService UserService) GetId() string {
+	return userService.Id
+}
+
+func (userService UserService) GetServiceName() string {
+	return userService.ServiceName
 }

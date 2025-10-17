@@ -80,8 +80,8 @@ func DIContainer(cfg *config.Config) *dig.Container {
 		{Constructor: ngErrors.NewResponseErrorHandler},
 
 		// Generated services (will be set up with broadcast function later)
-		{Constructor: func(queueService *queueService.WaitingQueue) *kioskService.Service {
-			return kioskService.New(queueService, nil)
+		{Constructor: func(queueService *queueService.WaitingQueue, config *config.Config) *kioskService.Service {
+			return kioskService.New(queueService, nil, config)
 		}},
 		{Constructor: func(queueService *queueService.WaitingQueue) *queueServiceGenerated.Service {
 			return queueServiceGenerated.New(queueService, nil)
@@ -132,9 +132,6 @@ func main() {
 	}
 
 	log.Printf("Configuration loaded from: %s", configPath)
-	log.Printf("Server will start on: %s", cfg.GetAddress())
-	log.Printf("MongoDB URI: %s", cfg.GetMongoURI())
-	log.Printf("WebSocket enabled: %v", cfg.WebSocket.Enabled)
 
 	diContainer := DIContainer(cfg)
 

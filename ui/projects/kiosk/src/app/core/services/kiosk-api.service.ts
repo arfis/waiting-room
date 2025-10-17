@@ -23,6 +23,8 @@ export interface TicketResponse {
   ticketNumber: string;
   qrUrl: string;
   servicePoint?: string;
+  serviceDuration?: number;
+  serviceName?: string;
 }
 
 export interface CardReaderStatus {
@@ -37,10 +39,18 @@ export class KioskApiService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = environment.apiUrl || 'http://localhost:8080/api';
 
-  generateTicket(roomId: string, idCardRaw: string): Observable<TicketResponse> {
+  generateTicket(roomId: string, idCardRaw: string, serviceId?: string, serviceDuration?: number): Observable<TicketResponse> {
+    const body: any = { idCardRaw };
+    if (serviceId) {
+      body.serviceId = serviceId;
+    }
+    if (serviceDuration) {
+      body.serviceDuration = serviceDuration;
+    }
+    
     return this.http.post<TicketResponse>(
       `${this.apiUrl}/waiting-rooms/${roomId}/swipe`,
-      { idCardRaw }
+      body
     );
   }
 

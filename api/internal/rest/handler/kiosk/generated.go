@@ -25,6 +25,21 @@ func New(
 	}
 }
 
+func (h *Handler) GetUserServices(w http.ResponseWriter, r *http.Request) {
+	var applicationErr error
+	identifier := handler.QueryParamToString(r, "identifier")
+	var resp []dto.UserService
+	resp, applicationErr = h.svc.GetUserServices(
+		r.Context(),
+		identifier,
+	)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)
+		return
+	}
+	handler.WriteJson(r.Context(), w, 200, resp)
+}
+
 func (h *Handler) SwipeCard(w http.ResponseWriter, r *http.Request) {
 	var applicationErr error
 	roomId := handler.PathParamToString(r, "roomId")

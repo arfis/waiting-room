@@ -47,3 +47,8 @@ rooms:
 logging:
   level: "info"
   format: "text"
+
+external_api:
+  user_services_url: "https://private-4a985-invoice19.apiary-mock.com/waiting-room/medical/services"
+  timeout_seconds: 10
+  retry_attempts: 3
