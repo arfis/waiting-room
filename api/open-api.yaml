@@ -711,6 +711,13 @@ components:
         servicePoint:
           type: string
           description: Service point identifier
+        serviceName:
+          type: string
+          description: Name of the selected service
+        serviceDuration:
+          type: integer
+          format: int64
+          description: Duration of the selected service in minutes
     ManagerLoginRequest:
       x-group: servicepoint
       title: ManagerLoginRequest

@@ -210,16 +210,18 @@ func (s *Server) broadcastQueueUpdate(roomId string) {
 	var wsEntries []map[string]interface{}
 	for _, entry := range entries {
 		wsEntry := map[string]interface{}{
-			"id":            entry.ID,
-			"waitingRoomId": entry.WaitingRoomID,
-			"ticketNumber":  entry.TicketNumber,
-			"qrToken":       entry.QRToken,
-			"status":        entry.Status,
-			"position":      entry.Position,
-			"createdAt":     entry.CreatedAt,
-			"updatedAt":     entry.UpdatedAt,
-			"cardData":      entry.CardData,
-			"servicePoint":  entry.ServicePoint,
+			"id":              entry.ID,
+			"waitingRoomId":   entry.WaitingRoomID,
+			"ticketNumber":    entry.TicketNumber,
+			"qrToken":         entry.QRToken,
+			"status":          entry.Status,
+			"position":        entry.Position,
+			"createdAt":       entry.CreatedAt,
+			"updatedAt":       entry.UpdatedAt,
+			"cardData":        entry.CardData,
+			"servicePoint":    entry.ServicePoint,
+			"serviceName":     entry.ServiceName,
+			"serviceDuration": entry.ApproximateDurationMinutes,
 		}
 		wsEntries = append(wsEntries, wsEntry)
 	}

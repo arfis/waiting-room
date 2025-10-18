@@ -45,12 +45,14 @@ func (publicEntry PublicEntry) GetTicketNumber() string {
 }
 
 type QueueEntry struct {
-	ID            string                            `json:"ID" validate:"required"`
-	Position      int64                             `json:"position"`
-	ServicePoint  *string                           `json:"servicePoint,omitempty"`
-	Status        queueentrystatus.QueueEntryStatus `json:"status" validate:"required"`
-	TicketNumber  string                            `json:"ticketNumber" validate:"required"`
-	WaitingRoomID string                            `json:"waitingRoomID" validate:"required"`
+	ID              string                            `json:"ID" validate:"required"`
+	Position        int64                             `json:"position"`
+	ServiceDuration *int64                            `json:"serviceDuration,omitempty"`
+	ServiceName     *string                           `json:"serviceName,omitempty"`
+	ServicePoint    *string                           `json:"servicePoint,omitempty"`
+	Status          queueentrystatus.QueueEntryStatus `json:"status" validate:"required"`
+	TicketNumber    string                            `json:"ticketNumber" validate:"required"`
+	WaitingRoomID   string                            `json:"waitingRoomID" validate:"required"`
 }
 
 func (queueEntry QueueEntry) GetID() string {
@@ -59,6 +61,22 @@ func (queueEntry QueueEntry) GetID() string {
 
 func (queueEntry QueueEntry) GetPosition() int64 {
 	return queueEntry.Position
+}
+
+func (queueEntry QueueEntry) GetServiceDuration() int64 {
+	var v int64
+	if queueEntry.ServiceDuration != nil {
+		return *queueEntry.ServiceDuration
+	}
+	return v
+}
+
+func (queueEntry QueueEntry) GetServiceName() string {
+	var v string
+	if queueEntry.ServiceName != nil {
+		return *queueEntry.ServiceName
+	}
+	return v
 }
 
 func (queueEntry QueueEntry) GetServicePoint() string {

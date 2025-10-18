@@ -13,6 +13,7 @@ type Entry struct {
 	CreatedAt                  time.Time `bson:"createdAt" json:"createdAt"`
 	UpdatedAt                  time.Time `bson:"updatedAt" json:"updatedAt"`
 	ApproximateDurationMinutes int64     `bson:"approximateDuration" json:"approximateDuration"`
+	ServiceName                string    `bson:"serviceName,omitempty" json:"serviceName,omitempty"`
 	CardData                   CardData  `bson:"cardData,omitempty" json:"cardData,omitempty"`
 }
 

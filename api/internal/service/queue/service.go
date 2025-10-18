@@ -117,10 +117,15 @@ func (s *Service) GetQueueEntries(ctx context.Context, roomId string, states []s
 			TicketNumber:  entry.TicketNumber,
 			Status:        queueentrystatus.QueueEntryStatus(entry.Status),
 			Position:      entry.Position,
-			ServicePoint:  &entry.ServicePoint,
 		}
 		if entry.ServicePoint != "" {
 			queueEntry.ServicePoint = &entry.ServicePoint
+		}
+		if entry.ServiceName != "" {
+			queueEntry.ServiceName = &entry.ServiceName
+		}
+		if entry.ApproximateDurationMinutes > 0 {
+			queueEntry.ServiceDuration = &entry.ApproximateDurationMinutes
 		}
 		queueEntries = append(queueEntries, queueEntry)
 	}

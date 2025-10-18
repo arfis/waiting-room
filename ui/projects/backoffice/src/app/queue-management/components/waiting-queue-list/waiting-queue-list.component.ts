@@ -24,7 +24,7 @@ import { WebSocketQueueEntry } from 'api-client';
       } @else {
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           @for (entry of entries; track entry.id) {
-            <ui-card title="Ticket {{ entry.ticketNumber }}" variant="default">
+            <ui-card variant="default">
               <div class="space-y-3">
                 <div class="flex items-center justify-between">
                   <div class="text-2xl font-mono font-bold text-blue-600">
@@ -51,6 +51,27 @@ import { WebSocketQueueEntry } from 'api-client';
                       </svg>
                       {{ getServicePointName(entry.servicePoint) }}
                     </span>
+                  </div>
+                }
+                
+                @if (entry.serviceName || entry.serviceDuration) {
+                  <div class="mt-2 space-y-1">
+                    @if (entry.serviceName) {
+                      <div class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-700">
+                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        {{ entry.serviceName }}
+                      </div>
+                    }
+                    @if (entry.serviceDuration) {
+                      <div class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-orange-100 text-orange-700">
+                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        {{ entry.serviceDuration }} min
+                      </div>
+                    }
                   </div>
                 }
                 

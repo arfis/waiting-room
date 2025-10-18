@@ -59,7 +59,7 @@ func (h *Handler) FinishCurrent(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) GetQueueEntries(w http.ResponseWriter, r *http.Request) {
 	var applicationErr error
 	roomId := handler.PathParamToString(r, "roomId")
-	states := handler.QueryParamToArrayString(r, "state")
+	states := handler.QueryParamToArrayString(r, "state") // Manually fixed to use array string
 	var resp []dto.QueueEntry
 	resp, applicationErr = h.svc.GetQueueEntries(
 		r.Context(),

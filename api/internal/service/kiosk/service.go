@@ -45,8 +45,23 @@ func (s *Service) SwipeCard(ctx context.Context, roomId string, req *dto.SwipeRe
 		approximateDurationMinutes = 5 // Default fallback
 	}
 
+	// Get service name if service ID is provided
+	serviceName := ""
+	if req.ServiceId != nil && *req.ServiceId != "" {
+		// Get service name by calling the external API with the same identifier
+		services, err := s.GetUserServices(ctx, cardData.IDNumber)
+		if err == nil {
+			for _, service := range services {
+				if service.Id == *req.ServiceId {
+					serviceName = service.ServiceName
+					break
+				}
+			}
+		}
+	}
+
 	// Create queue entry using the existing queue service
-	entry, err := s.queueService.CreateEntry(roomId, cardData, approximateDurationMinutes)
+	entry, err := s.queueService.CreateEntry(roomId, cardData, approximateDurationMinutes, serviceName)
 	if err != nil {
 		return nil, ngErrors.New(ngErrors.InternalServerErrorCode, "failed to create queue entry", 500, nil)
 	}

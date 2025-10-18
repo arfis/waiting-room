@@ -33,7 +33,7 @@ func NewWaitingQueue(repo repository.QueueRepository, cfg *config.Config, servic
 }
 
 // CreateEntry creates a new queue entry
-func (s *WaitingQueue) CreateEntry(roomId string, cardData CardData, approximateDurationMinutes int64) (*Entry, error) {
+func (s *WaitingQueue) CreateEntry(roomId string, cardData CardData, approximateDurationMinutes int64, serviceName string) (*Entry, error) {
 	ctx := context.Background()
 
 	// Get current WAITING entries to determine position
@@ -56,6 +56,7 @@ func (s *WaitingQueue) CreateEntry(roomId string, cardData CardData, approximate
 		Position:                   int64(nextPosition),
 		CardData:                   cardData,
 		ApproximateDurationMinutes: approximateDurationMinutes,
+		ServiceName:                serviceName,
 	}
 
 	// Save to repository
@@ -304,6 +305,12 @@ func (s *WaitingQueue) MarkInRoomForServicePoint(ctx context.Context, roomId, se
 	if entry.ServicePoint != "" {
 		queueEntry.ServicePoint = &entry.ServicePoint
 	}
+	if entry.ServiceName != "" {
+		queueEntry.ServiceName = &entry.ServiceName
+	}
+	if entry.ApproximateDurationMinutes > 0 {
+		queueEntry.ServiceDuration = &entry.ApproximateDurationMinutes
+	}
 
 	log.Printf("Marked person %s (ticket %s) as in room for service point %s",
 		entry.ID, entry.TicketNumber, servicePointId)
@@ -346,6 +353,12 @@ func (s *WaitingQueue) FinishCurrentForServicePoint(ctx context.Context, roomId,
 	}
 	if entry.ServicePoint != "" {
 		queueEntry.ServicePoint = &entry.ServicePoint
+	}
+	if entry.ServiceName != "" {
+		queueEntry.ServiceName = &entry.ServiceName
+	}
+	if entry.ApproximateDurationMinutes > 0 {
+		queueEntry.ServiceDuration = &entry.ApproximateDurationMinutes
 	}
 
 	log.Printf("Finished current person %s (ticket %s) for service point %s in room %s",
