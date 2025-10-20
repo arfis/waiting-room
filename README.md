@@ -154,7 +154,7 @@ make dev-start      # Start development environment
 make dev-stop       # Stop development environment
 ```
 
-### Manual Setup (Alternative)
+### ManualComponent Setup (Alternative)
 
 ### 1. Clone and Setup
 
@@ -198,7 +198,7 @@ This script will:
 - **Mobile**: http://localhost:4204
 - **API**: http://localhost:8080
 
-## Manual Setup
+## ManualComponent Setup
 
 ### 1. API Server
 
