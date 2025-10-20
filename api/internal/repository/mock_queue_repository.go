@@ -48,14 +48,25 @@ func (r *MockQueueRepository) CreateEntry(ctx context.Context, entry *types.Entr
 }
 
 // GetQueueEntries retrieves all queue entries for a room
-func (r *MockQueueRepository) GetQueueEntries(ctx context.Context, roomId string) ([]*types.Entry, error) {
+func (r *MockQueueRepository) GetQueueEntries(ctx context.Context, roomId string, states []string) ([]*types.Entry, error) {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 
 	var entries []*types.Entry
 	for _, entry := range r.entries {
 		if entry.WaitingRoomID == roomId {
-			entries = append(entries, entry)
+			// If no states specified, include all entries
+			if len(states) == 0 {
+				entries = append(entries, entry)
+			} else {
+				// Check if entry status is in the states array
+				for _, state := range states {
+					if entry.Status == state {
+						entries = append(entries, entry)
+						break
+					}
+				}
+			}
 		}
 	}
 
@@ -125,9 +136,26 @@ func (r *MockQueueRepository) UpdateEntryPosition(ctx context.Context, id string
 		return fmt.Errorf("queue entry not found")
 	}
 
-	entry.Position = position
+	entry.Position = int64(position)
 	entry.UpdatedAt = time.Now()
 
+	return nil
+}
+
+// UpdateEntryServicePoint updates the service point of a queue entry
+func (r *MockQueueRepository) UpdateEntryServicePoint(ctx context.Context, id string, servicePoint string) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	entry, exists := r.entries[id]
+	if !exists {
+		return fmt.Errorf("queue entry not found")
+	}
+
+	entry.ServicePoint = servicePoint
+	entry.UpdatedAt = time.Now()
+
+	log.Printf("Mock: Updated entry %s service point to %s", id, servicePoint)
 	return nil
 }
 
@@ -141,8 +169,8 @@ func (r *MockQueueRepository) GetNextWaitingEntry(ctx context.Context, roomId st
 
 	for _, entry := range r.entries {
 		if entry.WaitingRoomID == roomId && entry.Status == "WAITING" {
-			if entry.Position < minPosition {
-				minPosition = entry.Position
+			if entry.Position < int64(minPosition) {
+				minPosition = int(entry.Position)
 				nextEntry = entry
 			}
 		}
@@ -192,7 +220,7 @@ func (r *MockQueueRepository) RecalculatePositions(ctx context.Context, roomId s
 
 	// Update positions
 	for i, entry := range waitingEntries {
-		entry.Position = i + 1
+		entry.Position = int64(i + 1)
 		entry.UpdatedAt = time.Now()
 	}
 

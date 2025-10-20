@@ -3,16 +3,17 @@ package types
 import "time"
 
 type Entry struct {
-	ID            string    `bson:"_id,omitempty" json:"id"`
-	WaitingRoomID string    `bson:"waitingRoomId" json:"waitingRoomId"`
-	TicketNumber  string    `bson:"ticketNumber" json:"ticketNumber"`
-	QRToken       string    `bson:"qrToken" json:"qrToken"`
-	Status        string    `bson:"status" json:"status"` // WAITING, CALLED, IN_SERVICE, COMPLETED, SKIPPED, CANCELLED, NO_SHOW
-	Position      int       `bson:"position" json:"position"`
-	ServicePoint  string    `bson:"servicePoint,omitempty" json:"servicePoint,omitempty"` // Which service point (door/window) to go to
-	CreatedAt     time.Time `bson:"createdAt" json:"createdAt"`
-	UpdatedAt     time.Time `bson:"updatedAt" json:"updatedAt"`
-	CardData      CardData  `bson:"cardData,omitempty" json:"cardData,omitempty"`
+	ID                         string    `bson:"_id,omitempty" json:"id"`
+	WaitingRoomID              string    `bson:"waitingRoomId" json:"waitingRoomId"`
+	TicketNumber               string    `bson:"ticketNumber" json:"ticketNumber"`
+	QRToken                    string    `bson:"qrToken" json:"qrToken"`
+	Status                     string    `bson:"status" json:"status"` // WAITING, CALLED, IN_SERVICE, COMPLETED, SKIPPED, CANCELLED, NO_SHOW
+	Position                   int64     `bson:"position" json:"position"`
+	ServicePoint               string    `bson:"servicePoint,omitempty" json:"servicePoint,omitempty"` // Which service point (door/window) to go to
+	CreatedAt                  time.Time `bson:"createdAt" json:"createdAt"`
+	UpdatedAt                  time.Time `bson:"updatedAt" json:"updatedAt"`
+	ApproximateDurationMinutes int64     `bson:"approximateDuration" json:"approximateDuration"`
+	CardData                   CardData  `bson:"cardData,omitempty" json:"cardData,omitempty"`
 }
 
 type CardData struct {

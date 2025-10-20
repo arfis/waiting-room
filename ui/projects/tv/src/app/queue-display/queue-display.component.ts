@@ -3,13 +3,16 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { CardComponent } from 'ui';
 import { QueueWebSocketService, WebSocketQueueEntry } from 'api-client';
+import { CalledTicketComponent } from './components/called-ticket/called-ticket.component';
+import { WaitingTicketComponent } from './components/waiting-ticket/waiting-ticket.component';
+import { CurrentEntryComponent } from './components/current-entry/current-entry.component';
 
 // Using WebSocketQueueEntry from api-client
 
 @Component({
   selector: 'app-queue-display',
   standalone: true,
-  imports: [CommonModule, CardComponent],
+  imports: [CommonModule, CardComponent, CalledTicketComponent, WaitingTicketComponent, CurrentEntryComponent],
   templateUrl: './queue-display.component.html',
   styleUrls: ['./queue-display.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -26,6 +29,7 @@ export class QueueDisplayComponent implements OnInit, OnDestroy {
   // Computed signals using WebSocket service methods
   currentEntry = signal<WebSocketQueueEntry | null>(null);
   waitingEntries = signal<WebSocketQueueEntry[]>([]);
+  calledEntries = signal<WebSocketQueueEntry[]>([]);
 
   constructor() {
     // Update computed signals when queue entries change
@@ -39,7 +43,8 @@ export class QueueDisplayComponent implements OnInit, OnDestroy {
 
   async ngOnInit() {
     // Initialize with HTTP API first, then connect WebSocket
-    await this.queueWebSocket.initialize('triage-1');
+    // Fetch CALLED entries to show which tickets are called and where
+    await this.queueWebSocket.initialize('triage-1', ['CALLED', 'IN_SERVICE', 'WAITING']);
   }
 
   ngOnDestroy() {
@@ -48,9 +53,9 @@ export class QueueDisplayComponent implements OnInit, OnDestroy {
   }
 
   private updateComputedSignals(entries: WebSocketQueueEntry[]) {
-    // Find currently being served (CALLED or IN_SERVICE)
+    // Find currently being served (IN_SERVICE only for current)
     const current = entries.find(entry => 
-      entry.status === 'CALLED' || entry.status === 'IN_SERVICE'
+      entry.status === 'IN_SERVICE'
     );
     this.currentEntry.set(current || null);
 
@@ -59,6 +64,12 @@ export class QueueDisplayComponent implements OnInit, OnDestroy {
       .filter(entry => entry.status === 'WAITING')
       .sort((a, b) => a.position - b.position);
     this.waitingEntries.set(waiting);
+
+    // Get called entries, sorted by position
+    const called = entries
+      .filter(entry => entry.status === 'CALLED')
+      .sort((a, b) => a.position - b.position);
+    this.calledEntries.set(called);
   }
 
   estimatedWaitTime(): number {
@@ -67,17 +78,4 @@ export class QueueDisplayComponent implements OnInit, OnDestroy {
     return waiting.length * 5;
   }
 
-  getServicePointName(servicePointId: string): string {
-    // Map service point IDs to display names
-    const servicePointNames: { [key: string]: string } = {
-      'window-1': 'Window 1',
-      'window-2': 'Window 2',
-      'door-1': 'Door 1',
-      'door-2': 'Door 2',
-      'counter-1': 'Counter 1',
-      'counter-2': 'Counter 2'
-    };
-    
-    return servicePointNames[servicePointId] || servicePointId;
-  }
 }

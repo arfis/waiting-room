@@ -266,8 +266,18 @@ websocket:
   path: "/ws/queue"
 
 rooms:
-  default_room: "triage-1"  # Default room ID - any room can be created dynamically
-  allow_wildcard: true      # Allow any room ID (.* pattern) - set to false for strict mode
+  default_room: "triage-1"  # Default room ID
+  allow_wildcard: false     # Restrict access to configured rooms
+  rooms:
+    - id: "triage-1"
+      name: "Triage Room"
+      service_points:
+        - id: "window-1"
+          name: "Main Triage Desk"
+          description: "Primary service desk"
+        - id: "window-2"
+          name: "Secondary Triage Desk"
+          description: "Overflow service desk"
 
 logging:
   level: "info"
@@ -297,9 +307,9 @@ logging:
 - `default_room`: Default room ID used by the system
 - `allow_wildcard`: Allow any room ID (.* pattern) - set to false for strict mode
 
-**Dynamic Room Management**: The system supports dynamic room creation. When `allow_wildcard: true` (default), any valid room ID can be used in API endpoints without pre-configuration. Rooms are created automatically when the first person joins the queue for that room.
+**Dynamic Room Management**: The system supports dynamic room creation. Set `allow_wildcard: true` to allow any room ID to be used dynamically (useful for prototyping).
 
-**Strict Mode**: Set `allow_wildcard: false` to only allow the default room for enhanced security.
+**Strict Mode**: With `allow_wildcard: false` (default when rooms are defined), only the configured rooms are accepted by the API.
 
 #### Logging Configuration
 - `level`: Log level (debug, info, warn, error)
@@ -316,6 +326,9 @@ CONFIG_PATH=config.prod.yaml go run cmd/api/main.go
 ```
 
 ## API Endpoints
+
+### Configuration
+- `GET /api/config` - Retrieve default room, available rooms, and websocket path
 
 ### Queue Management
 - `GET /api/waiting-rooms/{roomId}/queue` - Get queue entries for any room

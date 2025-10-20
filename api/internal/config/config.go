@@ -10,12 +10,13 @@ import (
 
 // Config represents the application configuration
 type Config struct {
-	Server    ServerConfig    `yaml:"server"`
-	Database  DatabaseConfig  `yaml:"database"`
-	CORS      CORSConfig      `yaml:"cors"`
-	WebSocket WebSocketConfig `yaml:"websocket"`
-	Rooms     RoomsConfig     `yaml:"rooms"`
-	Logging   LoggingConfig   `yaml:"logging"`
+	Server      ServerConfig      `yaml:"server"`
+	Database    DatabaseConfig    `yaml:"database"`
+	CORS        CORSConfig        `yaml:"cors"`
+	WebSocket   WebSocketConfig   `yaml:"websocket"`
+	Rooms       RoomsConfig       `yaml:"rooms"`
+	Logging     LoggingConfig     `yaml:"logging"`
+	ExternalAPI ExternalAPIConfig `yaml:"external_api"`
 }
 
 // ServerConfig contains server-related configuration
@@ -77,6 +78,13 @@ type LoggingConfig struct {
 	Format string `yaml:"format"`
 }
 
+// ExternalAPIConfig contains external API configuration
+type ExternalAPIConfig struct {
+	UserServicesURL string `yaml:"user_services_url"`
+	Timeout         int    `yaml:"timeout_seconds"`
+	RetryAttempts   int    `yaml:"retry_attempts"`
+}
+
 // Load loads configuration from file and environment variables
 func Load(configPath string) (*Config, error) {
 	config := &Config{}
@@ -135,6 +143,26 @@ func overrideFromEnv(config *Config) {
 	if defaultRoom := os.Getenv("DEFAULT_ROOM"); defaultRoom != "" {
 		config.Rooms.DefaultRoom = defaultRoom
 	}
+
+	if allowWildcard := os.Getenv("ALLOW_WILDCARD"); allowWildcard != "" {
+		config.Rooms.AllowWildcard = strings.EqualFold(allowWildcard, "true")
+	}
+
+	if userServicesURL := os.Getenv("EXTERNAL_API_USER_SERVICES_URL"); userServicesURL != "" {
+		config.ExternalAPI.UserServicesURL = userServicesURL
+	}
+
+	if timeout := os.Getenv("EXTERNAL_API_TIMEOUT_SECONDS"); timeout != "" {
+		if timeoutInt, err := fmt.Sscanf(timeout, "%d", &config.ExternalAPI.Timeout); err == nil && timeoutInt > 0 {
+			// timeout is already set by the scan
+		}
+	}
+
+	if retryAttempts := os.Getenv("EXTERNAL_API_RETRY_ATTEMPTS"); retryAttempts != "" {
+		if retryInt, err := fmt.Sscanf(retryAttempts, "%d", &config.ExternalAPI.RetryAttempts); err == nil && retryInt > 0 {
+			// retryAttempts is already set by the scan
+		}
+	}
 }
 
 // setDefaults sets default values for missing configuration
@@ -177,11 +205,15 @@ func setDefaults(config *Config) {
 	}
 
 	if config.Rooms.DefaultRoom == "" {
-		config.Rooms.DefaultRoom = "triage-1"
+		if len(config.Rooms.Rooms) > 0 {
+			config.Rooms.DefaultRoom = config.Rooms.Rooms[0].ID
+		} else {
+			config.Rooms.DefaultRoom = "triage-1"
+		}
 	}
 
-	// Default to allowing wildcard rooms if not specified
-	if !config.Rooms.AllowWildcard {
+	// Default to allowing wildcard rooms only when no rooms are explicitly configured.
+	if len(config.Rooms.Rooms) == 0 && !config.Rooms.AllowWildcard {
 		config.Rooms.AllowWildcard = true
 	}
 
@@ -191,6 +223,18 @@ func setDefaults(config *Config) {
 
 	if config.Logging.Format == "" {
 		config.Logging.Format = "text"
+	}
+
+	if config.ExternalAPI.UserServicesURL == "" {
+		config.ExternalAPI.UserServicesURL = "http://external-api.example.com/user-services"
+	}
+
+	if config.ExternalAPI.Timeout == 0 {
+		config.ExternalAPI.Timeout = 10
+	}
+
+	if config.ExternalAPI.RetryAttempts == 0 {
+		config.ExternalAPI.RetryAttempts = 3
 	}
 }
 
@@ -245,15 +289,37 @@ func (c *Config) IsValidRoom(roomID string) bool {
 		return true
 	}
 
-	// Otherwise, only allow the default room (for strict mode)
-	return roomID == c.Rooms.DefaultRoom
+	if roomID == c.Rooms.DefaultRoom {
+		return true
+	}
+
+	for _, room := range c.Rooms.Rooms {
+		if room.ID == roomID {
+			return true
+		}
+	}
+
+	return false
 }
 
 // GetServicePointsForRoom returns the service points configured for a specific room
 func (c *Config) GetServicePointsForRoom(roomID string) []ServicePointConfig {
 	for _, room := range c.Rooms.Rooms {
 		if room.ID == roomID {
-			return room.ServicePoints
+			if len(room.ServicePoints) > 0 {
+				return room.ServicePoints
+			}
+			break
+		}
+	}
+
+	// Fallback to default room if explicit room not found
+	for _, room := range c.Rooms.Rooms {
+		if room.ID == c.Rooms.DefaultRoom {
+			if len(room.ServicePoints) > 0 {
+				return room.ServicePoints
+			}
+			break
 		}
 	}
 
@@ -271,4 +337,19 @@ func (c *Config) GetDefaultServicePoint(roomID string) string {
 		return servicePoints[0].ID
 	}
 	return "window-1" // fallback
+}
+
+// GetExternalAPIUserServicesURL returns the external API URL for user services
+func (c *Config) GetExternalAPIUserServicesURL() string {
+	return c.ExternalAPI.UserServicesURL
+}
+
+// GetExternalAPITimeout returns the external API timeout in seconds
+func (c *Config) GetExternalAPITimeout() int {
+	return c.ExternalAPI.Timeout
+}
+
+// GetExternalAPIRetryAttempts returns the number of retry attempts for external API calls
+func (c *Config) GetExternalAPIRetryAttempts() int {
+	return c.ExternalAPI.RetryAttempts
 }

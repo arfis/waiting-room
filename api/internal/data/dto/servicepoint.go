@@ -4,25 +4,25 @@ package dto
 import "time"
 
 type ManagerLoginRequest struct {
-	RoomId         string `json:"roomId" validate:"required"`
-	ServicePointId string `json:"servicePointId" validate:"required"`
+	RoomID         string `json:"roomID" validate:"required"`
+	ServicePointID string `json:"servicePointID" validate:"required"`
 }
 
-func (managerLoginRequest ManagerLoginRequest) GetRoomId() string {
-	return managerLoginRequest.RoomId
+func (managerLoginRequest ManagerLoginRequest) GetRoomID() string {
+	return managerLoginRequest.RoomID
 }
 
-func (managerLoginRequest ManagerLoginRequest) GetServicePointId() string {
-	return managerLoginRequest.ServicePointId
+func (managerLoginRequest ManagerLoginRequest) GetServicePointID() string {
+	return managerLoginRequest.ServicePointID
 }
 
 type ManagerStatus struct {
 	IsAvailable    bool      `json:"isAvailable"`
 	LastSeen       time.Time `json:"lastSeen" validate:"required"`
-	ManagerId      string    `json:"managerId" validate:"required"`
+	ManagerID      string    `json:"managerID" validate:"required"`
 	ManagerName    string    `json:"managerName" validate:"required"`
-	RoomId         string    `json:"roomId" validate:"required"`
-	ServicePointId string    `json:"servicePointId" validate:"required"`
+	RoomID         string    `json:"roomID" validate:"required"`
+	ServicePointID string    `json:"servicePointID" validate:"required"`
 }
 
 func (managerStatus ManagerStatus) GetIsAvailable() bool {
@@ -33,18 +33,18 @@ func (managerStatus ManagerStatus) GetLastSeen() time.Time {
 	return managerStatus.LastSeen
 }
 
-func (managerStatus ManagerStatus) GetManagerId() string {
-	return managerStatus.ManagerId
+func (managerStatus ManagerStatus) GetManagerID() string {
+	return managerStatus.ManagerID
 }
 
 func (managerStatus ManagerStatus) GetManagerName() string {
 	return managerStatus.ManagerName
 }
 
-func (managerStatus ManagerStatus) GetRoomId() string {
-	return managerStatus.RoomId
+func (managerStatus ManagerStatus) GetRoomID() string {
+	return managerStatus.RoomID
 }
 
-func (managerStatus ManagerStatus) GetServicePointId() string {
-	return managerStatus.ServicePointId
+func (managerStatus ManagerStatus) GetServicePointID() string {
+	return managerStatus.ServicePointID
 }

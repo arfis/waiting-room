@@ -19,9 +19,11 @@ import (
 	queueService "github.com/arfis/waiting-room/internal/queue"
 	"github.com/arfis/waiting-room/internal/repository"
 	"github.com/arfis/waiting-room/internal/rest"
+	configHandler "github.com/arfis/waiting-room/internal/rest/handler/configuration"
 	kioskHandler "github.com/arfis/waiting-room/internal/rest/handler/kiosk"
 	queueHandler "github.com/arfis/waiting-room/internal/rest/handler/queue"
 	servicepointHandler "github.com/arfis/waiting-room/internal/rest/handler/servicepoint"
+	configurationService "github.com/arfis/waiting-room/internal/service/configuration"
 	kioskService "github.com/arfis/waiting-room/internal/service/kiosk"
 	queueServiceGenerated "github.com/arfis/waiting-room/internal/service/queue"
 	servicepointService "github.com/arfis/waiting-room/internal/service/servicepoint"
@@ -64,8 +66,8 @@ func DIContainer(cfg *config.Config) *dig.Container {
 		}},
 
 		// Core services
-		{Constructor: func(repo repository.QueueRepository, cfg *config.Config, servicePointSvc *servicepointService.Service) *queueService.Service {
-			return queueService.NewService(repo, cfg, servicePointSvc)
+		{Constructor: func(repo repository.QueueRepository, cfg *config.Config, servicePointSvc *servicepointService.Service) *queueService.WaitingQueue {
+			return queueService.NewWaitingQueue(repo, cfg, servicePointSvc)
 		}},
 		{Constructor: func(cfg *config.Config) *servicepointService.Service {
 			return servicepointService.NewService(cfg)
@@ -78,14 +80,16 @@ func DIContainer(cfg *config.Config) *dig.Container {
 		{Constructor: ngErrors.NewResponseErrorHandler},
 
 		// Generated services (will be set up with broadcast function later)
-		{Constructor: func(queueService *queueService.Service) *kioskService.Service {
-			return kioskService.New(queueService, nil)
+		{Constructor: func(queueService *queueService.WaitingQueue, config *config.Config) *kioskService.Service {
+			return kioskService.New(queueService, nil, config)
 		}},
-		{Constructor: func(queueService *queueService.Service) *queueServiceGenerated.Service {
+		{Constructor: func(queueService *queueService.WaitingQueue) *queueServiceGenerated.Service {
 			return queueServiceGenerated.New(queueService, nil)
 		}},
+		{Constructor: configurationService.New},
 
 		// Generated handlers
+		{Constructor: configHandler.New},
 		{Constructor: kioskHandler.New},
 		{Constructor: queueHandler.New},
 		{Constructor: servicepointHandler.New},
@@ -128,9 +132,6 @@ func main() {
 	}
 
 	log.Printf("Configuration loaded from: %s", configPath)
-	log.Printf("Server will start on: %s", cfg.GetAddress())
-	log.Printf("MongoDB URI: %s", cfg.GetMongoURI())
-	log.Printf("WebSocket enabled: %v", cfg.WebSocket.Enabled)
 
 	diContainer := DIContainer(cfg)
 

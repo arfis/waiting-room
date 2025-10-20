@@ -4,36 +4,35 @@ package dto
 import "github.com/arfis/waiting-room/internal/data/dto/queueentrystatus"
 
 type MarkInRoomRequest struct {
-	EntryId string `json:"entryId" validate:"required"`
+	EntryID string `json:"entryID" validate:"required"`
 }
 
-func (markInRoomRequest MarkInRoomRequest) GetEntryId() string {
-	return markInRoomRequest.EntryId
+func (markInRoomRequest MarkInRoomRequest) GetEntryID() string {
+	return markInRoomRequest.EntryID
 }
 
 type PublicEntry struct {
 	CanCancel    bool                              `json:"canCancel"`
-	EntryId      string                            `json:"entryId" validate:"required"`
-	EtaMinutes   int                               `json:"etaMinutes"`
-	Position     int                               `json:"position"`
+	EntryID      string                            `json:"entryID" validate:"required"`
+	EtaMinutes   int64                             `json:"etaMinutes"`
+	Position     int64                             `json:"position"`
 	Status       queueentrystatus.QueueEntryStatus `json:"status" validate:"required"`
 	TicketNumber string                            `json:"ticketNumber" validate:"required"`
-	ServicePoint *string                           `json:"servicePoint,omitempty"`
 }
 
 func (publicEntry PublicEntry) GetCanCancel() bool {
 	return publicEntry.CanCancel
 }
 
-func (publicEntry PublicEntry) GetEntryId() string {
-	return publicEntry.EntryId
+func (publicEntry PublicEntry) GetEntryID() string {
+	return publicEntry.EntryID
 }
 
-func (publicEntry PublicEntry) GetEtaMinutes() int {
+func (publicEntry PublicEntry) GetEtaMinutes() int64 {
 	return publicEntry.EtaMinutes
 }
 
-func (publicEntry PublicEntry) GetPosition() int {
+func (publicEntry PublicEntry) GetPosition() int64 {
 	return publicEntry.Position
 }
 
@@ -45,28 +44,29 @@ func (publicEntry PublicEntry) GetTicketNumber() string {
 	return publicEntry.TicketNumber
 }
 
-func (publicEntry PublicEntry) GetServicePoint() string {
-	if publicEntry.ServicePoint != nil {
-		return *publicEntry.ServicePoint
-	}
-	return ""
-}
-
 type QueueEntry struct {
-	Id            string                            `json:"id" validate:"required"`
-	Position      int                               `json:"position"`
+	ID            string                            `json:"ID" validate:"required"`
+	Position      int64                             `json:"position"`
+	ServicePoint  *string                           `json:"servicePoint,omitempty"`
 	Status        queueentrystatus.QueueEntryStatus `json:"status" validate:"required"`
 	TicketNumber  string                            `json:"ticketNumber" validate:"required"`
-	WaitingRoomId string                            `json:"waitingRoomId" validate:"required"`
-	ServicePoint  *string                           `json:"servicePoint,omitempty"`
+	WaitingRoomID string                            `json:"waitingRoomID" validate:"required"`
 }
 
-func (queueEntry QueueEntry) GetId() string {
-	return queueEntry.Id
+func (queueEntry QueueEntry) GetID() string {
+	return queueEntry.ID
 }
 
-func (queueEntry QueueEntry) GetPosition() int {
+func (queueEntry QueueEntry) GetPosition() int64 {
 	return queueEntry.Position
+}
+
+func (queueEntry QueueEntry) GetServicePoint() string {
+	var v string
+	if queueEntry.ServicePoint != nil {
+		return *queueEntry.ServicePoint
+	}
+	return v
 }
 
 func (queueEntry QueueEntry) GetStatus() queueentrystatus.QueueEntryStatus {
@@ -77,21 +77,18 @@ func (queueEntry QueueEntry) GetTicketNumber() string {
 	return queueEntry.TicketNumber
 }
 
-func (queueEntry QueueEntry) GetWaitingRoomId() string {
-	return queueEntry.WaitingRoomId
-}
-
-func (queueEntry QueueEntry) GetServicePoint() string {
-	if queueEntry.ServicePoint != nil {
-		return *queueEntry.ServicePoint
-	}
-	return ""
+func (queueEntry QueueEntry) GetWaitingRoomID() string {
+	return queueEntry.WaitingRoomID
 }
 
 type ServicePoint struct {
+	ID          string  `json:"ID" validate:"required"`
 	Description *string `json:"description,omitempty"`
-	Id          string  `json:"id" validate:"required"`
 	Name        string  `json:"name" validate:"required"`
+}
+
+func (servicePoint ServicePoint) GetID() string {
+	return servicePoint.ID
 }
 
 func (servicePoint ServicePoint) GetDescription() string {
@@ -100,10 +97,6 @@ func (servicePoint ServicePoint) GetDescription() string {
 		return *servicePoint.Description
 	}
 	return v
-}
-
-func (servicePoint ServicePoint) GetId() string {
-	return servicePoint.Id
 }
 
 func (servicePoint ServicePoint) GetName() string {

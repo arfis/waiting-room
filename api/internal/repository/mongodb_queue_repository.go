@@ -127,8 +127,11 @@ func (r *MongoDBQueueRepository) CreateEntry(ctx context.Context, entry *types.E
 }
 
 // GetQueueEntries retrieves all queue entries for a room
-func (r *MongoDBQueueRepository) GetQueueEntries(ctx context.Context, roomId string) ([]*types.Entry, error) {
+func (r *MongoDBQueueRepository) GetQueueEntries(ctx context.Context, roomId string, states []string) ([]*types.Entry, error) {
 	filter := bson.M{"waitingRoomId": roomId}
+	if len(states) > 0 {
+		filter["status"] = bson.M{"$in": states}
+	}
 	opts := options.Find().SetSort(bson.D{{Key: "position", Value: 1}})
 
 	cursor, err := r.collection.Find(ctx, filter, opts)
@@ -242,6 +245,35 @@ func (r *MongoDBQueueRepository) UpdateEntryPosition(ctx context.Context, id str
 	return nil
 }
 
+// UpdateEntryServicePoint updates the service point of a queue entry
+func (r *MongoDBQueueRepository) UpdateEntryServicePoint(ctx context.Context, id string, servicePoint string) error {
+	// Try to parse as ObjectID first, if that fails, use as string
+	var filter bson.M
+	if objectID, err := primitive.ObjectIDFromHex(id); err == nil {
+		filter = bson.M{"_id": objectID}
+	} else {
+		// Use string ID (for UUIDs)
+		filter = bson.M{"_id": id}
+	}
+	update := bson.M{
+		"$set": bson.M{
+			"servicePoint": servicePoint,
+			"updatedAt":    time.Now(),
+		},
+	}
+
+	result, err := r.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return fmt.Errorf("failed to update entry service point: %w", err)
+	}
+
+	if result.MatchedCount == 0 {
+		return fmt.Errorf("queue entry not found")
+	}
+
+	return nil
+}
+
 // GetNextWaitingEntry gets the next waiting entry for a room
 func (r *MongoDBQueueRepository) GetNextWaitingEntry(ctx context.Context, roomId string) (*types.Entry, error) {
 	log.Printf("MongoDB: GetNextWaitingEntry for room %s", roomId)
@@ -321,7 +353,7 @@ func (r *MongoDBQueueRepository) RecalculatePositions(ctx context.Context, roomI
 	// Update positions
 	for i, entry := range entries {
 		newPosition := i + 1
-		if entry.Position != newPosition {
+		if entry.Position != int64(newPosition) {
 			if err := r.UpdateEntryPosition(ctx, entry.ID, newPosition); err != nil {
 				return fmt.Errorf("failed to update position for entry %s: %w", entry.ID, err)
 			}

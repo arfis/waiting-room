@@ -35,10 +35,10 @@ func (s *Service) SetManagerAvailable(ctx context.Context, managerID, roomID, se
 	managerName := s.getManagerName(roomID, servicePointID, managerID)
 
 	status := &dto.ManagerStatus{
-		ManagerId:      managerID,
+		ManagerID:      managerID,
 		ManagerName:    managerName,
-		ServicePointId: servicePointID,
-		RoomId:         roomID,
+		ServicePointID: servicePointID,
+		RoomID:         roomID,
 		IsAvailable:    true,
 		LastSeen:       time.Now(),
 	}
@@ -118,7 +118,7 @@ func (s *Service) GetManagerStatusForRoom(ctx context.Context, roomID string) ([
 
 	var statuses []dto.ManagerStatus
 	for _, status := range s.managerStatus {
-		if status.RoomId == roomID {
+		if status.RoomID == roomID {
 			statuses = append(statuses, *status)
 		}
 	}
@@ -170,7 +170,7 @@ func (s *Service) StartCleanupRoutine(ctx context.Context) {
 
 // ManagerLogin handles manager login to a service point
 func (s *Service) ManagerLogin(ctx context.Context, managerID string, req *dto.ManagerLoginRequest) (*dto.ManagerStatus, error) {
-	err := s.SetManagerAvailable(ctx, managerID, req.RoomId, req.ServicePointId)
+	err := s.SetManagerAvailable(ctx, managerID, req.RoomID, req.ServicePointID)
 	if err != nil {
 		return nil, err
 	}
@@ -192,10 +192,10 @@ func (s *Service) ManagerLogout(ctx context.Context, managerID string) (*dto.Man
 	if existingStatus, exists := s.managerStatus[managerID]; exists {
 		// Create a copy of the status before marking as unavailable
 		status = &dto.ManagerStatus{
-			ManagerId:      existingStatus.ManagerId,
+			ManagerID:      existingStatus.ManagerID,
 			ManagerName:    existingStatus.ManagerName,
-			ServicePointId: existingStatus.ServicePointId,
-			RoomId:         existingStatus.RoomId,
+			ServicePointID: existingStatus.ServicePointID,
+			RoomID:         existingStatus.RoomID,
 			IsAvailable:    false,
 			LastSeen:       time.Now(),
 		}

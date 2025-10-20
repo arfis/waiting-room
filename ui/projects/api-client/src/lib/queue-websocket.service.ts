@@ -33,18 +33,32 @@ export class QueueWebSocketService {
   isConnected = signal<boolean>(false);
   error = signal<string | null>(null);
 
-  async initialize(roomId: string): Promise<void> {
+  async initialize(roomId: string, states?: QueueEntryStatus[]): Promise<void> {
     // First, load initial data via HTTP API
-    await this.loadInitialData(roomId);
+    await this.loadInitialData(roomId, states);
     
     // Then connect WebSocket for real-time updates
     this.connect(roomId);
   }
 
-  private async loadInitialData(roomId: string): Promise<void> {
+  private async loadInitialData(roomId: string, states?: QueueEntryStatus[]): Promise<void> {
     try {
       console.log('Loading initial queue data via HTTP API...');
-      const entries = await this.http.get<WebSocketQueueEntry[]>(`http://localhost:8080/api/waiting-rooms/${roomId}/queue`).toPromise();
+      
+      let url = `http://localhost:8080/api/waiting-rooms/${roomId}/queue`;
+      
+      if (states && states.length > 0) {
+        // Build query string with multiple state parameters
+        const params = new URLSearchParams();
+        states.forEach(state => params.append('state', state));
+        url += `?${params.toString()}`;
+        
+        console.log(`Loading entries for states [${states.join(', ')}]`);
+      } else {
+        console.log('Loading all queue entries');
+      }
+      
+      const entries = await this.http.get<WebSocketQueueEntry[]>(url).toPromise();
       if (entries) {
         console.log('Initial queue data loaded:', entries);
         this.queueEntries.set(entries);

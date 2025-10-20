@@ -3,6 +3,7 @@ package register
 
 import (
 	"github.com/arfis/waiting-room/internal/middleware"
+	"github.com/arfis/waiting-room/internal/rest/handler/configuration"
 	"github.com/arfis/waiting-room/internal/rest/handler/kiosk"
 	"github.com/arfis/waiting-room/internal/rest/handler/queue"
 	"github.com/arfis/waiting-room/internal/rest/handler/servicepoint"
@@ -12,6 +13,7 @@ import (
 
 func Generated(r chi.Router, diContainer *dig.Container) {
 	err := diContainer.Invoke(func(
+		configurationHandler *configuration.Handler,
 		servicepointHandler *servicepoint.Handler,
 		queueHandler *queue.Handler,
 		kioskHandler *kiosk.Handler,
@@ -20,18 +22,19 @@ func Generated(r chi.Router, diContainer *dig.Container) {
 
 		// Protected routes (require JWT)
 		r.With(authorizationMiddleware.Middleware()).Group(func(protected chi.Router) {
+			protected.Get("/config", configurationHandler.GetConfiguration)
 			protected.Get("/managers/status", servicepointHandler.GetManagerStatus)
 			protected.Post("/managers/{managerId}/login", servicepointHandler.ManagerLogin)
 			protected.Post("/managers/{managerId}/logout", servicepointHandler.ManagerLogout)
 			protected.Get("/queue-entries/token/{qrToken}", queueHandler.GetQueueEntryByToken)
+			protected.Get("/user-services", kioskHandler.GetUserServices)
 			protected.Post("/waiting-rooms/{roomId}/finish", queueHandler.FinishCurrent)
 			protected.Get("/waiting-rooms/{roomId}/managers/status", servicepointHandler.GetManagerStatusForRoom)
-			protected.Post("/waiting-rooms/{roomId}/next", queueHandler.CallNext)
 			protected.Get("/waiting-rooms/{roomId}/queue", queueHandler.GetQueueEntries)
 			protected.Get("/waiting-rooms/{roomId}/service-points", queueHandler.GetServicePoints)
-			protected.Post("/waiting-rooms/{roomId}/service-points/{servicePointId}/call-next", queueHandler.CallNextForServicePoint)
 			protected.Post("/waiting-rooms/{roomId}/service-points/{servicePointId}/finish-current", queueHandler.FinishCurrentForServicePoint)
 			protected.Post("/waiting-rooms/{roomId}/service-points/{servicePointId}/mark-in-room", queueHandler.MarkInRoomForServicePoint)
+			protected.Post("/waiting-rooms/{roomId}/service-points/{servicePointId}/next", queueHandler.CallNext)
 			protected.Post("/waiting-rooms/{roomId}/swipe", kioskHandler.SwipeCard)
 
 		})

@@ -2,6 +2,7 @@ import { Injectable, signal, computed, inject } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { WebSocketService, CardReaderPayload } from '../../websocket.service';
 import { KioskApiService, CardData, TicketResponse } from './kiosk-api.service';
+import { UserServicesService, UserService } from './user-services.service';
 import * as QRCode from 'qrcode';
 
 export interface TicketData extends TicketResponse {
@@ -26,6 +27,7 @@ export interface DataField {
 export class CardReaderStateService {
   private readonly wsService = inject(WebSocketService);
   private readonly kioskApiService = inject(KioskApiService);
+  private readonly userServicesService = inject(UserServicesService);
   private wsSubscription?: Subscription;
   
   // State signals
@@ -37,6 +39,20 @@ export class CardReaderStateService {
   readonly wsConnectionStatus = signal<string>('disconnected');
   readonly cardReaderState = signal<string>('waiting');
   readonly cardReaderMessage = signal<string>('Please insert your ID card');
+  
+  // Service selection state
+  readonly userServices = signal<UserService[]>([]);
+  readonly isLoadingServices = signal<boolean>(false);
+  readonly selectedService = signal<UserService | null>(null);
+  readonly showServiceSelection = signal<boolean>(false);
+  
+  // Manual ID entry state
+  readonly isManualIdSubmitting = signal<boolean>(false);
+  
+  // Ticket display state
+  readonly ticketCountdown = signal<number>(30);
+  readonly isTicketCountdownActive = signal<boolean>(false);
+  private countdownInterval?: number;
   
   // Debouncing for state changes
   private lastStateChange = 0;
@@ -202,14 +218,94 @@ export class CardReaderStateService {
       this.cardData.set(cardData);
       this.error.set(null);
       
-      // Generate ticket (only once per unique card data)
-      this.generateTicket(cardData);
+      // Load user services instead of directly generating ticket
+      this.loadUserServices(cardData);
     } else {
       console.log('No card data in payload');
     }
   }
 
-  private generateTicket(cardData: CardData): void {
+  private loadUserServices(cardData: CardData): void {
+    console.log('Loading user services for card data:', cardData);
+    
+    this.isLoadingServices.set(true);
+    this.showServiceSelection.set(true);
+    this.error.set(null);
+    
+    // Use ID number as identifier for external API
+    const identifier = cardData.id_number;
+    
+    this.userServicesService.getUserServices(identifier).subscribe({
+      next: (services) => {
+        console.log('User services loaded:', services);
+        this.userServices.set(services);
+        this.isLoadingServices.set(false);
+        this.isManualIdSubmitting.set(false); // Clear manual ID submission loading state
+        
+        if (!services || services.length === 0) {
+          this.error.set('No services available for your account. Please contact support.');
+        }
+      },
+      error: (error) => {
+        console.error('Failed to load user services:', error);
+        this.error.set('Failed to load available services. Please try again.');
+        this.isLoadingServices.set(false);
+        this.isManualIdSubmitting.set(false); // Clear manual ID submission loading state
+      }
+    });
+  }
+
+  selectService(service: UserService): void {
+    console.log('Service selected:', service);
+    this.selectedService.set(service);
+  }
+
+  confirmServiceSelection(): void {
+    const selectedService = this.selectedService();
+    const cardData = this.cardData();
+    
+    if (selectedService && cardData) {
+      console.log('Confirming service selection and generating ticket');
+      this.showServiceSelection.set(false);
+      this.generateTicket(cardData, selectedService.id);
+    }
+  }
+
+  retryServiceLoading(): void {
+    const cardData = this.cardData();
+    if (cardData) {
+      this.loadUserServices(cardData);
+    }
+  }
+
+
+  submitManualId(idNumber: string): void {
+    console.log('Manual ID submitted:', idNumber);
+    
+    this.isManualIdSubmitting.set(true);
+    this.error.set(null);
+    
+    // Create mock card data from manual ID entry
+    const mockCardData: CardData = {
+      id_number: idNumber,
+      first_name: '', // Will be filled by external API if available
+      last_name: '',
+      date_of_birth: '',
+      gender: '',
+      nationality: '',
+      address: '',
+      issued_date: '',
+      expiry_date: '',
+      source: 'manual-entry',
+      read_time: new Date().toISOString()
+    };
+    
+    // Set the card data and load user services
+    this.cardData.set(mockCardData);
+    this.loadUserServices(mockCardData);
+  }
+
+  private generateTicket(cardData: CardData, serviceId?: string): void {
     console.log('Generating ticket for card data:', cardData);
     
     // Create a mock ID card raw data for the API
@@ -219,9 +315,13 @@ export class CardReaderStateService {
       last_name: cardData.last_name
     });
 
-    console.log('Calling API with idCardRaw:', idCardRaw);
+    // Get service duration from selected service
+    const selectedService = this.selectedService();
+    const serviceDuration = selectedService?.duration;
 
-    this.kioskApiService.generateTicket('triage-1', idCardRaw).subscribe({
+    console.log('Calling API with idCardRaw:', idCardRaw, 'serviceId:', serviceId, 'serviceDuration:', serviceDuration);
+
+    this.kioskApiService.generateTicket('triage-1', idCardRaw, serviceId, serviceDuration).subscribe({
       next: (response) => {
         console.log('Ticket generated successfully:', response);
         this.generateQRCode(response.qrUrl).then(qrDataUrl => {
@@ -230,6 +330,8 @@ export class CardReaderStateService {
             ...response,
             qrCodeDataUrl: qrDataUrl
           });
+          // Start countdown timer after ticket is generated
+          this.startTicketCountdown();
         }).catch(qrError => {
           console.error('Failed to generate QR code:', qrError);
           this.error.set('Failed to generate QR code');
@@ -257,5 +359,45 @@ export class CardReaderStateService {
       console.error('Failed to generate QR code:', error);
       return '';
     }
+  }
+
+  startTicketCountdown(): void {
+    this.ticketCountdown.set(30);
+    this.isTicketCountdownActive.set(true);
+    
+    this.countdownInterval = window.setInterval(() => {
+      const current = this.ticketCountdown();
+      if (current <= 1) {
+        this.resetToMainInterface();
+      } else {
+        this.ticketCountdown.set(current - 1);
+      }
+    }, 1000);
+  }
+
+  stopTicketCountdown(): void {
+    if (this.countdownInterval) {
+      clearInterval(this.countdownInterval);
+      this.countdownInterval = undefined;
+    }
+    this.isTicketCountdownActive.set(false);
+  }
+
+  resetToMainInterface(): void {
+    console.log('Resetting to main interface');
+    this.stopTicketCountdown();
+    this.ticketData.set(null);
+    this.cardData.set(null);
+    this.selectedService.set(null);
+    this.showServiceSelection.set(false);
+    this.userServices.set([]);
+    this.error.set(null);
+    this.isManualIdSubmitting.set(false); // Clear manual ID submission loading state
+    this.cardReaderState.set('waiting');
+    this.cardReaderMessage.set('Please insert your ID card');
+  }
+
+  returnToMainInterface(): void {
+    this.resetToMainInterface();
   }
 }
