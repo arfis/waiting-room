@@ -1,0 +1,79 @@
+openapi: 3.0.0
+info:
+  title: nghis-adapter
+  version: 0.1.0
+  description: nghis-adapter
+  x-artifact-name: nghis-adapter
+x-configuration:
+  module: github.com/arfis/waiting-room/nghis-adapter
+paths:
+  /patient/{nationalID}/appointments:
+    parameters:
+      - name: nationalID
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Patient national ID
+    get:
+      x-generated:
+        package: appointment
+      tags:
+        - appointment
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AppointmentResp"
+          description: OK
+      operationId: GetAppointmentsForPatient
+      summary: GetAppointmentsForPatient
+components:
+  schemas:
+    AppointmentResp:
+      x-group: appointment
+      title: AppointmentResp
+      type: object
+      required:
+        - requestedTime
+        - duration
+        - serviceName
+      properties:
+        requestedTime:
+          type: string
+          format: date-time
+        duration:
+          type: integer
+          format: int64
+        serviceName:
+          type: string
+    ApplicationError:
+      x-group: errors
+      title: ApplicationError
+      type: object
+      description: The same type for all errors returned from API.
+      required:
+        - text
+        - code
+      properties:
+        text:
+          type: string
+        code:
+          type: string
+          enum:
+            - BUSINESS_ERROR
+            - VALIDATION_ERROR
+            - MISSING_REQUIRED_FIELD_ERROR
+            - OBJECT_VERSION_MISMATCH_ERROR
+            - NOT_FOUND_ERROR
+            - SERVICE_CALL_ERROR
+            - FORBIDDEN_ERROR
+            - INTERNAL_SERVER_ERROR
+            - INTERNAL_SERVER_ERROR
+            - MISSING_TENANT
+            - AUTH_HEADER
+            - UNPROCESSABLE_ENTITY_FOREIGN_KEY
+            - UNPROCESSABLE_ENTITY_UNIQUE

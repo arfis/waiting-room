@@ -1,0 +1,77 @@
+version: "2"
+run:
+  concurrency: 4
+  tests: false
+linters:
+  default: none
+  enable:
+    - dupl
+    - errcheck
+    - errorlint
+    - goconst
+    - gocritic
+    - gocyclo
+    - gosec
+    - govet
+    - ineffassign
+    - lll
+    - makezero
+    - paralleltest
+    - predeclared
+    - revive
+    - staticcheck
+    - thelper
+    - unconvert
+    - unused
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    errorlint:
+      errorf: true
+    gocyclo:
+      min-complexity: 15
+    gosec:
+      excludes:
+        - G601
+    govet:
+      enable:
+        - shadow
+    lll:
+      line-length: 200
+    nakedret:
+      max-func-lines: 60
+    prealloc:
+      simple: true
+      range-loops: true
+      for-loops: false
+    unparam:
+      check-exported: true
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - govet
+        text: 'shadow: declaration of "err" shadows declaration at'
+      - linters:
+          - revive
+        path: internal/data/dto
+        text: 'var-naming:'
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
