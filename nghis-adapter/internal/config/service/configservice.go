@@ -19,17 +19,17 @@ type Configuration struct {
 	HTTPClientTimeout time.Duration `env:"HTTP_CLIENT_TIMEOUT" env-default:"2s"`
 
 	// clinical client
-	ClinicalClientHost    string `env:"CLINICAL_CLIENT_HOST" env-default:"localhost"`
-	ClinicalClientScheme  string `env:"CLINICAL_CLIENT_SCHEME" env-default:"http"`
+	ClinicalClientHost    string `env:"CLINICAL_CLIENT_HOST" env-default:"api.dev.nghis.prosoftke.sk"`
+	ClinicalClientScheme  string `env:"CLINICAL_CLIENT_SCHEME" env-default:"https"`
 	ClinicalClientContext string `env:"CLINICAL_CLIENT_CONTEXT" env-default:"clinical"`
 
 	// person client
-	PersonClientHost    string `env:"PERSON_CLIENT_HOST" env-default:"localhost"`
-	PersonClientScheme  string `env:"PERSON_CLIENT_SCHEME" env-default:"http"`
+	PersonClientHost    string `env:"PERSON_CLIENT_HOST" env-default:"api.dev.nghis.prosoftke.sk"`
+	PersonClientScheme  string `env:"PERSON_CLIENT_SCHEME" env-default:"https"`
 	PersonClientContext string `env:"PERSON_CLIENT_CONTEXT" env-default:"person"`
 
 	// server
-	ServerPort    string        `env:"APP_PORT" env-default:"8080"`
+	ServerPort    string        `env:"APP_PORT" env-default:"8060"`
 	ServerContext string        `env:"APP_CONTEXT" env-default:"/nghis-adapter"`
 	HTTPTimeout   time.Duration `env:"HTTP_TIMEOUT" env-default:"60s"`
 }

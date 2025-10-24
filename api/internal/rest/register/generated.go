@@ -3,6 +3,7 @@ package register
 
 import (
 	"github.com/arfis/waiting-room/internal/middleware"
+	"github.com/arfis/waiting-room/internal/rest/handler/admin"
 	"github.com/arfis/waiting-room/internal/rest/handler/configuration"
 	"github.com/arfis/waiting-room/internal/rest/handler/kiosk"
 	"github.com/arfis/waiting-room/internal/rest/handler/queue"
@@ -13,6 +14,7 @@ import (
 
 func Generated(r chi.Router, diContainer *dig.Container) {
 	err := diContainer.Invoke(func(
+		adminHandler *admin.Handler,
 		configurationHandler *configuration.Handler,
 		servicepointHandler *servicepoint.Handler,
 		queueHandler *queue.Handler,
@@ -22,6 +24,14 @@ func Generated(r chi.Router, diContainer *dig.Container) {
 
 		// Protected routes (require JWT)
 		r.With(authorizationMiddleware.Middleware()).Group(func(protected chi.Router) {
+			protected.Get("/admin/card-readers", adminHandler.GetCardReaders)
+			protected.Post("/admin/card-readers/{id}/restart", adminHandler.RestartCardReader)
+			protected.Get("/admin/configuration", adminHandler.GetSystemConfiguration)
+			protected.Put("/admin/configuration", adminHandler.UpdateSystemConfiguration)
+			protected.Get("/admin/configuration/external-api", adminHandler.GetExternalAPIConfiguration)
+			protected.Put("/admin/configuration/external-api", adminHandler.UpdateExternalAPIConfiguration)
+			protected.Get("/admin/configuration/rooms", adminHandler.GetRoomsConfiguration)
+			protected.Put("/admin/configuration/rooms", adminHandler.UpdateRoomsConfiguration)
 			protected.Get("/config", configurationHandler.GetConfiguration)
 			protected.Get("/managers/status", servicepointHandler.GetManagerStatus)
 			protected.Post("/managers/{managerId}/login", servicepointHandler.ManagerLogin)

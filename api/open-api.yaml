@@ -235,14 +235,11 @@ paths:
         - in: query
           name: state
           required: false
-          schema: 
-            oneOf:
-              - type: string
-                enum: [WAITING, CALLED, IN_SERVICE, COMPLETED, SKIPPED, CANCELLED, NO_SHOW]
-              - type: array
-                items:
-                  type: string
-                  enum: [WAITING, CALLED, IN_SERVICE, COMPLETED, SKIPPED, CANCELLED, NO_SHOW]
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [WAITING, CALLED, IN_SERVICE, COMPLETED, SKIPPED, CANCELLED, NO_SHOW]
           description: Filter entries by status. Can be a single state or an array of states
           style: form
           explode: true
@@ -488,6 +485,178 @@ paths:
                 $ref: '#/components/schemas/QueueEntry'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /admin/configuration:
+    get:
+      x-generated:
+        package: admin
+      tags:
+        - Admin
+      operationId: GetSystemConfiguration
+      summary: Get system configuration
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemConfiguration'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      x-generated:
+        package: admin
+      tags:
+        - Admin
+      operationId: UpdateSystemConfiguration
+      summary: Update system configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SystemConfiguration'
+      responses:
+        '200':
+          description: Configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemConfiguration'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /admin/configuration/external-api:
+    get:
+      x-generated:
+        package: admin
+      tags:
+        - Admin
+      operationId: GetExternalAPIConfiguration
+      summary: Get external API configuration
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalAPIConfig'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      x-generated:
+        package: admin
+      tags:
+        - Admin
+      operationId: UpdateExternalAPIConfiguration
+      summary: Update external API configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExternalAPIConfig'
+      responses:
+        '200':
+          description: External API configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalAPIConfig'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /admin/configuration/rooms:
+    get:
+      x-generated:
+        package: admin
+      tags:
+        - Admin
+      operationId: GetRoomsConfiguration
+      summary: Get rooms configuration
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RoomConfig'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      x-generated:
+        package: admin
+      tags:
+        - Admin
+      operationId: UpdateRoomsConfiguration
+      summary: Update rooms configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/RoomConfig'
+      responses:
+        '200':
+          description: Rooms configuration updated successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RoomConfig'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /admin/card-readers:
+    get:
+      x-generated:
+        package: admin
+      tags:
+        - Admin
+      operationId: GetCardReaders
+      summary: Get all card reader statuses
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CardReaderStatus'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /admin/card-readers/{id}/restart:
+    post:
+      x-generated:
+        package: admin
+      tags:
+        - Admin
+      operationId: RestartCardReader
+      summary: Send restart signal to a card reader
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Restart signal sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestartResponse'
+        '404':
+          description: Card reader not found
         '500':
           $ref: '#/components/responses/InternalServerError'
 components:
@@ -773,6 +942,176 @@ components:
         entryID:
           type: string
           description: ID of the entry to mark as in room
+    SystemConfiguration:
+      x-group: admin
+      title: SystemConfiguration
+      type: object
+      required:
+        - externalAPI
+        - rooms
+        - defaultRoom
+        - webSocketPath
+        - allowWildcard
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier
+        externalAPI:
+          $ref: '#/components/schemas/ExternalAPIConfig'
+        rooms:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoomConfig'
+        defaultRoom:
+          type: string
+          description: Default room ID
+        webSocketPath:
+          type: string
+          description: WebSocket path
+        allowWildcard:
+          type: boolean
+          description: Allow wildcard CORS
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+    RestartResponse:
+      x-group: admin
+      title: RestartResponse
+      type: object
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          description: Whether the restart signal was sent successfully
+        message:
+          type: string
+          description: Response message
+    ExternalAPIConfig:
+      x-group: admin
+      title: ExternalAPIConfig
+      type: object
+      required:
+        - userServicesUrl
+        - timeoutSeconds
+        - retryAttempts
+      properties:
+        userServicesUrl:
+          type: string
+          description: External API URL for user services
+        timeoutSeconds:
+          type: integer
+          format: int64
+          description: Timeout in seconds
+        retryAttempts:
+          type: integer
+          format: int64
+          description: Number of retry attempts
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: Custom headers to include in external API requests
+          example:
+            Authorization: "Bearer your-token-here"
+            X-API-Key: "your-api-key"
+            Content-Type: "application/json"
+    RoomConfig:
+      x-group: admin
+      title: RoomConfig
+      type: object
+      required:
+        - id
+        - name
+        - servicePoints
+        - isDefault
+      properties:
+        id:
+          type: string
+          description: Room ID
+        name:
+          type: string
+          description: Room name
+        description:
+          type: string
+          description: Room description
+        servicePoints:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServicePointConfig'
+        isDefault:
+          type: boolean
+          description: Whether this is the default room
+    ServicePointConfig:
+      x-group: admin
+      title: ServicePointConfig
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          description: Service point ID
+        name:
+          type: string
+          description: Service point name
+        description:
+          type: string
+          description: Service point description
+        managerId:
+          type: string
+          description: Manager ID
+        managerName:
+          type: string
+          description: Manager name
+    CardReaderStatus:
+      x-group: admin
+      title: CardReaderStatus
+      type: object
+      required:
+        - id
+        - name
+        - status
+      properties:
+        id:
+          type: string
+          description: Card reader ID
+        name:
+          type: string
+          description: Card reader name
+        status:
+          type: string
+          enum: [online, offline, error]
+          description: Current status
+        lastSeen:
+          type: string
+          format: date-time
+          description: Last seen timestamp
+        ipAddress:
+          type: string
+          description: IP address
+        version:
+          type: string
+          description: Card reader version
+        lastError:
+          type: string
+          description: Last error message
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
     ApplicationError:
       x-group: errors
       title: ApplicationError

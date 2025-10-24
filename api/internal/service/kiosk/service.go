@@ -5,26 +5,31 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/arfis/waiting-room/internal/config"
 	"github.com/arfis/waiting-room/internal/data/dto"
 	ngErrors "github.com/arfis/waiting-room/internal/errors"
 	"github.com/arfis/waiting-room/internal/queue"
+	configService "github.com/arfis/waiting-room/internal/service/config"
 )
 
 type Service struct {
 	queueService  *queue.WaitingQueue
 	broadcastFunc func(string) // Function to broadcast queue updates
 	config        *config.Config
+	configService *configService.Service
 }
 
-func New(queueService *queue.WaitingQueue, broadcastFunc func(string), config *config.Config) *Service {
+func New(queueService *queue.WaitingQueue, broadcastFunc func(string), config *config.Config, configService *configService.Service) *Service {
 	return &Service{
 		queueService:  queueService,
 		broadcastFunc: broadcastFunc,
 		config:        config,
+		configService: configService,
 	}
 }
 
@@ -110,10 +115,29 @@ func (s *Service) SwipeCard(ctx context.Context, roomId string, req *dto.SwipeRe
 }
 
 func (s *Service) GetUserServices(ctx context.Context, identifier string) ([]dto.UserService, error) {
-	// Get external API configuration
-	externalAPIURL := s.config.GetExternalAPIUserServicesURL()
-	timeoutSeconds := s.config.GetExternalAPITimeout()
+	// Get external API configuration from cache
+	apiConfig, err := s.configService.GetExternalAPIConfig(ctx)
+	if err != nil {
+		// Fallback to environment variables if cache fails
+		externalAPIURL := s.config.GetExternalAPIUserServicesURL()
+		timeoutSeconds := s.config.GetExternalAPITimeout()
+		log.Printf("Using fallback config - URL: %s, Timeout: %d, Error: %v", externalAPIURL, timeoutSeconds, err)
+		return s.makeExternalAPICall(ctx, externalAPIURL, timeoutSeconds, nil, identifier)
+	}
 
+	// Replace ${identifier} placeholder with actual identifier value
+	actualURL := s.replaceIdentifierInURL(apiConfig.UserServicesURL, identifier)
+
+	return s.makeExternalAPICall(ctx, actualURL, apiConfig.TimeoutSeconds, apiConfig.Headers, identifier)
+}
+
+// replaceIdentifierInURL replaces ${identifier} placeholder with the actual identifier value
+func (s *Service) replaceIdentifierInURL(urlTemplate, identifier string) string {
+	return strings.ReplaceAll(urlTemplate, "${identifier}", identifier)
+}
+
+// makeExternalAPICall makes the actual HTTP call to the external API
+func (s *Service) makeExternalAPICall(ctx context.Context, externalAPIURL string, timeoutSeconds int, headers map[string]string, identifier string) ([]dto.UserService, error) {
 	// Create HTTP client with configured timeout
 	client := &http.Client{
 		Timeout: time.Duration(timeoutSeconds) * time.Second,
@@ -123,6 +147,13 @@ func (s *Service) GetUserServices(ctx context.Context, identifier string) ([]dto
 	req, err := http.NewRequestWithContext(ctx, "GET", externalAPIURL, nil)
 	if err != nil {
 		return nil, ngErrors.New(ngErrors.InternalServerErrorCode, "failed to create request", 500, nil)
+	}
+
+	// Add custom headers if configured
+	if headers != nil {
+		for key, value := range headers {
+			req.Header.Set(key, value)
+		}
 	}
 
 	// Add query parameter

@@ -1,0 +1,299 @@
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="bg-white rounded-lg shadow-sm border p-6">
+    <h1 class="text-2xl font-bold text-gray-900 mb-2">System Configuration</h1>
+    <p class="text-gray-600">Manage system settings, external API configuration, and room settings.</p>
+  </div>
+
+  <!-- External API Configuration -->
+  <div class="bg-white rounded-lg shadow-sm border p-6">
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">External API Configuration</h2>
+    <form class="space-y-4" (ngSubmit)="saveExternalAPIConfig()">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label for="apiUrl" class="block text-sm font-medium text-gray-700 mb-2">
+            User Services URL Template
+          </label>
+          <input 
+            type="url" 
+            id="apiUrl"
+            [(ngModel)]="externalAPIConfig.userServicesUrl"
+            name="userServicesUrl"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="http://api.example.com/users/{{ '${identifier}' }}/services">
+          <div class="mt-2 text-sm text-gray-600">
+            <p class="font-medium text-blue-600">💡 URL Template Help:</p>
+            <ul class="list-disc list-inside mt-1 space-y-1">
+              <li>Use <code class="bg-gray-100 px-1 rounded">{{ '${identifier}' }}</code> as a placeholder for the user identifier</li>
+              <li>Examples:</li>
+              <li class="ml-4">• <code class="bg-gray-100 px-1 rounded">http://api.example.com/users/{{ '${identifier}' }}/services</code></li>
+              <li class="ml-4">• <code class="bg-gray-100 px-1 rounded">http://api.example.com/services?user={{ '${identifier}' }}</code></li>
+              <li class="ml-4">• <code class="bg-gray-100 px-1 rounded">http://api.example.com/api/v1/users/{{ '${identifier}' }}/available-services</code></li>
+            </ul>
+          </div>
+        </div>
+        
+        <div>
+          <label for="timeout" class="block text-sm font-medium text-gray-700 mb-2">
+            Timeout (seconds)
+          </label>
+          <input 
+            type="number" 
+            id="timeout"
+            [(ngModel)]="externalAPIConfig.timeoutSeconds"
+            name="timeoutSeconds"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            min="1" max="60">
+        </div>
+        
+        <div>
+          <label for="retryAttempts" class="block text-sm font-medium text-gray-700 mb-2">
+            Retry Attempts
+          </label>
+          <input 
+            type="number" 
+            id="retryAttempts"
+            [(ngModel)]="externalAPIConfig.retryAttempts"
+            name="retryAttempts"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            min="0" max="10">
+        </div>
+      </div>
+      
+      <!-- Headers Configuration -->
+      <div class="mt-6">
+        <h3 class="text-md font-semibold text-gray-900 mb-3">Custom Headers</h3>
+        <div class="space-y-3">
+          @for (headerEntry of headerEntries(); track headerEntry.key) {
+            <div class="flex items-center space-x-3">
+              <input 
+                [name]="headerEntry.key"
+                type="text" 
+                [(ngModel)]="headerEntry.key"
+                placeholder="Header Name"
+                class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+              <span class="text-gray-500">:</span>
+              <input
+                [name]="headerEntry.value" 
+                type="text" 
+                [(ngModel)]="headerEntry.value"
+                placeholder="Header Value"
+                class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+              <button 
+                type="button"
+                (click)="removeHeader(headerEntry.key)"
+                class="px-3 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-500">
+                Remove
+              </button>
+            </div>
+          }
+          <button 
+            type="button"
+            (click)="addHeader()"
+            class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500">
+            + Add Header
+          </button>
+        </div>
+        <div class="mt-2 text-sm text-gray-600">
+          <p class="font-medium text-blue-600">💡 Custom Headers:</p>
+          <p class="mb-2">Add any custom headers your external API requires. Common examples:</p>
+          <ul class="list-disc list-inside mt-1 space-y-1">
+            <li><code class="bg-gray-100 px-1 rounded">Authorization</code> - Bearer token or API key</li>
+            <li><code class="bg-gray-100 px-1 rounded">X-API-Key</code> - API key header</li>
+            <li><code class="bg-gray-100 px-1 rounded">Content-Type</code> - Request content type</li>
+            <li><code class="bg-gray-100 px-1 rounded">Accept</code> - Expected response format</li>
+            <li><code class="bg-gray-100 px-1 rounded">Custom-Auth</code> - Your custom authentication</li>
+            <li><code class="bg-gray-100 px-1 rounded">Client-ID</code> - Client identification</li>
+          </ul>
+          <p class="mt-2 text-xs text-gray-500">💡 Tip: You can add any header name and value that your external API expects.</p>
+        </div>
+      </div>
+      
+      <div class="flex justify-end">
+        <button 
+          type="submit"
+          [disabled]="isSaving()"
+          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+          @if (isSaving()) {
+            <svg class="w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            Saving...
+          } @else {
+            Save External API Config
+          }
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- System Configuration -->
+  <div class="bg-white rounded-lg shadow-sm border p-6">
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">System Settings</h2>
+    <form class="space-y-4" (ngSubmit)="saveSystemConfiguration()">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label for="defaultRoom" class="block text-sm font-medium text-gray-700 mb-2">
+            Default Room
+          </label>
+          <select 
+            id="defaultRoom"
+            [(ngModel)]="systemConfig.defaultRoom"
+            name="defaultRoom"
+            (change)="setDefaultRoom(systemConfig.defaultRoom)"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            @for (room of rooms; track room.id) {
+              <option [value]="room.id">{{ room.name }}</option>
+            }
+          </select>
+        </div>
+        
+        <div>
+          <label for="webSocketPath" class="block text-sm font-medium text-gray-700 mb-2">
+            WebSocket Path
+          </label>
+          <input 
+            type="text" 
+            id="webSocketPath"
+            [(ngModel)]="systemConfig.webSocketPath"
+            name="webSocketPath"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="/ws/queue">
+        </div>
+        
+        <div class="flex items-center">
+          <input 
+            type="checkbox" 
+            id="allowWildcard"
+            [(ngModel)]="systemConfig.allowWildcard"
+            name="allowWildcard"
+            class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+          <label for="allowWildcard" class="ml-2 block text-sm text-gray-900">
+            Allow Wildcard CORS
+          </label>
+        </div>
+      </div>
+      
+      <div class="flex justify-end">
+        <button 
+          type="submit"
+          [disabled]="isSaving()"
+          class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed">
+          @if (isSaving()) {
+            <svg class="w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            Saving...
+          } @else {
+            Save System Configuration
+          }
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Rooms Configuration -->
+  <div class="bg-white rounded-lg shadow-sm border p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-semibold text-gray-900">Rooms Configuration</h2>
+      <button 
+        (click)="addRoom()"
+        class="px-3 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500">
+        Add Room
+      </button>
+    </div>
+    
+    <div class="space-y-4">
+      @for (room of rooms; track room.id) {
+        <div class="border border-gray-200 rounded-lg p-4">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center space-x-3">
+              <h3 class="font-medium text-gray-900">{{ room.name }}</h3>
+              @if (room.isDefault) {
+                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  Default
+                </span>
+              }
+            </div>
+            <div class="flex space-x-2">
+              @if (!room.isDefault) {
+                <button 
+                  (click)="setDefaultRoom(room.id)"
+                  class="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200">
+                  Set Default
+                </button>
+              }
+              <button 
+                (click)="editRoom(room)"
+                class="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200">
+                Edit
+              </button>
+              <button 
+                (click)="deleteRoom(room.id)"
+                class="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200">
+                Delete
+              </button>
+            </div>
+          </div>
+          
+          @if (room.description) {
+            <p class="text-sm text-gray-600 mb-3">{{ room.description }}</p>
+          }
+          
+          <div class="space-y-2">
+            <h4 class="text-sm font-medium text-gray-700">Service Points:</h4>
+            @for (servicePoint of room.servicePoints; track servicePoint.id) {
+              <div class="flex items-center justify-between bg-gray-50 rounded p-2">
+                <span class="text-sm text-gray-700">{{ servicePoint.name }}</span>
+                @if (servicePoint.managerName) {
+                  <span class="text-xs text-gray-500">Manager: {{ servicePoint.managerName }}</span>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+    
+    <div class="flex justify-end mt-4">
+      <button 
+        (click)="saveRoomsConfiguration()"
+        [disabled]="isSaving()"
+        class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed">
+        @if (isSaving()) {
+          <svg class="w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+          </svg>
+          Saving...
+        } @else {
+          Save Rooms Configuration
+        }
+      </button>
+    </div>
+  </div>
+
+  <!-- System Information -->
+  <div class="bg-white rounded-lg shadow-sm border p-6">
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">System Information</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Database Status</label>
+        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+          Connected
+        </span>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Configuration Source</label>
+        <span class="text-sm text-gray-600">MongoDB with Environment Fallbacks</span>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Last Updated</label>
+        <span class="text-sm text-gray-600">{{ lastUpdated() }}</span>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Configuration Count</label>
+        <span class="text-sm text-gray-600">{{ configurationCount() }} items</span>
+      </div>
+    </div>
+  </div>
+</div>

@@ -12,6 +12,7 @@ import (
 
 	"github.com/arfis/waiting-room/internal/config"
 	queueService "github.com/arfis/waiting-room/internal/queue"
+	"github.com/arfis/waiting-room/internal/rest/handler/admin"
 	"github.com/arfis/waiting-room/internal/rest/register"
 	kioskService "github.com/arfis/waiting-room/internal/service/kiosk"
 	queueServiceGenerated "github.com/arfis/waiting-room/internal/service/queue"
@@ -93,6 +94,19 @@ func NewServer(diContainer *dig.Container, cfg *config.Config) *http.Server {
 	r.Route("/api", func(apiRouter chi.Router) {
 		log.Println("Registering API routes...")
 		register.Generated(apiRouter, diContainer)
+
+		// Add admin routes as unprotected for development
+		diContainer.Invoke(func(adminHandler *admin.Handler) {
+			apiRouter.Get("/admin/configuration", adminHandler.GetSystemConfiguration)
+			apiRouter.Put("/admin/configuration", adminHandler.UpdateSystemConfiguration)
+			apiRouter.Get("/admin/configuration/external-api", adminHandler.GetExternalAPIConfiguration)
+			apiRouter.Put("/admin/configuration/external-api", adminHandler.UpdateExternalAPIConfiguration)
+			apiRouter.Get("/admin/configuration/rooms", adminHandler.GetRoomsConfiguration)
+			apiRouter.Put("/admin/configuration/rooms", adminHandler.UpdateRoomsConfiguration)
+			apiRouter.Get("/admin/card-readers", adminHandler.GetCardReaders)
+			apiRouter.Post("/admin/card-readers/{id}/restart", adminHandler.RestartCardReader)
+		})
+
 		log.Println("API routes registered successfully")
 	})
 

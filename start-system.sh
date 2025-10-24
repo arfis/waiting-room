@@ -107,6 +107,7 @@ if command -v ng >/dev/null 2>&1; then
   ng build mobile
   ng build tv
   ng build backoffice
+  ng build admin
 else
   echo "Angular CLI (ng) not found. Please install @angular/cli globally or provide a local script."
   exit 1
@@ -155,11 +156,19 @@ npx serve -s dist/backoffice/browser -l 4200 &
 BACKOFFICE_PID=$!
 popd >/dev/null
 
+# Start Admin app server
+echo "Starting admin app server..."
+pushd ui >/dev/null
+npx serve -s dist/admin/browser -l 4205 &
+ADMIN_PID=$!
+popd >/dev/null
+
 printf "\nSystem is ready!\n\n"
 echo "Kiosk:     http://localhost:4201"
 echo "Mobile:    http://localhost:4204"
 echo "TV Display: http://localhost:4203"
 echo "Backoffice: http://localhost:4200"
+echo "Admin:     http://localhost:4205"
 echo "API:       http://localhost:8080"
 echo "WebSocket: ws://localhost:4201/ws/card-reader"
 
@@ -194,7 +203,7 @@ echo "Press Ctrl+C to stop all services"
 cleanup() {
   echo
   echo "Stopping services..."
-  kill ${API_PID:-} ${KIOSK_PID:-} ${MOBILE_PID:-} ${TV_PID:-} ${BACKOFFICE_PID:-} ${CARD_READER_PID:-} 2>/dev/null || true
+  kill ${API_PID:-} ${KIOSK_PID:-} ${MOBILE_PID:-} ${TV_PID:-} ${BACKOFFICE_PID:-} ${ADMIN_PID:-} ${CARD_READER_PID:-} 2>/dev/null || true
   echo "All services stopped"
 }
 

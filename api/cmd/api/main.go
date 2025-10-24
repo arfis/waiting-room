@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/dig"
 
 	"github.com/arfis/waiting-room/internal/cardreader"
@@ -19,10 +21,13 @@ import (
 	queueService "github.com/arfis/waiting-room/internal/queue"
 	"github.com/arfis/waiting-room/internal/repository"
 	"github.com/arfis/waiting-room/internal/rest"
+	adminHandler "github.com/arfis/waiting-room/internal/rest/handler/admin"
 	configHandler "github.com/arfis/waiting-room/internal/rest/handler/configuration"
 	kioskHandler "github.com/arfis/waiting-room/internal/rest/handler/kiosk"
 	queueHandler "github.com/arfis/waiting-room/internal/rest/handler/queue"
 	servicepointHandler "github.com/arfis/waiting-room/internal/rest/handler/servicepoint"
+	adminService "github.com/arfis/waiting-room/internal/service/admin"
+	configService "github.com/arfis/waiting-room/internal/service/config"
 	configurationService "github.com/arfis/waiting-room/internal/service/configuration"
 	kioskService "github.com/arfis/waiting-room/internal/service/kiosk"
 	queueServiceGenerated "github.com/arfis/waiting-room/internal/service/queue"
@@ -64,6 +69,19 @@ func DIContainer(cfg *config.Config) *dig.Container {
 			log.Println("Connected to MongoDB successfully")
 			return repo
 		}},
+		{Constructor: func() repository.ConfigRepository {
+			// Try to connect to MongoDB using configuration
+			client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(cfg.GetMongoURI()))
+			if err != nil {
+				log.Printf("Failed to connect to MongoDB for config: %v", err)
+				return nil
+			}
+
+			db := client.Database(cfg.GetMongoDatabase())
+			repo := repository.NewMongoDBConfigRepository(db)
+			log.Println("Connected to MongoDB for config successfully")
+			return repo
+		}},
 
 		// Core services
 		{Constructor: func(repo repository.QueueRepository, cfg *config.Config, servicePointSvc *servicepointService.Service) *queueService.WaitingQueue {
@@ -80,15 +98,22 @@ func DIContainer(cfg *config.Config) *dig.Container {
 		{Constructor: ngErrors.NewResponseErrorHandler},
 
 		// Generated services (will be set up with broadcast function later)
-		{Constructor: func(queueService *queueService.WaitingQueue, config *config.Config) *kioskService.Service {
-			return kioskService.New(queueService, nil, config)
+		{Constructor: func(queueService *queueService.WaitingQueue, config *config.Config, configService *configService.Service) *kioskService.Service {
+			return kioskService.New(queueService, nil, config, configService)
 		}},
 		{Constructor: func(queueService *queueService.WaitingQueue) *queueServiceGenerated.Service {
 			return queueServiceGenerated.New(queueService, nil)
 		}},
 		{Constructor: configurationService.New},
+		{Constructor: func(repo repository.ConfigRepository) *configService.Service {
+			return configService.NewService(repo)
+		}},
+		{Constructor: func(configService *configService.Service) *adminService.Service {
+			return adminService.NewService(configService)
+		}},
 
 		// Generated handlers
+		{Constructor: adminHandler.New},
 		{Constructor: configHandler.New},
 		{Constructor: kioskHandler.New},
 		{Constructor: queueHandler.New},

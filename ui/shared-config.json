@@ -1,0 +1,46 @@
+{
+  "development": {
+    "apiUrl": "http://localhost:8080/api",
+    "wsUrl": "ws://localhost:8080/ws",
+    "apps": {
+      "admin": {
+        "name": "Admin Panel",
+        "port": 4205
+      },
+      "backoffice": {
+        "name": "Backoffice",
+        "port": 4200
+      },
+      "kiosk": {
+        "name": "Kiosk",
+        "port": 4201
+      },
+      "tv": {
+        "name": "TV Display",
+        "port": 4203
+      }
+    }
+  },
+  "production": {
+    "apiUrl": "http://localhost:8080/api",
+    "wsUrl": "ws://localhost:8080/ws",
+    "apps": {
+      "admin": {
+        "name": "Admin Panel",
+        "port": 4205
+      },
+      "backoffice": {
+        "name": "Backoffice",
+        "port": 4200
+      },
+      "kiosk": {
+        "name": "Kiosk",
+        "port": 4201
+      },
+      "tv": {
+        "name": "TV Display",
+        "port": 4203
+      }
+    }
+  }
+}

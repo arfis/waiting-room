@@ -13,6 +13,7 @@ cors:
     - "http://localhost:4201"
     - "http://localhost:4203"
     - "http://localhost:4204"
+    - "http://localhost:4205"
   allowed_methods:
     - "GET"
     - "POST"

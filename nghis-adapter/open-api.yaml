@@ -38,10 +38,13 @@ components:
       title: AppointmentResp
       type: object
       required:
+        - id
         - requestedTime
         - duration
         - serviceName
       properties:
+        id:
+          type: string
         requestedTime:
           type: string
           format: date-time
