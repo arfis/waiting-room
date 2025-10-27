@@ -2,15 +2,16 @@ import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CardComponent } from '@waiting-room/primeng-components';
 import { WebSocketQueueEntry } from '@waiting-room/api-client';
+import { TranslatePipe } from '../../../../../../src/lib/i18n';
 
 @Component({
   selector: 'app-current-entry-card',
   standalone: true,
-  imports: [CommonModule, CardComponent],
+  imports: [CommonModule, CardComponent, TranslatePipe],
   template: `
     @if (entry) {
       <div class="mb-8">
-        <ui-card title="Currently Being Served" variant="success">
+        <ui-card [title]="'backoffice.currentEntry' | translate" variant="success">
           <div class="flex items-center justify-between">
             <div>
               <div class="text-3xl font-mono font-bold text-green-600 mb-2">

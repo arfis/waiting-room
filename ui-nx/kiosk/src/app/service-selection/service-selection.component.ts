@@ -1,18 +1,19 @@
 import { Component, input, output, signal, computed, ChangeDetectionStrategy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { UserServicesService, UserService, ServiceSection } from '../core/services/user-services.service';
+import { TranslationService, TranslatePipe } from '../../../../src/lib/i18n';
 
 @Component({
   selector: 'app-service-selection',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="space-y-6">
       @if (isLoading()) {
         <div class="text-center py-8">
           <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <p class="mt-4 text-gray-600">Loading available services...</p>
+          <p class="mt-4 text-gray-600">{{ 'kiosk.services.loadingServices' | translate }}</p>
         </div>
       } @else if (error()) {
         <div class="text-center py-8">
@@ -25,7 +26,7 @@ import { UserServicesService, UserService, ServiceSection } from '../core/servic
           <button 
             class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             (click)="retry.emit()">
-            Try Again
+            {{ 'common.retry' | translate }}
           </button>
         </div>
       } @else {
@@ -36,9 +37,9 @@ import { UserServicesService, UserService, ServiceSection } from '../core/servic
             <div class="flex items-center space-x-2">
               <h2 class="text-lg font-semibold text-gray-900">{{ section.title }}</h2>
               @if (section.type === 'appointment') {
-                <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">Personal</span>
+                <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">{{ 'kiosk.services.personal' | translate }}</span>
               } @else {
-                <span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">General</span>
+                <span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">{{ 'kiosk.services.general' | translate }}</span>
               }
             </div>
             
@@ -152,6 +153,7 @@ import { UserServicesService, UserService, ServiceSection } from '../core/servic
 })
 export class ServiceSelectionComponent {
   private readonly userServicesService = inject(UserServicesService);
+  private readonly translationService = inject(TranslationService);
 
   // Inputs
   services = input<UserService[]>([]);

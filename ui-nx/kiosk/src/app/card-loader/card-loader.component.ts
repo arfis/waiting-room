@@ -5,17 +5,20 @@ import { CardComponent } from '@waiting-room/primeng-components';
 import { CardReaderStateService } from '../core/services/card-reader-state.service';
 import { ServiceSelectionComponent } from '../service-selection/service-selection.component';
 import { UserService } from '../core/services/user-services.service';
+import { TranslationService, TranslatePipe } from '../../../../src/lib/i18n';
+import { LanguageSelectorComponent } from '@waiting-room/primeng-components';
 
 @Component({
   selector: 'app-card-loader',
   standalone: true,
-  imports: [CommonModule, FormsModule, CardComponent, ServiceSelectionComponent],
+  imports: [CommonModule, FormsModule, CardComponent, ServiceSelectionComponent, TranslatePipe, LanguageSelectorComponent],
   templateUrl: './card-loader.component.html',
   styleUrls: ['./card-loader.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CardLoaderComponent implements OnInit, OnDestroy {
   private readonly cardReaderState = inject(CardReaderStateService);
+  private readonly translationService = inject(TranslationService);
 
   // Expose state to template
   protected readonly cardData = this.cardReaderState.cardData;
@@ -45,21 +48,21 @@ export class CardLoaderComponent implements OnInit, OnDestroy {
 
   // Computed properties for dynamic UI
   protected readonly cardTitle = computed(() => {
-    if (this.ticketData()) return 'Your Ticket';
-    if (this.showServiceSelection()) return 'Service Selection';
-    return 'Check In';
+    if (this.ticketData()) return this.translationService.t('kiosk.yourTicket');
+    if (this.showServiceSelection()) return this.translationService.t('kiosk.selectService');
+    return this.translationService.t('kiosk.checkin');
   });
   
   protected readonly cardSubtitle = computed(() => {
-    if (this.ticketData()) return 'Your ticket has been generated successfully';
-    if (this.showServiceSelection()) return 'Choose the service you need';
-    return 'Scan your ID card or enter your ID number';
+    if (this.ticketData()) return this.translationService.t('kiosk.services.success');
+    if (this.showServiceSelection()) return this.translationService.t('kiosk.services.selectService');
+    return this.translationService.t('kiosk.insertCard');
   });
   
   protected readonly headerMessage = computed(() => {
-    if (this.ticketData()) return 'Your ticket is ready!';
-    if (this.showServiceSelection()) return 'Please select the service you need';
-    return 'Please scan your ID card or enter your ID manually to check in';
+    if (this.ticketData()) return this.translationService.t('kiosk.services.success');
+    if (this.showServiceSelection()) return this.translationService.t('kiosk.services.selectService');
+    return this.translationService.t('kiosk.welcomeMessage');
   });
 
   ngOnInit(): void {
@@ -109,5 +112,9 @@ export class CardLoaderComponent implements OnInit, OnDestroy {
 
   protected onManualIdSubmitted(idNumber: string): void {
     this.cardReaderState.submitManualId(idNumber);
+  }
+
+  protected onLanguageChanged(languageCode: string): void {
+    this.translationService.setLanguage(languageCode);
   }
 }

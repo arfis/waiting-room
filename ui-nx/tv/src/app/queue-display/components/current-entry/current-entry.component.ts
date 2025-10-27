@@ -3,14 +3,15 @@ import { CommonModule } from '@angular/common';
 import { CardComponent } from '@waiting-room/primeng-components';
 import { WebSocketQueueEntry } from '@waiting-room/api-client';
 import { ServicePointService } from '../../services/service-point.service';
+import { TranslatePipe } from '../../../../../../src/lib/i18n';
 
 @Component({
   selector: 'app-current-entry',
   standalone: true,
-  imports: [CommonModule, CardComponent],
+  imports: [CommonModule, CardComponent, TranslatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ui-card title="Now Serving" variant="success">
+    <ui-card [title]="'tv.nowServing' | translate" variant="success">
       <div class="text-center">
         <div class="text-8xl font-mono font-bold text-green-600 mb-4">
           {{ entry().ticketNumber }}
