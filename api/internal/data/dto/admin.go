@@ -3,6 +3,18 @@ package dto
 
 import "time"
 
+type CacheClearResponse struct {
+	Message *string `json:"message,omitempty"`
+}
+
+func (cacheClearResponse CacheClearResponse) GetMessage() string {
+	var v string
+	if cacheClearResponse.Message != nil {
+		return *cacheClearResponse.Message
+	}
+	return v
+}
+
 type CardReaderStatus struct {
 	CreatedAt *time.Time `json:"createdAt,omitempty"`
 	Id        string     `json:"id" validate:"required"`
@@ -76,41 +88,83 @@ func (cardReaderStatus CardReaderStatus) GetVersion() string {
 }
 
 type ExternalAPIConfig struct {
-	RetryAttempts          int64             `json:"retryAttempts"`
-	TimeoutSeconds         int64             `json:"timeoutSeconds"`
-	AppointmentServicesUrl *string           `json:"appointmentServicesUrl,omitempty"`
-	GenericServicesUrl     *string           `json:"genericServicesUrl,omitempty"`
-	GenericServices        []GenericService  `json:"genericServices,omitempty"`
-	WebhookUrl             *string           `json:"webhookUrl,omitempty"`
-	WebhookTimeoutSeconds  *int64            `json:"webhookTimeoutSeconds,omitempty"`
-	WebhookRetryAttempts   *int64            `json:"webhookRetryAttempts,omitempty"`
-	Headers                map[string]string `json:"headers,omitempty"`
+	AppointmentServicesHttpMethod       *string           `json:"appointmentServicesHttpMethod,omitempty"`
+	AppointmentServicesLanguageHandling *string           `json:"appointmentServicesLanguageHandling,omitempty"`
+	AppointmentServicesLanguageHeader   *string           `json:"appointmentServicesLanguageHeader,omitempty"`
+	AppointmentServicesUrl              *string           `json:"appointmentServicesUrl,omitempty"`
+	GenericServices                     []GenericService  `json:"genericServices,omitempty" validate:"dive"`
+	GenericServicesHttpMethod           *string           `json:"genericServicesHttpMethod,omitempty"`
+	GenericServicesLanguageHandling     *string           `json:"genericServicesLanguageHandling,omitempty"`
+	GenericServicesLanguageHeader       *string           `json:"genericServicesLanguageHeader,omitempty"`
+	GenericServicesUrl                  *string           `json:"genericServicesUrl,omitempty"`
+	Headers                             map[string]string `json:"headers,omitempty"`
+	MultilingualSupport                 *bool             `json:"multilingualSupport,omitempty"`
+	RetryAttempts                       int64             `json:"retryAttempts"`
+	SupportedLanguages                  []string          `json:"supportedLanguages,omitempty" validate:"dive"`
+	TimeoutSeconds                      int64             `json:"timeoutSeconds"`
+	UseDeepLTranslation                 *bool             `json:"useDeepLTranslation,omitempty"`
+	WebhookHttpMethod                   *string           `json:"webhookHttpMethod,omitempty"`
+	WebhookRetryAttempts                *int64            `json:"webhookRetryAttempts,omitempty"`
+	WebhookTimeoutSeconds               *int64            `json:"webhookTimeoutSeconds,omitempty"`
+	WebhookUrl                          *string           `json:"webhookUrl,omitempty"`
 }
 
-type GenericService struct {
-	Id          string `json:"id" validate:"required"`
-	Name        string `json:"name" validate:"required"`
-	Description string `json:"description,omitempty"`
-	Duration    int    `json:"duration,omitempty"` // Duration in minutes
-	Enabled     bool   `json:"enabled"`
+func (externalAPIConfig ExternalAPIConfig) GetAppointmentServicesHttpMethod() string {
+	var v string
+	if externalAPIConfig.AppointmentServicesHttpMethod != nil {
+		return *externalAPIConfig.AppointmentServicesHttpMethod
+	}
+	return v
 }
 
-func (externalAPIConfig ExternalAPIConfig) GetRetryAttempts() int64 {
-	return externalAPIConfig.RetryAttempts
+func (externalAPIConfig ExternalAPIConfig) GetAppointmentServicesLanguageHandling() string {
+	var v string
+	if externalAPIConfig.AppointmentServicesLanguageHandling != nil {
+		return *externalAPIConfig.AppointmentServicesLanguageHandling
+	}
+	return v
 }
 
-func (externalAPIConfig ExternalAPIConfig) GetTimeoutSeconds() int64 {
-	return externalAPIConfig.TimeoutSeconds
-}
-
-func (externalAPIConfig ExternalAPIConfig) GetHeaders() map[string]string {
-	return externalAPIConfig.Headers
+func (externalAPIConfig ExternalAPIConfig) GetAppointmentServicesLanguageHeader() string {
+	var v string
+	if externalAPIConfig.AppointmentServicesLanguageHeader != nil {
+		return *externalAPIConfig.AppointmentServicesLanguageHeader
+	}
+	return v
 }
 
 func (externalAPIConfig ExternalAPIConfig) GetAppointmentServicesUrl() string {
 	var v string
 	if externalAPIConfig.AppointmentServicesUrl != nil {
 		return *externalAPIConfig.AppointmentServicesUrl
+	}
+	return v
+}
+
+func (externalAPIConfig ExternalAPIConfig) GetGenericServices() []GenericService {
+	return externalAPIConfig.GenericServices
+}
+
+func (externalAPIConfig ExternalAPIConfig) GetGenericServicesHttpMethod() string {
+	var v string
+	if externalAPIConfig.GenericServicesHttpMethod != nil {
+		return *externalAPIConfig.GenericServicesHttpMethod
+	}
+	return v
+}
+
+func (externalAPIConfig ExternalAPIConfig) GetGenericServicesLanguageHandling() string {
+	var v string
+	if externalAPIConfig.GenericServicesLanguageHandling != nil {
+		return *externalAPIConfig.GenericServicesLanguageHandling
+	}
+	return v
+}
+
+func (externalAPIConfig ExternalAPIConfig) GetGenericServicesLanguageHeader() string {
+	var v string
+	if externalAPIConfig.GenericServicesLanguageHeader != nil {
+		return *externalAPIConfig.GenericServicesLanguageHeader
 	}
 	return v
 }
@@ -123,18 +177,42 @@ func (externalAPIConfig ExternalAPIConfig) GetGenericServicesUrl() string {
 	return v
 }
 
-func (externalAPIConfig ExternalAPIConfig) GetWebhookUrl() string {
-	var v string
-	if externalAPIConfig.WebhookUrl != nil {
-		return *externalAPIConfig.WebhookUrl
+func (externalAPIConfig ExternalAPIConfig) GetHeaders() map[string]string {
+	return externalAPIConfig.Headers
+}
+
+func (externalAPIConfig ExternalAPIConfig) GetMultilingualSupport() bool {
+	var v bool
+	if externalAPIConfig.MultilingualSupport != nil {
+		return *externalAPIConfig.MultilingualSupport
 	}
 	return v
 }
 
-func (externalAPIConfig ExternalAPIConfig) GetWebhookTimeoutSeconds() int64 {
-	var v int64
-	if externalAPIConfig.WebhookTimeoutSeconds != nil {
-		return *externalAPIConfig.WebhookTimeoutSeconds
+func (externalAPIConfig ExternalAPIConfig) GetRetryAttempts() int64 {
+	return externalAPIConfig.RetryAttempts
+}
+
+func (externalAPIConfig ExternalAPIConfig) GetSupportedLanguages() []string {
+	return externalAPIConfig.SupportedLanguages
+}
+
+func (externalAPIConfig ExternalAPIConfig) GetTimeoutSeconds() int64 {
+	return externalAPIConfig.TimeoutSeconds
+}
+
+func (externalAPIConfig ExternalAPIConfig) GetUseDeepLTranslation() bool {
+	var v bool
+	if externalAPIConfig.UseDeepLTranslation != nil {
+		return *externalAPIConfig.UseDeepLTranslation
+	}
+	return v
+}
+
+func (externalAPIConfig ExternalAPIConfig) GetWebhookHttpMethod() string {
+	var v string
+	if externalAPIConfig.WebhookHttpMethod != nil {
+		return *externalAPIConfig.WebhookHttpMethod
 	}
 	return v
 }
@@ -147,24 +225,56 @@ func (externalAPIConfig ExternalAPIConfig) GetWebhookRetryAttempts() int64 {
 	return v
 }
 
+func (externalAPIConfig ExternalAPIConfig) GetWebhookTimeoutSeconds() int64 {
+	var v int64
+	if externalAPIConfig.WebhookTimeoutSeconds != nil {
+		return *externalAPIConfig.WebhookTimeoutSeconds
+	}
+	return v
+}
+
+func (externalAPIConfig ExternalAPIConfig) GetWebhookUrl() string {
+	var v string
+	if externalAPIConfig.WebhookUrl != nil {
+		return *externalAPIConfig.WebhookUrl
+	}
+	return v
+}
+
+type GenericService struct {
+	Description *string `json:"description,omitempty"`
+	Duration    *int64  `json:"duration,omitempty"`
+	Enabled     bool    `json:"enabled"`
+	Id          string  `json:"id" validate:"required"`
+	Name        string  `json:"name" validate:"required"`
+}
+
+func (genericService GenericService) GetDescription() string {
+	var v string
+	if genericService.Description != nil {
+		return *genericService.Description
+	}
+	return v
+}
+
+func (genericService GenericService) GetDuration() int64 {
+	var v int64
+	if genericService.Duration != nil {
+		return *genericService.Duration
+	}
+	return v
+}
+
+func (genericService GenericService) GetEnabled() bool {
+	return genericService.Enabled
+}
+
 func (genericService GenericService) GetId() string {
 	return genericService.Id
 }
 
 func (genericService GenericService) GetName() string {
 	return genericService.Name
-}
-
-func (genericService GenericService) GetDescription() string {
-	return genericService.Description
-}
-
-func (genericService GenericService) GetDuration() int {
-	return genericService.Duration
-}
-
-func (genericService GenericService) GetEnabled() bool {
-	return genericService.Enabled
 }
 
 type RestartResponse struct {
@@ -309,4 +419,79 @@ func (systemConfiguration SystemConfiguration) GetUpdatedAt() time.Time {
 
 func (systemConfiguration SystemConfiguration) GetWebSocketPath() string {
 	return systemConfiguration.WebSocketPath
+}
+
+type TranslationCacheStats struct {
+	Api_calls_saved *int64  `json:"api_calls_saved,omitempty"`
+	Cache_size      *int64  `json:"cache_size,omitempty"`
+	Expiration_time *string `json:"expiration_time,omitempty"`
+	Hit_rate        *string `json:"hit_rate,omitempty"`
+	Hits            *int64  `json:"hits,omitempty"`
+	Max_cache_size  *int64  `json:"max_cache_size,omitempty"`
+	Misses          *int64  `json:"misses,omitempty"`
+	Total_requests  *int64  `json:"total_requests,omitempty"`
+}
+
+func (translationCacheStats TranslationCacheStats) GetApi_calls_saved() int64 {
+	var v int64
+	if translationCacheStats.Api_calls_saved != nil {
+		return *translationCacheStats.Api_calls_saved
+	}
+	return v
+}
+
+func (translationCacheStats TranslationCacheStats) GetCache_size() int64 {
+	var v int64
+	if translationCacheStats.Cache_size != nil {
+		return *translationCacheStats.Cache_size
+	}
+	return v
+}
+
+func (translationCacheStats TranslationCacheStats) GetExpiration_time() string {
+	var v string
+	if translationCacheStats.Expiration_time != nil {
+		return *translationCacheStats.Expiration_time
+	}
+	return v
+}
+
+func (translationCacheStats TranslationCacheStats) GetHit_rate() string {
+	var v string
+	if translationCacheStats.Hit_rate != nil {
+		return *translationCacheStats.Hit_rate
+	}
+	return v
+}
+
+func (translationCacheStats TranslationCacheStats) GetHits() int64 {
+	var v int64
+	if translationCacheStats.Hits != nil {
+		return *translationCacheStats.Hits
+	}
+	return v
+}
+
+func (translationCacheStats TranslationCacheStats) GetMax_cache_size() int64 {
+	var v int64
+	if translationCacheStats.Max_cache_size != nil {
+		return *translationCacheStats.Max_cache_size
+	}
+	return v
+}
+
+func (translationCacheStats TranslationCacheStats) GetMisses() int64 {
+	var v int64
+	if translationCacheStats.Misses != nil {
+		return *translationCacheStats.Misses
+	}
+	return v
+}
+
+func (translationCacheStats TranslationCacheStats) GetTotal_requests() int64 {
+	var v int64
+	if translationCacheStats.Total_requests != nil {
+		return *translationCacheStats.Total_requests
+	}
+	return v
 }

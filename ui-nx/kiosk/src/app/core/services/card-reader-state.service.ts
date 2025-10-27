@@ -50,6 +50,9 @@ export class CardReaderStateService {
   // Manual ID entry state
   readonly isManualIdSubmitting = signal<boolean>(false);
   
+  // Language state
+  readonly currentLanguage = signal<string>('en');
+  
   // Ticket display state
   readonly ticketCountdown = signal<number>(30);
   readonly isTicketCountdownActive = signal<boolean>(false);
@@ -272,7 +275,7 @@ export class CardReaderStateService {
     // Load generic services (using a default service point for now)
     // In a real implementation, this would be determined by the room or service point
     const servicePointId = 'default-service-point';
-    this.userServicesService.getGenericServices(servicePointId).subscribe({
+    this.userServicesService.getGenericServices(servicePointId, this.currentLanguage()).subscribe({
       next: (services) => {
         console.log('Generic services loaded:', services);
         this.updateServiceSection('generic', services, false, null);
@@ -284,7 +287,7 @@ export class CardReaderStateService {
     });
     
     // Also load the original user services as fallback
-    this.userServicesService.getUserServices(identifier).subscribe({
+    this.userServicesService.getUserServices(identifier, this.currentLanguage()).subscribe({
       next: (services) => {
         console.log('User services loaded:', services);
         this.userServices.set(services);
@@ -315,6 +318,17 @@ export class CardReaderStateService {
     });
   }
   
+  setLanguage(language: string): void {
+    this.currentLanguage.set(language);
+  }
+
+  loadServices(): void {
+    const cardData = this.cardData();
+    if (cardData) {
+      this.loadUserServices(cardData);
+    }
+  }
+
   private updateServiceSection(type: 'appointment' | 'generic', services: UserService[], loading: boolean, error: string | null): void {
     const sections = this.serviceSections();
     const updatedSections = sections.map(section => 

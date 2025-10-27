@@ -6,24 +6,37 @@ import { ConfigService } from '../shared/services/config.service';
 import { TranslationService, TranslatePipe } from '../../../../../src/lib/i18n';
 import { LanguageSelectorComponent } from '@waiting-room/primeng-components';
 
-interface ExternalAPIConfig {
-  appointmentServicesUrl?: string;
-  genericServicesUrl?: string;
-  genericServices?: GenericService[];
-  webhookUrl?: string;
-  webhookTimeoutSeconds?: number;
-  webhookRetryAttempts?: number;
-  timeoutSeconds: number;
-  retryAttempts: number;
-  headers?: { [key: string]: string };
-}
-
 interface GenericService {
   id: string;
   name: string;
   description?: string;
   duration?: number;
   enabled: boolean;
+}
+
+interface ExternalAPIConfig {
+  appointmentServicesUrl?: string;
+  appointmentServicesHttpMethod?: 'GET' | 'POST';
+  genericServicesUrl?: string;
+  genericServicesHttpMethod?: 'GET' | 'POST';
+  genericServices?: GenericService[];
+  webhookUrl?: string;
+  webhookHttpMethod?: 'GET' | 'POST';
+  webhookTimeoutSeconds?: number;
+  webhookRetryAttempts?: number;
+  timeoutSeconds: number;
+  retryAttempts: number;
+  headers?: { [key: string]: string };
+  // Multilingual configuration
+  multilingualSupport?: boolean;
+  supportedLanguages?: string[];
+  useDeepLTranslation?: boolean;
+  // Appointment services language handling
+  appointmentServicesLanguageHandling?: 'query_param' | 'header' | 'none';
+  appointmentServicesLanguageHeader?: string;
+  // Generic services language handling
+  genericServicesLanguageHandling?: 'query_param' | 'header' | 'none';
+  genericServicesLanguageHeader?: string;
 }
 
 interface HeaderEntry {
@@ -78,6 +91,29 @@ export class ConfigurationComponent {
   lastUpdated = signal('Just now');
   configurationCount = signal(5);
   
+  // Language selection for multilingual API
+  supportedLanguages = {
+    en: true,
+    sk: false
+  };
+
+  externalAPIConfig: ExternalAPIConfig = {
+    timeoutSeconds: 30,
+    retryAttempts: 3,
+    headers: {},
+    multilingualSupport: false,
+    supportedLanguages: ['en'],
+    useDeepLTranslation: false,
+    appointmentServicesLanguageHandling: 'query_param',
+    appointmentServicesLanguageHeader: 'Accept-Language',
+    appointmentServicesHttpMethod: 'GET',
+    genericServicesLanguageHandling: 'query_param',
+    genericServicesLanguageHeader: 'Accept-Language',
+    genericServicesHttpMethod: 'GET',
+    webhookHttpMethod: 'POST',
+    genericServices: []
+  };
+  
   systemConfig: SystemConfiguration = {
     externalAPI: {
       appointmentServicesUrl: 'http://localhost:3001/users/${identifier}/appointments',
@@ -90,7 +126,14 @@ export class ConfigurationComponent {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
-      }
+      },
+      multilingualSupport: false,
+      supportedLanguages: ['en'],
+      useDeepLTranslation: false,
+      appointmentServicesLanguageHandling: 'query_param',
+      appointmentServicesLanguageHeader: 'Accept-Language',
+      genericServicesLanguageHandling: 'query_param',
+      genericServicesLanguageHeader: 'Accept-Language'
     },
     rooms: [
       {
@@ -130,10 +173,6 @@ export class ConfigurationComponent {
     webSocketPath: '/ws/queue',
     allowWildcard: true
   };
-
-  get externalAPIConfig() {
-    return this.systemConfig.externalAPI;
-  }
 
   get rooms() {
     return this.systemConfig.rooms;
@@ -180,8 +219,31 @@ export class ConfigurationComponent {
         next: (response: any) => {
           if (response) {
             this.systemConfig.externalAPI = response;
+            // Sync with externalAPIConfig for form binding, ensuring all fields are present
+            this.externalAPIConfig = {
+              timeoutSeconds: response.timeoutSeconds || 30,
+              retryAttempts: response.retryAttempts || 3,
+              headers: response.headers || {},
+              multilingualSupport: response.multilingualSupport || false,
+              supportedLanguages: response.supportedLanguages || ['en'],
+              useDeepLTranslation: response.useDeepLTranslation || false,
+              appointmentServicesLanguageHandling: response.appointmentServicesLanguageHandling || 'query_param',
+              appointmentServicesLanguageHeader: response.appointmentServicesLanguageHeader || 'Accept-Language',
+              appointmentServicesHttpMethod: response.appointmentServicesHttpMethod || 'GET',
+              genericServicesLanguageHandling: response.genericServicesLanguageHandling || 'query_param',
+              genericServicesLanguageHeader: response.genericServicesLanguageHeader || 'Accept-Language',
+              genericServicesHttpMethod: response.genericServicesHttpMethod || 'GET',
+              webhookHttpMethod: response.webhookHttpMethod || 'POST',
+              appointmentServicesUrl: response.appointmentServicesUrl,
+              genericServicesUrl: response.genericServicesUrl,
+              genericServices: response.genericServices || [],
+              webhookUrl: response.webhookUrl,
+              webhookTimeoutSeconds: response.webhookTimeoutSeconds,
+              webhookRetryAttempts: response.webhookRetryAttempts
+            };
             this.updateHeaderEntries();
             console.log('Loaded external API configuration:', response);
+            console.log('Synced externalAPIConfig:', this.externalAPIConfig);
           }
         },
         error: (error) => {
@@ -250,17 +312,27 @@ export class ConfigurationComponent {
       }
     });
     
-    const config = {
-      appointmentServicesUrl: this.externalAPIConfig.appointmentServicesUrl,
-      genericServicesUrl: this.externalAPIConfig.genericServicesUrl,
-      genericServices: this.externalAPIConfig.genericServices || [],
-      webhookUrl: this.externalAPIConfig.webhookUrl,
-      webhookTimeoutSeconds: this.externalAPIConfig.webhookTimeoutSeconds,
-      webhookRetryAttempts: this.externalAPIConfig.webhookRetryAttempts,
-      timeoutSeconds: this.externalAPIConfig.timeoutSeconds,
-      retryAttempts: this.externalAPIConfig.retryAttempts,
-      headers: headersObject
-    };
+      const config = {
+        appointmentServicesUrl: this.externalAPIConfig.appointmentServicesUrl,
+        appointmentServicesHttpMethod: this.externalAPIConfig.appointmentServicesHttpMethod || 'GET',
+        genericServicesUrl: this.externalAPIConfig.genericServicesUrl,
+        genericServicesHttpMethod: this.externalAPIConfig.genericServicesHttpMethod || 'GET',
+        genericServices: this.externalAPIConfig.genericServices || [],
+        webhookUrl: this.externalAPIConfig.webhookUrl,
+        webhookHttpMethod: this.externalAPIConfig.webhookHttpMethod || 'POST',
+        webhookTimeoutSeconds: this.externalAPIConfig.webhookTimeoutSeconds,
+        webhookRetryAttempts: this.externalAPIConfig.webhookRetryAttempts,
+        timeoutSeconds: this.externalAPIConfig.timeoutSeconds,
+        retryAttempts: this.externalAPIConfig.retryAttempts,
+        headers: headersObject,
+        multilingualSupport: this.externalAPIConfig.multilingualSupport || false,
+        supportedLanguages: this.externalAPIConfig.supportedLanguages || ['en'],
+        useDeepLTranslation: this.externalAPIConfig.useDeepLTranslation || false,
+        appointmentServicesLanguageHandling: this.externalAPIConfig.appointmentServicesLanguageHandling || 'query_param',
+        appointmentServicesLanguageHeader: this.externalAPIConfig.appointmentServicesLanguageHeader || 'Accept-Language',
+        genericServicesLanguageHandling: this.externalAPIConfig.genericServicesLanguageHandling || 'query_param',
+        genericServicesLanguageHeader: this.externalAPIConfig.genericServicesLanguageHeader || 'Accept-Language'
+      };
     
     this.http.put(this.configService.adminExternalApiUrl, config)
       .subscribe({

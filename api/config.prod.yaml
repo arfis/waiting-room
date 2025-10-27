@@ -9,6 +9,9 @@ database:
     uri: "mongodb://admin:admin@mongodb:27017/waiting_room?authSource=admin"
     database: "waiting_room"
     
+deepl:
+  api_key: "1937e097"
+  
 cors:
   allowed_origins:
     - "https://yourdomain.com"  # Replace with your actual domain

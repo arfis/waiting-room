@@ -116,5 +116,11 @@ export class CardLoaderComponent implements OnInit, OnDestroy {
 
   protected onLanguageChanged(languageCode: string): void {
     this.translationService.setLanguage(languageCode);
+    this.cardReaderState.setLanguage(languageCode);
+    
+    // Re-fetch services if we're in service selection mode
+    if (this.cardReaderState.showServiceSelection()) {
+      this.cardReaderState.loadServices();
+    }
   }
 }

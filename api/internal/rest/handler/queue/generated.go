@@ -3,12 +3,11 @@ package queue
 
 import (
 	"encoding/json"
-	"net/http"
-
 	"github.com/arfis/waiting-room/internal/data/dto"
 	ngErrors "github.com/arfis/waiting-room/internal/errors"
 	"github.com/arfis/waiting-room/internal/rest/handler"
 	"github.com/arfis/waiting-room/internal/service/queue"
+	"net/http"
 )
 
 type Handler struct {

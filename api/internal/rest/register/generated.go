@@ -15,10 +15,10 @@ import (
 func Generated(r chi.Router, diContainer *dig.Container) {
 	err := diContainer.Invoke(func(
 		adminHandler *admin.Handler,
+		kioskHandler *kiosk.Handler,
 		configurationHandler *configuration.Handler,
 		servicepointHandler *servicepoint.Handler,
 		queueHandler *queue.Handler,
-		kioskHandler *kiosk.Handler,
 		authorizationMiddleware *middleware.AuthorizationMiddleware,
 	) error {
 
@@ -32,14 +32,16 @@ func Generated(r chi.Router, diContainer *dig.Container) {
 			protected.Put("/admin/configuration/external-api", adminHandler.UpdateExternalAPIConfiguration)
 			protected.Get("/admin/configuration/rooms", adminHandler.GetRoomsConfiguration)
 			protected.Put("/admin/configuration/rooms", adminHandler.UpdateRoomsConfiguration)
+			protected.Delete("/admin/translation/cache", adminHandler.ClearTranslationCache)
+			protected.Get("/admin/translation/cache/stats", adminHandler.GetTranslationCacheStats)
+			protected.Get("/appointment-services", kioskHandler.GetAppointmentServices)
 			protected.Get("/config", configurationHandler.GetConfiguration)
+			protected.Get("/generic-services", kioskHandler.GetGenericServices)
 			protected.Get("/managers/status", servicepointHandler.GetManagerStatus)
 			protected.Post("/managers/{managerId}/login", servicepointHandler.ManagerLogin)
 			protected.Post("/managers/{managerId}/logout", servicepointHandler.ManagerLogout)
 			protected.Get("/queue-entries/token/{qrToken}", queueHandler.GetQueueEntryByToken)
 			protected.Get("/user-services", kioskHandler.GetUserServices)
-			protected.Get("/generic-services", kioskHandler.GetGenericServices)
-			protected.Get("/appointment-services", kioskHandler.GetAppointmentServices)
 			protected.Post("/waiting-rooms/{roomId}/finish", queueHandler.FinishCurrent)
 			protected.Get("/waiting-rooms/{roomId}/managers/status", servicepointHandler.GetManagerStatusForRoom)
 			protected.Get("/waiting-rooms/{roomId}/queue", queueHandler.GetQueueEntries)

@@ -24,24 +24,39 @@ export class UserServicesService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = environment.apiUrl || 'http://localhost:8080/api';
 
-  getUserServices(identifier: string): Observable<UserService[]> {
+  getUserServices(identifier: string, language: string = 'en'): Observable<UserService[]> {
     // Call backend API which will then call external API
     return this.http.get<UserService[]>(`${this.apiUrl}/user-services`, {
-      params: { identifier }
+      params: { identifier, language },
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
     });
   }
 
-  getAppointmentServices(identifier: string): Observable<UserService[]> {
+  getAppointmentServices(identifier: string, language: string = 'en'): Observable<UserService[]> {
     // Call backend API for appointment-specific services
     return this.http.get<UserService[]>(`${this.apiUrl}/appointment-services`, {
-      params: { identifier }
+      params: { identifier, language },
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
     });
   }
 
-  getGenericServices(servicePointId: string): Observable<UserService[]> {
+  getGenericServices(servicePointId: string, language: string = 'en'): Observable<UserService[]> {
     // Call backend API for generic services available at service point
     return this.http.get<UserService[]>(`${this.apiUrl}/generic-services`, {
-      params: { servicePointId }
+      params: { servicePointId, language },
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
     });
   }
 }

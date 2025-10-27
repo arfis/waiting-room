@@ -99,6 +99,91 @@ paths:
           required: true
           schema: { type: string }
           description: User identifier (e.g., ID number)
+        - in: query
+          name: language
+          required: false
+          schema: { type: string, default: en }
+          description: Language code for service translations
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserService'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationError'
+        '500':
+          description: Internal errors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationError'
+  /generic-services:
+    get:
+      x-generated:
+        package: kiosk
+      tags:
+        - Kiosk
+      operationId: GetGenericServices
+      summary: Get generic services available at a service point
+      parameters:
+        - in: query
+          name: servicePointId
+          required: true
+          schema: { type: string }
+          description: Service point identifier
+        - in: query
+          name: language
+          required: false
+          schema: { type: string, default: en }
+          description: Language code for service translations
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserService'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationError'
+        '500':
+          description: Internal errors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationError'
+  /appointment-services:
+    get:
+      x-generated:
+        package: kiosk
+      tags:
+        - Kiosk
+      operationId: GetAppointmentServices
+      summary: Get appointment-specific services for a user
+      parameters:
+        - in: query
+          name: identifier
+          required: true
+          schema: { type: string }
+          description: User identifier
+        - in: query
+          name: language
+          required: false
+          schema: { type: string, default: en }
+          description: Language code for service translations
       responses:
         '200':
           description: OK
@@ -616,6 +701,40 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /admin/translation/cache/stats:
+    get:
+      x-generated:
+        package: admin
+      tags:
+        - Admin
+      operationId: GetTranslationCacheStats
+      summary: Get translation cache statistics
+      responses:
+        '200':
+          description: Cache statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslationCacheStats'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /admin/translation/cache:
+    delete:
+      x-generated:
+        package: admin
+      tags:
+        - Admin
+      operationId: ClearTranslationCache
+      summary: Clear the translation cache
+      responses:
+        '200':
+          description: Cache cleared successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CacheClearResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /admin/card-readers:
     get:
       x-generated:
@@ -999,21 +1118,51 @@ components:
       title: ExternalAPIConfig
       type: object
       required:
-        - userServicesUrl
         - timeoutSeconds
         - retryAttempts
       properties:
-        userServicesUrl:
+        appointmentServicesUrl:
           type: string
-          description: External API URL for user services
+          description: External API URL for appointment services with ${identifier} placeholder
+        appointmentServicesHttpMethod:
+          type: string
+          enum: [GET, POST]
+          description: HTTP method for appointment services endpoint
+        genericServicesUrl:
+          type: string
+          description: External API URL for generic services
+        genericServicesHttpMethod:
+          type: string
+          enum: [GET, POST]
+          description: HTTP method for generic services endpoint
+        genericServices:
+          type: array
+          items:
+            $ref: '#/components/schemas/GenericService'
+          description: Admin-created generic services
+        webhookUrl:
+          type: string
+          description: Webhook URL for ticket state changes
+        webhookHttpMethod:
+          type: string
+          enum: [GET, POST, PUT, PATCH]
+          description: HTTP method for webhook endpoint
+        webhookTimeoutSeconds:
+          type: integer
+          format: int64
+          description: Webhook timeout in seconds
+        webhookRetryAttempts:
+          type: integer
+          format: int64
+          description: Number of webhook retry attempts
         timeoutSeconds:
           type: integer
           format: int64
-          description: Timeout in seconds
+          description: Timeout in seconds for external API calls
         retryAttempts:
           type: integer
           format: int64
-          description: Number of retry attempts
+          description: Number of retry attempts for external API calls
         headers:
           type: object
           additionalProperties:
@@ -1023,6 +1172,90 @@ components:
             Authorization: "Bearer your-token-here"
             X-API-Key: "your-api-key"
             Content-Type: "application/json"
+        multilingualSupport:
+          type: boolean
+          description: Whether the external API supports multilingual responses
+        supportedLanguages:
+          type: array
+          items:
+            type: string
+          description: List of supported languages
+        useDeepLTranslation:
+          type: boolean
+          description: Whether to use DeepL for translation when API doesn't support multilingual
+        appointmentServicesLanguageHandling:
+          type: string
+          enum: [query_param, header, none]
+          description: How appointment services API receives language information
+        appointmentServicesLanguageHeader:
+          type: string
+          description: Custom header name for appointment services language
+        genericServicesLanguageHandling:
+          type: string
+          enum: [query_param, header, none]
+          description: How generic services API receives language information
+        genericServicesLanguageHeader:
+          type: string
+          description: Custom header name for generic services language
+    GenericService:
+      x-group: admin
+      title: GenericService
+      type: object
+      required:
+        - id
+        - name
+        - enabled
+      properties:
+        id:
+          type: string
+          description: Service ID
+        name:
+          type: string
+          description: Service name
+        description:
+          type: string
+          description: Service description
+        duration:
+          type: integer
+          format: int64
+          description: Expected duration in minutes
+        enabled:
+          type: boolean
+          description: Whether the service is enabled
+    TranslationCacheStats:
+      x-group: admin
+      title: TranslationCacheStats
+      type: object
+      properties:
+        cache_size:
+          type: integer
+          format: int64
+        max_cache_size:
+          type: integer
+          format: int64
+        hits:
+          type: integer
+          format: int64
+        misses:
+          type: integer
+          format: int64
+        total_requests:
+          type: integer
+          format: int64
+        hit_rate:
+          type: string
+        api_calls_saved:
+          type: integer
+          format: int64
+        expiration_time:
+          type: string
+    CacheClearResponse:
+      x-group: admin
+      title: CacheClearResponse
+      type: object
+      properties:
+        message:
+          type: string
     RoomConfig:
       x-group: admin
       title: RoomConfig

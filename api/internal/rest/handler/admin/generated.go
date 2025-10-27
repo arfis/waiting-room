@@ -3,11 +3,12 @@ package admin
 
 import (
 	"encoding/json"
+	"net/http"
+
 	"github.com/arfis/waiting-room/internal/data/dto"
 	ngErrors "github.com/arfis/waiting-room/internal/errors"
 	"github.com/arfis/waiting-room/internal/rest/handler"
 	"github.com/arfis/waiting-room/internal/service/admin"
-	"net/http"
 )
 
 type Handler struct {
@@ -159,6 +160,32 @@ func (h *Handler) UpdateRoomsConfiguration(w http.ResponseWriter, r *http.Reques
 	resp, applicationErr = h.svc.UpdateRoomsConfiguration(
 		r.Context(),
 		req,
+	)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)
+		return
+	}
+	handler.WriteJson(r.Context(), w, 200, resp)
+}
+
+func (h *Handler) ClearTranslationCache(w http.ResponseWriter, r *http.Request) {
+	var applicationErr error
+	var resp *dto.CacheClearResponse
+	resp, applicationErr = h.svc.ClearTranslationCache(
+		r.Context(),
+	)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)
+		return
+	}
+	handler.WriteJson(r.Context(), w, 200, resp)
+}
+
+func (h *Handler) GetTranslationCacheStats(w http.ResponseWriter, r *http.Request) {
+	var applicationErr error
+	var resp *dto.TranslationCacheStats
+	resp, applicationErr = h.svc.GetTranslationCacheStats(
+		r.Context(),
 	)
 	if applicationErr != nil {
 		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)

@@ -32,6 +32,7 @@ import (
 	kioskService "github.com/arfis/waiting-room/internal/service/kiosk"
 	queueServiceGenerated "github.com/arfis/waiting-room/internal/service/queue"
 	servicepointService "github.com/arfis/waiting-room/internal/service/servicepoint"
+	"github.com/arfis/waiting-room/internal/service/translation"
 	webhookService "github.com/arfis/waiting-room/internal/service/webhook"
 )
 
@@ -98,14 +99,19 @@ func DIContainer(cfg *config.Config) *dig.Container {
 		{Constructor: middleware.NewLoggingMiddleware},
 		{Constructor: ngErrors.NewResponseErrorHandler},
 
+		// Translation service
+		{Constructor: func(config *config.Config) *translation.DeepLTranslationService {
+			return translation.NewDeepLTranslationService(config.DeepL)
+		}},
+
 		// Webhook service
 		{Constructor: func(configService *configService.Service) *webhookService.Service {
 			return webhookService.NewService(configService)
 		}},
 
 		// Generated services (will be set up with broadcast function later)
-		{Constructor: func(queueService *queueService.WaitingQueue, config *config.Config, configService *configService.Service, webhookService *webhookService.Service) *kioskService.Service {
-			return kioskService.New(queueService, nil, config, configService, webhookService)
+		{Constructor: func(queueService *queueService.WaitingQueue, config *config.Config, configService *configService.Service, webhookService *webhookService.Service, translationService *translation.DeepLTranslationService) *kioskService.Service {
+			return kioskService.New(queueService, nil, config, configService, webhookService, translationService)
 		}},
 		{Constructor: func(queueService *queueService.WaitingQueue, webhookService *webhookService.Service) *queueServiceGenerated.Service {
 			return queueServiceGenerated.New(queueService, nil, webhookService)
@@ -114,8 +120,8 @@ func DIContainer(cfg *config.Config) *dig.Container {
 		{Constructor: func(repo repository.ConfigRepository) *configService.Service {
 			return configService.NewService(repo)
 		}},
-		{Constructor: func(configService *configService.Service) *adminService.Service {
-			return adminService.NewService(configService)
+		{Constructor: func(configService *configService.Service, translationService *translation.DeepLTranslationService) *adminService.Service {
+			return adminService.NewService(configService, translationService)
 		}},
 
 		// Generated handlers

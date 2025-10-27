@@ -7,16 +7,19 @@ import (
 
 	"github.com/arfis/waiting-room/internal/data/dto"
 	"github.com/arfis/waiting-room/internal/service/config"
+	"github.com/arfis/waiting-room/internal/service/translation"
 	"github.com/arfis/waiting-room/internal/types"
 )
 
 type Service struct {
-	configService *config.Service
+	configService      *config.Service
+	translationService *translation.DeepLTranslationService
 }
 
-func NewService(configService *config.Service) *Service {
+func NewService(configService *config.Service, translationService *translation.DeepLTranslationService) *Service {
 	return &Service{
-		configService: configService,
+		configService:      configService,
+		translationService: translationService,
 	}
 }
 
@@ -65,19 +68,34 @@ func (s *Service) GetExternalAPIConfiguration(ctx context.Context) (*dto.Externa
 	if config.AppointmentServicesURL != "" {
 		externalAPIConfig.AppointmentServicesUrl = &config.AppointmentServicesURL
 	}
+	if config.AppointmentServicesHttpMethod != nil {
+		externalAPIConfig.AppointmentServicesHttpMethod = config.AppointmentServicesHttpMethod
+	}
 	if config.GenericServicesURL != "" {
 		externalAPIConfig.GenericServicesUrl = &config.GenericServicesURL
+	}
+	if config.GenericServicesHttpMethod != nil {
+		externalAPIConfig.GenericServicesHttpMethod = config.GenericServicesHttpMethod
 	}
 
 	// Convert GenericServices from types to DTO
 	if len(config.GenericServices) > 0 {
 		genericServices := make([]dto.GenericService, len(config.GenericServices))
 		for i, service := range config.GenericServices {
+			var duration *int64
+			if service.Duration > 0 {
+				d := int64(service.Duration)
+				duration = &d
+			}
+			var description *string
+			if service.Description != "" {
+				description = &service.Description
+			}
 			genericServices[i] = dto.GenericService{
 				Id:          service.ID,
 				Name:        service.Name,
-				Description: service.Description,
-				Duration:    service.Duration,
+				Description: description,
+				Duration:    duration,
 				Enabled:     service.Enabled,
 			}
 		}
@@ -87,6 +105,9 @@ func (s *Service) GetExternalAPIConfiguration(ctx context.Context) (*dto.Externa
 	if config.WebhookURL != "" {
 		externalAPIConfig.WebhookUrl = &config.WebhookURL
 	}
+	if config.WebhookHttpMethod != nil {
+		externalAPIConfig.WebhookHttpMethod = config.WebhookHttpMethod
+	}
 	if config.WebhookTimeoutSeconds > 0 {
 		timeout := int64(config.WebhookTimeoutSeconds)
 		externalAPIConfig.WebhookTimeoutSeconds = &timeout
@@ -94,6 +115,29 @@ func (s *Service) GetExternalAPIConfiguration(ctx context.Context) (*dto.Externa
 	if config.WebhookRetryAttempts > 0 {
 		retries := int64(config.WebhookRetryAttempts)
 		externalAPIConfig.WebhookRetryAttempts = &retries
+	}
+
+	// Add multilingual configuration
+	if config.MultilingualSupport != nil {
+		externalAPIConfig.MultilingualSupport = config.MultilingualSupport
+	}
+	if len(config.SupportedLanguages) > 0 {
+		externalAPIConfig.SupportedLanguages = config.SupportedLanguages
+	}
+	if config.UseDeepLTranslation != nil {
+		externalAPIConfig.UseDeepLTranslation = config.UseDeepLTranslation
+	}
+	if config.AppointmentServicesLanguageHandling != nil {
+		externalAPIConfig.AppointmentServicesLanguageHandling = config.AppointmentServicesLanguageHandling
+	}
+	if config.AppointmentServicesLanguageHeader != nil {
+		externalAPIConfig.AppointmentServicesLanguageHeader = config.AppointmentServicesLanguageHeader
+	}
+	if config.GenericServicesLanguageHandling != nil {
+		externalAPIConfig.GenericServicesLanguageHandling = config.GenericServicesLanguageHandling
+	}
+	if config.GenericServicesLanguageHeader != nil {
+		externalAPIConfig.GenericServicesLanguageHeader = config.GenericServicesLanguageHeader
 	}
 
 	return externalAPIConfig, nil
@@ -115,19 +159,33 @@ func (s *Service) UpdateExternalAPIConfiguration(ctx context.Context, config *dt
 		}
 		externalAPIConfig.AppointmentServicesURL = *config.AppointmentServicesUrl
 	}
+	if config.AppointmentServicesHttpMethod != nil {
+		externalAPIConfig.AppointmentServicesHttpMethod = config.AppointmentServicesHttpMethod
+	}
 	if config.GenericServicesUrl != nil && *config.GenericServicesUrl != "" {
 		externalAPIConfig.GenericServicesURL = *config.GenericServicesUrl
+	}
+	if config.GenericServicesHttpMethod != nil {
+		externalAPIConfig.GenericServicesHttpMethod = config.GenericServicesHttpMethod
 	}
 
 	// Convert GenericServices from DTO to types
 	if len(config.GenericServices) > 0 {
 		genericServices := make([]types.GenericService, len(config.GenericServices))
 		for i, service := range config.GenericServices {
+			var duration int
+			if service.Duration != nil {
+				duration = int(*service.Duration)
+			}
+			var description string
+			if service.Description != nil {
+				description = *service.Description
+			}
 			genericServices[i] = types.GenericService{
 				ID:          service.Id,
 				Name:        service.Name,
-				Description: service.Description,
-				Duration:    service.Duration,
+				Description: description,
+				Duration:    duration,
 				Enabled:     service.Enabled,
 			}
 		}
@@ -137,11 +195,37 @@ func (s *Service) UpdateExternalAPIConfiguration(ctx context.Context, config *dt
 	if config.WebhookUrl != nil && *config.WebhookUrl != "" {
 		externalAPIConfig.WebhookURL = *config.WebhookUrl
 	}
+	if config.WebhookHttpMethod != nil {
+		externalAPIConfig.WebhookHttpMethod = config.WebhookHttpMethod
+	}
 	if config.WebhookTimeoutSeconds != nil && *config.WebhookTimeoutSeconds > 0 {
 		externalAPIConfig.WebhookTimeoutSeconds = int(*config.WebhookTimeoutSeconds)
 	}
 	if config.WebhookRetryAttempts != nil && *config.WebhookRetryAttempts > 0 {
 		externalAPIConfig.WebhookRetryAttempts = int(*config.WebhookRetryAttempts)
+	}
+
+	// Add multilingual configuration
+	if config.MultilingualSupport != nil {
+		externalAPIConfig.MultilingualSupport = config.MultilingualSupport
+	}
+	if len(config.SupportedLanguages) > 0 {
+		externalAPIConfig.SupportedLanguages = config.SupportedLanguages
+	}
+	if config.UseDeepLTranslation != nil {
+		externalAPIConfig.UseDeepLTranslation = config.UseDeepLTranslation
+	}
+	if config.AppointmentServicesLanguageHandling != nil {
+		externalAPIConfig.AppointmentServicesLanguageHandling = config.AppointmentServicesLanguageHandling
+	}
+	if config.AppointmentServicesLanguageHeader != nil {
+		externalAPIConfig.AppointmentServicesLanguageHeader = config.AppointmentServicesLanguageHeader
+	}
+	if config.GenericServicesLanguageHandling != nil {
+		externalAPIConfig.GenericServicesLanguageHandling = config.GenericServicesLanguageHandling
+	}
+	if config.GenericServicesLanguageHeader != nil {
+		externalAPIConfig.GenericServicesLanguageHeader = config.GenericServicesLanguageHeader
 	}
 
 	err := s.configService.UpdateExternalAPIConfiguration(ctx, externalAPIConfig)
@@ -423,4 +507,59 @@ func getStringValue(ptr *string) string {
 		return ""
 	}
 	return *ptr
+}
+
+// Helper function to get int64 value from map
+func getInt64Value(m map[string]interface{}, key string) *int64 {
+	if val, ok := m[key]; ok {
+		switch v := val.(type) {
+		case int:
+			i := int64(v)
+			return &i
+		case int64:
+			return &v
+		}
+	}
+	return nil
+}
+
+// Helper function to get string value from map
+func getStringValueFromMap(m map[string]interface{}, key string) *string {
+	if val, ok := m[key]; ok {
+		if str, ok := val.(string); ok {
+			return &str
+		}
+	}
+	return nil
+}
+
+// GetTranslationCacheStats returns statistics about the translation cache
+func (s *Service) GetTranslationCacheStats(ctx context.Context) (*dto.TranslationCacheStats, error) {
+	if s.translationService == nil {
+		return &dto.TranslationCacheStats{}, fmt.Errorf("translation service not configured")
+	}
+	stats := s.translationService.GetCacheStats()
+
+	// Convert map to DTO
+	result := &dto.TranslationCacheStats{
+		Cache_size:      getInt64Value(stats, "cache_size"),
+		Max_cache_size:  getInt64Value(stats, "max_cache_size"),
+		Hits:            getInt64Value(stats, "hits"),
+		Misses:          getInt64Value(stats, "misses"),
+		Total_requests:  getInt64Value(stats, "total_requests"),
+		Hit_rate:        getStringValueFromMap(stats, "hit_rate"),
+		Api_calls_saved: getInt64Value(stats, "api_calls_saved"),
+		Expiration_time: getStringValueFromMap(stats, "expiration_time"),
+	}
+	return result, nil
+}
+
+// ClearTranslationCache clears the translation cache
+func (s *Service) ClearTranslationCache(ctx context.Context) (*dto.CacheClearResponse, error) {
+	if s.translationService == nil {
+		return nil, fmt.Errorf("translation service not configured")
+	}
+	s.translationService.ClearCache()
+	msg := "Cache cleared successfully"
+	return &dto.CacheClearResponse{Message: &msg}, nil
 }

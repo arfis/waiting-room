@@ -16,15 +16,28 @@ type SystemConfiguration struct {
 
 // ExternalAPIConfig represents external API configuration
 type ExternalAPIConfig struct {
-	AppointmentServicesURL string            `bson:"appointmentServicesUrl,omitempty" json:"appointmentServicesUrl,omitempty"`
-	GenericServicesURL     string            `bson:"genericServicesUrl,omitempty" json:"genericServicesUrl,omitempty"`
-	GenericServices        []GenericService  `bson:"genericServices,omitempty" json:"genericServices,omitempty"`
-	WebhookURL             string            `bson:"webhookUrl,omitempty" json:"webhookUrl,omitempty"`
-	WebhookTimeoutSeconds  int               `bson:"webhookTimeoutSeconds,omitempty" json:"webhookTimeoutSeconds,omitempty"`
-	WebhookRetryAttempts   int               `bson:"webhookRetryAttempts,omitempty" json:"webhookRetryAttempts,omitempty"`
-	TimeoutSeconds         int               `bson:"timeoutSeconds" json:"timeoutSeconds"`
-	RetryAttempts          int               `bson:"retryAttempts" json:"retryAttempts"`
-	Headers                map[string]string `bson:"headers,omitempty" json:"headers,omitempty"`
+	AppointmentServicesURL        string            `bson:"appointmentServicesUrl,omitempty" json:"appointmentServicesUrl,omitempty"`
+	AppointmentServicesHttpMethod *string           `bson:"appointmentServicesHttpMethod,omitempty" json:"appointmentServicesHttpMethod,omitempty"`
+	GenericServicesURL            string            `bson:"genericServicesUrl,omitempty" json:"genericServicesUrl,omitempty"`
+	GenericServicesHttpMethod     *string           `bson:"genericServicesHttpMethod,omitempty" json:"genericServicesHttpMethod,omitempty"`
+	GenericServices               []GenericService  `bson:"genericServices,omitempty" json:"genericServices,omitempty"`
+	WebhookURL                    string            `bson:"webhookUrl,omitempty" json:"webhookUrl,omitempty"`
+	WebhookHttpMethod             *string           `bson:"webhookHttpMethod,omitempty" json:"webhookHttpMethod,omitempty"`
+	WebhookTimeoutSeconds         int               `bson:"webhookTimeoutSeconds,omitempty" json:"webhookTimeoutSeconds,omitempty"`
+	WebhookRetryAttempts          int               `bson:"webhookRetryAttempts,omitempty" json:"webhookRetryAttempts,omitempty"`
+	TimeoutSeconds                int               `bson:"timeoutSeconds" json:"timeoutSeconds"`
+	RetryAttempts                 int               `bson:"retryAttempts" json:"retryAttempts"`
+	Headers                       map[string]string `bson:"headers,omitempty" json:"headers,omitempty"`
+	// Multilingual configuration
+	MultilingualSupport *bool    `bson:"multilingualSupport,omitempty" json:"multilingualSupport,omitempty"`
+	SupportedLanguages  []string `bson:"supportedLanguages,omitempty" json:"supportedLanguages,omitempty"`
+	UseDeepLTranslation *bool    `bson:"useDeepLTranslation,omitempty" json:"useDeepLTranslation,omitempty"`
+	// Appointment services language handling
+	AppointmentServicesLanguageHandling *string `bson:"appointmentServicesLanguageHandling,omitempty" json:"appointmentServicesLanguageHandling,omitempty"`
+	AppointmentServicesLanguageHeader   *string `bson:"appointmentServicesLanguageHeader,omitempty" json:"appointmentServicesLanguageHeader,omitempty"`
+	// Generic services language handling
+	GenericServicesLanguageHandling *string `bson:"genericServicesLanguageHandling,omitempty" json:"genericServicesLanguageHandling,omitempty"`
+	GenericServicesLanguageHeader   *string `bson:"genericServicesLanguageHeader,omitempty" json:"genericServicesLanguageHeader,omitempty"`
 }
 
 // GenericService represents a generic service that can be created by admin

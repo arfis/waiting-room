@@ -17,6 +17,12 @@ type Config struct {
 	Rooms       RoomsConfig       `yaml:"rooms"`
 	Logging     LoggingConfig     `yaml:"logging"`
 	ExternalAPI ExternalAPIConfig `yaml:"external_api"`
+	DeepL       DeepLConfig       `yaml:"deepl"`
+}
+
+// DeepLConfig contains DeepL configuration
+type DeepLConfig struct {
+	APIKey string `yaml:"api_key"`
 }
 
 // ServerConfig contains server-related configuration
