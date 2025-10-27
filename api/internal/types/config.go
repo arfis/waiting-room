@@ -16,10 +16,24 @@ type SystemConfiguration struct {
 
 // ExternalAPIConfig represents external API configuration
 type ExternalAPIConfig struct {
-	UserServicesURL string            `bson:"userServicesUrl" json:"userServicesUrl"`
-	TimeoutSeconds  int               `bson:"timeoutSeconds" json:"timeoutSeconds"`
-	RetryAttempts   int               `bson:"retryAttempts" json:"retryAttempts"`
-	Headers         map[string]string `bson:"headers,omitempty" json:"headers,omitempty"`
+	AppointmentServicesURL string            `bson:"appointmentServicesUrl,omitempty" json:"appointmentServicesUrl,omitempty"`
+	GenericServicesURL     string            `bson:"genericServicesUrl,omitempty" json:"genericServicesUrl,omitempty"`
+	GenericServices        []GenericService  `bson:"genericServices,omitempty" json:"genericServices,omitempty"`
+	WebhookURL             string            `bson:"webhookUrl,omitempty" json:"webhookUrl,omitempty"`
+	WebhookTimeoutSeconds  int               `bson:"webhookTimeoutSeconds,omitempty" json:"webhookTimeoutSeconds,omitempty"`
+	WebhookRetryAttempts   int               `bson:"webhookRetryAttempts,omitempty" json:"webhookRetryAttempts,omitempty"`
+	TimeoutSeconds         int               `bson:"timeoutSeconds" json:"timeoutSeconds"`
+	RetryAttempts          int               `bson:"retryAttempts" json:"retryAttempts"`
+	Headers                map[string]string `bson:"headers,omitempty" json:"headers,omitempty"`
+}
+
+// GenericService represents a generic service that can be created by admin
+type GenericService struct {
+	ID          string `bson:"id" json:"id"`
+	Name        string `bson:"name" json:"name"`
+	Description string `bson:"description,omitempty" json:"description,omitempty"`
+	Duration    int    `bson:"duration,omitempty" json:"duration,omitempty"` // Duration in minutes
+	Enabled     bool   `bson:"enabled" json:"enabled"`
 }
 
 // RoomConfig represents room configuration

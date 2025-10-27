@@ -2,22 +2,26 @@ package queue
 
 import (
 	"context"
+	"log"
 
 	"github.com/arfis/waiting-room/internal/data/dto"
 	"github.com/arfis/waiting-room/internal/data/dto/queueentrystatus"
 	ngErrors "github.com/arfis/waiting-room/internal/errors"
 	"github.com/arfis/waiting-room/internal/queue"
+	"github.com/arfis/waiting-room/internal/service/webhook"
 )
 
 type Service struct {
-	queueService  *queue.WaitingQueue
-	broadcastFunc func(string) // Function to broadcast queue updates
+	queueService   *queue.WaitingQueue
+	broadcastFunc  func(string) // Function to broadcast queue updates
+	webhookService *webhook.Service
 }
 
-func New(queueService *queue.WaitingQueue, broadcastFunc func(string)) *Service {
+func New(queueService *queue.WaitingQueue, broadcastFunc func(string), webhookService *webhook.Service) *Service {
 	return &Service{
-		queueService:  queueService,
-		broadcastFunc: broadcastFunc,
+		queueService:   queueService,
+		broadcastFunc:  broadcastFunc,
+		webhookService: webhookService,
 	}
 }
 
@@ -69,6 +73,15 @@ func (s *Service) CallNext(ctx context.Context, roomId string, servicePointId st
 		s.broadcastFunc(roomId)
 	}
 
+	// Send webhook notification for ticket called
+	if s.webhookService != nil {
+		go func() {
+			if err := s.webhookService.SendTicketCalledWebhook(ctx, entry.ID, roomId, servicePointId, ""); err != nil {
+				log.Printf("Failed to send webhook notification for ticket called: %v", err)
+			}
+		}()
+	}
+
 	return queueEntry, nil
 }
 
@@ -97,6 +110,15 @@ func (s *Service) FinishCurrent(ctx context.Context, roomId string) (*dto.QueueE
 	// Broadcast queue update
 	if s.broadcastFunc != nil {
 		s.broadcastFunc(roomId)
+	}
+
+	// Send webhook notification for ticket completed
+	if s.webhookService != nil {
+		go func() {
+			if err := s.webhookService.SendTicketCompletedWebhook(ctx, entry.ID, roomId, entry.ServicePoint, ""); err != nil {
+				log.Printf("Failed to send webhook notification for ticket completed: %v", err)
+			}
+		}()
 	}
 
 	return queueEntry, nil
@@ -142,5 +164,19 @@ func (s *Service) MarkInRoomForServicePoint(ctx context.Context, roomId, service
 }
 
 func (s *Service) FinishCurrentForServicePoint(ctx context.Context, roomId, servicePointId string) (*dto.QueueEntry, error) {
-	return s.queueService.FinishCurrentForServicePoint(ctx, roomId, servicePointId)
+	entry, err := s.queueService.FinishCurrentForServicePoint(ctx, roomId, servicePointId)
+	if err != nil {
+		return nil, err
+	}
+
+	// Send webhook notification for ticket completed
+	if s.webhookService != nil {
+		go func() {
+			if err := s.webhookService.SendTicketCompletedWebhook(ctx, entry.ID, roomId, servicePointId, ""); err != nil {
+				log.Printf("Failed to send webhook notification for ticket completed: %v", err)
+			}
+		}()
+	}
+
+	return entry, nil
 }

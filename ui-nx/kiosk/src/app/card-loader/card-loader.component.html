@@ -1,0 +1,332 @@
+<div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+  <div class="max-w-2xl w-full">
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <h1 class="text-4xl font-bold text-gray-900 mb-2">Waiting Room Kiosk</h1>
+      <p class="text-lg text-gray-600">{{ headerMessage() }}</p>
+    </div>
+
+    <!-- Main Card -->
+    <ui-card [title]="cardTitle()" [subtitle]="cardSubtitle()">
+      <!-- Connection Status -->
+      @if (!showServiceSelection() && !ticketData()) {
+      <div class="mb-6 p-4 rounded-lg" 
+           [class]="wsConnectionStatus() === 'connected' ? 'bg-green-50 border border-green-200' : 
+                    wsConnectionStatus() === 'connecting' ? 'bg-yellow-50 border border-yellow-200' : 
+                    'bg-red-50 border border-red-200'">
+        <div class="flex items-center gap-3">
+          <div class="w-3 h-3 rounded-full" 
+               [class]="wsConnectionStatus() === 'connected' ? 'bg-green-500' : 
+                        wsConnectionStatus() === 'connecting' ? 'bg-yellow-500 animate-pulse' : 
+                        'bg-red-500'"></div>
+          <span class="font-medium" 
+                [class]="wsConnectionStatus() === 'connected' ? 'text-green-800' : 
+                         wsConnectionStatus() === 'connecting' ? 'text-yellow-800' : 
+                         'text-red-800'">
+            @if (wsConnectionStatus() === 'connected') {
+              Card Reader Connected
+            } @else if (wsConnectionStatus() === 'connecting') {
+              Connecting to Card Reader...
+            } @else {
+              Card Reader Disconnected
+            }
+          </span>
+        </div>
+      </div>
+      }
+
+      <!-- Combined Interface: Card Reader + Manual ID Entry -->
+      @if (!showServiceSelection() && !ticketData()) {
+      <div class="space-y-6">
+        <!-- Card Reader Section -->
+        <div class="text-center">
+          <div class="mb-4">
+            <!-- Different icons based on state -->
+            @if (readerState() === 'waiting') {
+              <svg class="mx-auto w-16 h-16 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+              </svg>
+            } @else if (readerState() === 'reading') {
+              <svg class="mx-auto w-16 h-16 text-yellow-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+              </svg>
+            } @else if (readerState() === 'success') {
+              <svg class="mx-auto w-16 h-16 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            } @else if (readerState() === 'error') {
+              <svg class="mx-auto w-16 h-16 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            } @else if (readerState() === 'removed') {
+              <svg class="mx-auto w-16 h-16 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+              </svg>
+            } @else if (wsConnectionStatus() === 'disconnected') {
+              <svg class="mx-auto w-16 h-16 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+              </svg>
+            }
+          </div>
+          
+          <h2 class="text-xl font-semibold mb-2">{{ cardReaderMessage() }}</h2>
+          <p class="text-slate-600 mb-4">
+            @if (wsConnectionStatus() === 'connected') {
+              @if (readerState() === 'waiting') {
+                Card reader is ready. Insert your card to automatically read it.
+              } @else if (readerState() === 'reading') {
+                Reading your card data, please wait...
+              } @else if (readerState() === 'success') {
+                Card read successfully! Please remove your card.
+              } @else if (readerState() === 'removed') {
+                Card removed successfully. Ready for next card.
+              } @else if (readerState() === 'error') {
+                There was an error reading your card. Please try again.
+              }
+            } @else if (wsConnectionStatus() === 'connecting') {
+              Connecting to card reader...
+            } @else {
+              <strong>To start card reading:</strong><br>
+              1. Open terminal and run: <code class="bg-gray-200 px-2 py-1 rounded">cd card-reader && go run main.go</code><br>
+              2. Insert your ID card when prompted
+            }
+          </p>
+          
+          <!-- Card reader connection instructions -->
+          @if (wsConnectionStatus() !== 'connected') {
+            <div class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p class="text-sm text-blue-800">
+                <strong>Note:</strong> The card reader is not connected. Please ensure the card reader service is running.
+              </p>
+            </div>
+          }
+        </div>
+
+        <!-- Divider -->
+        <div class="relative">
+          <div class="absolute inset-0 flex items-center">
+            <div class="w-full border-t border-gray-300"></div>
+          </div>
+          <div class="relative flex justify-center text-sm">
+            <span class="px-2 bg-white text-gray-500">OR</span>
+          </div>
+        </div>
+
+        <!-- Manual ID Entry Section -->
+        <div class="text-center">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">Enter ID Manually</h3>
+          <form (ngSubmit)="onManualIdSubmitted(manualIdNumber())" class="max-w-sm mx-auto">
+            <div class="mb-4">
+              <input
+                type="text"
+                [(ngModel)]="manualIdNumber"
+                name="manualIdNumber"
+                placeholder="Enter your ID number"
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-lg"
+                [class.border-red-500]="error()"
+                required
+                autocomplete="off"
+              />
+              @if (error()) {
+                <p class="mt-2 text-sm text-red-600">{{ error() }}</p>
+              }
+            </div>
+            <button
+              type="submit"
+              class="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              [disabled]="!manualIdNumber().trim() || isManualIdSubmitting()"
+            >
+              @if (isManualIdSubmitting()) {
+                <span class="flex items-center justify-center">
+                  <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Processing...
+                </span>
+              } @else {
+                Continue with ID
+              }
+            </button>
+          </form>
+        </div>
+      </div>
+      }
+
+      <!-- Service Selection -->
+      @if (showServiceSelection()) {
+        <div class="mt-8">
+          <app-service-selection
+            [services]="userServices()"
+            [serviceSections]="serviceSections()"
+            [isLoading]="isLoadingServices()"
+            [error]="error()"
+            (serviceSelected)="onServiceSelected($event)"
+            (retry)="onRetryServiceLoading()"
+          />
+        </div>
+      }
+
+      <!-- Ticket Display -->
+      @if (ticketData()) {
+        <div class="mt-8">
+          <ui-card title="Your Ticket" variant="success">
+            <div class="text-center">
+              <div class="mb-6">
+                <h3 class="text-3xl font-bold text-gray-900 mb-2">Ticket Number</h3>
+                <div class="text-6xl font-mono font-bold text-blue-600 bg-blue-50 px-8 py-4 rounded-lg inline-block">
+                  {{ ticketData()?.ticketNumber }}
+                </div>
+              </div>
+              
+              @if (ticketData()?.servicePoint) {
+                <div class="mb-6">
+                  <h4 class="text-xl font-semibold text-gray-700 mb-3">Service Point</h4>
+                  <div class="inline-flex items-center px-6 py-3 rounded-lg text-lg font-medium bg-green-50 text-green-700 border border-green-200">
+                    <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    {{ getServicePointName(ticketData()?.servicePoint || '') }}
+                  </div>
+                </div>
+              }
+              
+              @if (ticketData()?.serviceName || ticketData()?.serviceDuration) {
+                <div class="mb-6">
+                  <h4 class="text-xl font-semibold text-gray-700 mb-3">Service Details</h4>
+                  <div class="space-y-3">
+                    @if (ticketData()?.serviceName) {
+                      <div class="inline-flex items-center px-6 py-3 rounded-lg text-lg font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                        <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        {{ ticketData()?.serviceName }}
+                      </div>
+                    }
+                    @if (ticketData()?.serviceDuration) {
+                      <div class="inline-flex items-center px-6 py-3 rounded-lg text-lg font-medium bg-purple-50 text-purple-700 border border-purple-200">
+                        <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Estimated Duration: {{ ticketData()?.serviceDuration }} minutes
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+              
+              @if (ticketData()?.qrCodeDataUrl) {
+                <div class="mb-6">
+                  <h4 class="text-lg font-semibold text-gray-700 mb-3">Scan QR Code for Queue Updates</h4>
+                  <div class="inline-block p-4 bg-white rounded-lg shadow-sm border">
+                    <img [src]="ticketData()?.qrCodeDataUrl" alt="QR Code" class="w-48 h-48">
+                  </div>
+                </div>
+              }
+              
+              <div class="text-sm text-gray-600">
+                <p>{{ticketData()?.qrUrl}}</p>
+                <p class="mb-2">📱 Scan the QR code with your phone to track your position in the queue</p>
+                <p class="text-xs">Your ticket has been added to the waiting queue. Please wait for your number to be called.</p>
+              </div>
+              
+              <!-- Countdown Timer and Return Button -->
+              <div class="mt-8 pt-6 border-t border-gray-200">
+                @if (isTicketCountdownActive()) {
+                  <div class="text-center">
+                    <div class="mb-4">
+                      <div class="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-lg border border-blue-200">
+                        <svg class="w-5 h-5 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="font-medium">Returning to main screen in {{ ticketCountdown() }} seconds</span>
+                      </div>
+                    </div>
+                    <button 
+                      class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                      (click)="returnToMainInterface()">
+                      Return Now
+                    </button>
+                  </div>
+                } @else {
+                  <div class="text-center">
+                    <button 
+                      class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      (click)="returnToMainInterface()">
+                      Return to Main Screen
+                    </button>
+                  </div>
+                }
+              </div>
+            </div>
+          </ui-card>
+        </div>
+      }
+
+      <!-- Error Display -->
+      @if (error()) {
+        <div class="mt-6">
+          <ui-card title="Error" variant="error">
+            <div class="flex items-center gap-2">
+              <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <span class="text-red-800 font-medium">Error</span>
+            </div>
+            <p class="text-red-700 mt-1">{{ error() }}</p>
+          </ui-card>
+        </div>
+      }
+
+      <!-- Card Data Display -->
+      <!-- @if (cardData()) {
+        <div class="mt-8">
+          <ui-card title="Card Information" variant="success">
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200">
+                <tbody class="bg-white divide-y divide-gray-200">
+                  @for (field of cardDataFields(); track field.label) {
+                    <tr>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {{ field.label }}
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        @if (field.type === 'image' && field.value) {
+                          <img [src]="field.value" [alt]="field.imageAlt || field.label" class="h-16 w-16 object-cover rounded">
+                        } @else {
+                          {{ field.value || 'N/A' }}
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </ui-card>
+        </div>
+      } -->
+      
+      <!-- Loading State -->
+      @if (isReading()) {
+        <div class="mt-6">
+          <ui-card title="Reading Card" variant="warning">
+            <div class="flex items-center gap-2">
+              <svg class="animate-spin w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span class="text-blue-800 font-medium">Reading Card...</span>
+            </div>
+          </ui-card>
+        </div>
+      }
+    </ui-card>
+
+    
+    <!-- Footer -->
+    <div class="text-center mt-8 text-sm text-gray-500">
+      <p>Waiting Room Management System</p>
+    </div>
+  </div>
+</div>

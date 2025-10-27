@@ -76,7 +76,7 @@ func (s *Service) UpdateSystemConfiguration(ctx context.Context, updates map[str
 func (s *Service) GetExternalAPIConfig(ctx context.Context) (*types.ExternalAPIConfig, error) {
 	config := s.cache.GetExternalAPIConfig()
 	if config != nil {
-		log.Printf("Using cached config - URL: %s, Timeout: %d", config.UserServicesURL, config.TimeoutSeconds)
+		log.Printf("Using cached config - Timeout: %d", config.TimeoutSeconds)
 		return config, nil
 	}
 
@@ -87,7 +87,7 @@ func (s *Service) GetExternalAPIConfig(ctx context.Context) (*types.ExternalAPIC
 
 // SetExternalAPIConfig updates external API configuration
 func (s *Service) SetExternalAPIConfig(ctx context.Context, apiConfig *types.ExternalAPIConfig) error {
-	log.Printf("Updating external API config - URL: %s, Timeout: %d", apiConfig.UserServicesURL, apiConfig.TimeoutSeconds)
+	log.Printf("Updating external API config - Timeout: %d", apiConfig.TimeoutSeconds)
 	return s.cache.UpdateExternalAPIConfiguration(ctx, apiConfig)
 }
 
@@ -214,9 +214,8 @@ func (s *Service) getExternalAPIConfigFromEnv() *types.ExternalAPIConfig {
 	}
 
 	return &types.ExternalAPIConfig{
-		UserServicesURL: url,
-		TimeoutSeconds:  timeout,
-		RetryAttempts:   retry,
+		TimeoutSeconds: timeout,
+		RetryAttempts:  retry,
 	}
 }
 

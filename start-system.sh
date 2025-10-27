@@ -90,9 +90,9 @@ wait_for_service "http://localhost:8080/health" "API Server" || {
   exit 1
 }
 
-# Build Angular apps first
-echo "Building Angular apps..."
-pushd ui >/dev/null
+# Build Angular apps first using Nx
+echo "Building Angular apps with Nx..."
+pushd ui-nx >/dev/null
 if [ ! -d "node_modules" ]; then
   echo "Installing UI dependencies..."
   if command -v npm >/dev/null 2>&1; then
@@ -102,21 +102,30 @@ if [ ! -d "node_modules" ]; then
     exit 1
   fi
 fi
-if command -v ng >/dev/null 2>&1; then
-  ng build kiosk
-  ng build mobile
-  ng build tv
-  ng build backoffice
-  ng build admin
+if command -v npx >/dev/null 2>&1; then
+  echo "Building all applications..."
+  if npx nx run-many --target=build --projects=kiosk,admin,backoffice,tv,mobile,ui,api-client,primeng-components --prod; then
+    echo "All applications built successfully!"
+  else
+    echo "Build failed! Please check the errors above."
+    exit 1
+  fi
 else
-  echo "Angular CLI (ng) not found. Please install @angular/cli globally or provide a local script."
+  echo "npx not found. Please install Node.js and npm."
   exit 1
 fi
 popd >/dev/null
 
-# Start Kiosk WebSocket server (now under scripts/)
+# Start Kiosk app server
+echo "Starting Kiosk app server..."
+pushd ui-nx >/dev/null
+npx serve -s dist/kiosk/browser -l 4201 &
+KIOSK_PID=$!
+popd >/dev/null
+
+# Start Kiosk WebSocket server
 echo "Starting Kiosk WebSocket server..."
-if [ ! -d "node_modules" ]; then
+if [ ! -d "ui-nx/node_modules" ]; then
   echo "Installing WebSocket server dependencies..."
   if command -v npm >/dev/null 2>&1; then
     npm ci || npm install
@@ -125,41 +134,41 @@ if [ ! -d "node_modules" ]; then
     exit 1
   fi
 fi
-node ui/projects/kiosk/websocket-server.js &
-KIOSK_PID=$!
+node ui-nx/websocket-server.js &
+KIOSK_WS_PID=$!
 
 # Wait for Kiosk to be ready
-wait_for_service "http://localhost:4201/health" "Kiosk WebSocket Server" || {
-  echo "Kiosk WebSocket server failed to start"
-  kill ${API_PID:-} ${KIOSK_PID:-} 2>/dev/null || true
+wait_for_service "http://localhost:4201" "Kiosk App Server" || {
+  echo "Kiosk app server failed to start"
+  kill ${API_PID:-} ${KIOSK_PID:-} ${KIOSK_WS_PID:-} 2>/dev/null || true
   exit 1
 }
 
 # Start Mobile app server
 echo "Starting Mobile app server..."
-pushd ui/projects/mobile >/dev/null
-node server.js &
+pushd ui-nx >/dev/null
+npx serve -s dist/mobile/browser -l 4204 &
 MOBILE_PID=$!
 popd >/dev/null
 
 # Start TV app server
 echo "Starting TV app server..."
-pushd ui >/dev/null
+pushd ui-nx >/dev/null
 npx serve -s dist/tv/browser -l 4203 &
 TV_PID=$!
 popd >/dev/null
 
 # Start Backoffice app server
 echo "Starting Backoffice app server..."
-pushd ui >/dev/null
+pushd ui-nx >/dev/null
 npx serve -s dist/backoffice/browser -l 4200 &
 BACKOFFICE_PID=$!
 popd >/dev/null
 
 # Start Admin app server
 echo "Starting admin app server..."
-pushd ui >/dev/null
-npx serve -s dist/admin/browser -l 4205 &
+pushd ui-nx >/dev/null
+npx serve -s dist/apps/admin/browser/browser -l 4205 &
 ADMIN_PID=$!
 popd >/dev/null
 
@@ -203,7 +212,7 @@ echo "Press Ctrl+C to stop all services"
 cleanup() {
   echo
   echo "Stopping services..."
-  kill ${API_PID:-} ${KIOSK_PID:-} ${MOBILE_PID:-} ${TV_PID:-} ${BACKOFFICE_PID:-} ${ADMIN_PID:-} ${CARD_READER_PID:-} 2>/dev/null || true
+  kill ${API_PID:-} ${KIOSK_PID:-} ${KIOSK_WS_PID:-} ${MOBILE_PID:-} ${TV_PID:-} ${BACKOFFICE_PID:-} ${ADMIN_PID:-} ${CARD_READER_PID:-} 2>/dev/null || true
   echo "All services stopped"
 }
 

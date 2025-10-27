@@ -1,0 +1,41 @@
+// Kiosk Component Styles
+// Using Tailwind CSS classes in template, but can add custom styles here if needed
+
+// Custom animations for card reader states
+@keyframes card-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.card-reading {
+  animation: card-pulse 1s ease-in-out infinite;
+}
+
+// Custom styles for better card data display
+.card-data-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+// Responsive adjustments
+@media (max-width: 640px) {
+  .card-data-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+// Custom focus styles for accessibility
+button:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+// Smooth transitions for state changes
+.state-transition {
+  transition: all 0.3s ease-in-out;
+}

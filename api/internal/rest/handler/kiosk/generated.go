@@ -3,11 +3,12 @@ package kiosk
 
 import (
 	"encoding/json"
+	"net/http"
+
 	"github.com/arfis/waiting-room/internal/data/dto"
 	ngErrors "github.com/arfis/waiting-room/internal/errors"
 	"github.com/arfis/waiting-room/internal/rest/handler"
 	"github.com/arfis/waiting-room/internal/service/kiosk"
-	"net/http"
 )
 
 type Handler struct {
@@ -64,4 +65,34 @@ func (h *Handler) SwipeCard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	handler.WriteJson(r.Context(), w, 201, resp)
+}
+
+func (h *Handler) GetGenericServices(w http.ResponseWriter, r *http.Request) {
+	var applicationErr error
+	servicePointId := handler.QueryParamToString(r, "servicePointId")
+	var resp []dto.UserService
+	resp, applicationErr = h.svc.GetGenericServices(
+		r.Context(),
+		servicePointId,
+	)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)
+		return
+	}
+	handler.WriteJson(r.Context(), w, 200, resp)
+}
+
+func (h *Handler) GetAppointmentServices(w http.ResponseWriter, r *http.Request) {
+	var applicationErr error
+	identifier := handler.QueryParamToString(r, "identifier")
+	var resp []dto.UserService
+	resp, applicationErr = h.svc.GetAppointmentServices(
+		r.Context(),
+		identifier,
+	)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)
+		return
+	}
+	handler.WriteJson(r.Context(), w, 200, resp)
 }

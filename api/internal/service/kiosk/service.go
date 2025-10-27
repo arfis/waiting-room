@@ -15,21 +15,24 @@ import (
 	ngErrors "github.com/arfis/waiting-room/internal/errors"
 	"github.com/arfis/waiting-room/internal/queue"
 	configService "github.com/arfis/waiting-room/internal/service/config"
+	"github.com/arfis/waiting-room/internal/service/webhook"
 )
 
 type Service struct {
-	queueService  *queue.WaitingQueue
-	broadcastFunc func(string) // Function to broadcast queue updates
-	config        *config.Config
-	configService *configService.Service
+	queueService   *queue.WaitingQueue
+	broadcastFunc  func(string) // Function to broadcast queue updates
+	config         *config.Config
+	configService  *configService.Service
+	webhookService *webhook.Service
 }
 
-func New(queueService *queue.WaitingQueue, broadcastFunc func(string), config *config.Config, configService *configService.Service) *Service {
+func New(queueService *queue.WaitingQueue, broadcastFunc func(string), config *config.Config, configService *configService.Service, webhookService *webhook.Service) *Service {
 	return &Service{
-		queueService:  queueService,
-		broadcastFunc: broadcastFunc,
-		config:        config,
-		configService: configService,
+		queueService:   queueService,
+		broadcastFunc:  broadcastFunc,
+		config:         config,
+		configService:  configService,
+		webhookService: webhookService,
 	}
 }
 
@@ -79,6 +82,15 @@ func (s *Service) SwipeCard(ctx context.Context, roomId string, req *dto.SwipeRe
 		s.broadcastFunc(roomId)
 	}
 
+	// Send webhook notification for service selected (if service was selected)
+	if s.webhookService != nil && req.ServiceId != nil && *req.ServiceId != "" {
+		go func() {
+			if err := s.webhookService.SendServiceSelectedWebhook(ctx, entry.ID, *req.ServiceId, roomId, "", cardData.IDNumber); err != nil {
+				log.Printf("Failed to send webhook notification for service selected: %v", err)
+			}
+		}()
+	}
+
 	// Return the join result
 	result := &dto.JoinResult{
 		EntryID:      entry.ID,
@@ -126,7 +138,79 @@ func (s *Service) GetUserServices(ctx context.Context, identifier string) ([]dto
 	}
 
 	// Replace ${identifier} placeholder with actual identifier value
-	actualURL := s.replaceIdentifierInURL(apiConfig.UserServicesURL, identifier)
+	actualURL := s.replaceIdentifierInURL(apiConfig.AppointmentServicesURL, identifier)
+
+	return s.makeExternalAPICall(ctx, actualURL, apiConfig.TimeoutSeconds, apiConfig.Headers, identifier)
+}
+
+// GetGenericServices returns generic services available at a service point
+func (s *Service) GetGenericServices(ctx context.Context, servicePointId string) ([]dto.UserService, error) {
+	// Get external API configuration from cache
+	apiConfig, err := s.configService.GetExternalAPIConfig(ctx)
+	if err != nil {
+		log.Printf("Failed to get external API config for generic services: %v", err)
+		return []dto.UserService{}, nil // Return empty list if config fails
+	}
+
+	var services []dto.UserService
+
+	// First, try to get admin-created generic services
+	if len(apiConfig.GenericServices) > 0 {
+		log.Printf("Found %d admin-created generic services", len(apiConfig.GenericServices))
+		for _, service := range apiConfig.GenericServices {
+			if service.Enabled {
+				userService := dto.UserService{
+					Id:          service.ID,
+					ServiceName: service.Name,
+					Duration:    int64(service.Duration),
+				}
+				services = append(services, userService)
+			}
+		}
+	}
+
+	// If external URL is configured, also fetch from external API
+	if apiConfig.GenericServicesURL != "" {
+		log.Printf("Fetching generic services from external URL: %s", apiConfig.GenericServicesURL)
+		// Replace ${servicePointId} placeholder with actual service point ID
+		actualURL := s.replaceServicePointIdInURL(apiConfig.GenericServicesURL, servicePointId)
+
+		externalServices, err := s.makeExternalAPICall(ctx, actualURL, apiConfig.TimeoutSeconds, apiConfig.Headers, "")
+		if err != nil {
+			log.Printf("Failed to fetch external generic services: %v", err)
+		} else {
+			// Append external services to admin-created services
+			services = append(services, externalServices...)
+		}
+	}
+
+	// If no admin-created services and no external URL, return empty list
+	if len(apiConfig.GenericServices) == 0 && apiConfig.GenericServicesURL == "" {
+		log.Printf("No generic services configured (neither admin-created nor external URL)")
+		return []dto.UserService{}, nil
+	}
+
+	log.Printf("Returning %d total generic services", len(services))
+	return services, nil
+}
+
+// GetAppointmentServices returns appointment-specific services for a user
+func (s *Service) GetAppointmentServices(ctx context.Context, identifier string) ([]dto.UserService, error) {
+	// Get external API configuration from cache
+	apiConfig, err := s.configService.GetExternalAPIConfig(ctx)
+	if err != nil {
+		log.Printf("Failed to get external API config for appointment services: %v", err)
+		return []dto.UserService{}, nil // Return empty list if config fails
+	}
+
+	// Check if appointment services URL is configured
+	if apiConfig.AppointmentServicesURL == "" {
+		log.Printf("Appointment services URL not configured")
+		return []dto.UserService{}, nil // Return empty list if not configured
+	}
+
+	// Replace ${identifier} placeholder with actual identifier value
+	actualURL := s.replaceIdentifierInURL(apiConfig.AppointmentServicesURL, identifier)
 
 	return s.makeExternalAPICall(ctx, actualURL, apiConfig.TimeoutSeconds, apiConfig.Headers, identifier)
 }
@@ -134,6 +218,11 @@ func (s *Service) GetUserServices(ctx context.Context, identifier string) ([]dto
 // replaceIdentifierInURL replaces ${identifier} placeholder with the actual identifier value
 func (s *Service) replaceIdentifierInURL(urlTemplate, identifier string) string {
 	return strings.ReplaceAll(urlTemplate, "${identifier}", identifier)
+}
+
+// replaceServicePointIdInURL replaces ${servicePointId} placeholder with the actual service point ID
+func (s *Service) replaceServicePointIdInURL(urlTemplate, servicePointId string) string {
+	return strings.ReplaceAll(urlTemplate, "${servicePointId}", servicePointId)
 }
 
 // makeExternalAPICall makes the actual HTTP call to the external API

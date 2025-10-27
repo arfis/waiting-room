@@ -55,26 +55,93 @@ func (s *Service) GetExternalAPIConfiguration(ctx context.Context) (*dto.Externa
 	}
 
 	// Convert types to DTO
-	return &dto.ExternalAPIConfig{
-		UserServicesUrl: config.UserServicesURL,
-		TimeoutSeconds:  int64(config.TimeoutSeconds),
-		RetryAttempts:   int64(config.RetryAttempts),
-		Headers:         config.Headers,
-	}, nil
+	externalAPIConfig := &dto.ExternalAPIConfig{
+		TimeoutSeconds: int64(config.TimeoutSeconds),
+		RetryAttempts:  int64(config.RetryAttempts),
+		Headers:        config.Headers,
+	}
+
+	// Add optional URLs if they exist
+	if config.AppointmentServicesURL != "" {
+		externalAPIConfig.AppointmentServicesUrl = &config.AppointmentServicesURL
+	}
+	if config.GenericServicesURL != "" {
+		externalAPIConfig.GenericServicesUrl = &config.GenericServicesURL
+	}
+
+	// Convert GenericServices from types to DTO
+	if len(config.GenericServices) > 0 {
+		genericServices := make([]dto.GenericService, len(config.GenericServices))
+		for i, service := range config.GenericServices {
+			genericServices[i] = dto.GenericService{
+				Id:          service.ID,
+				Name:        service.Name,
+				Description: service.Description,
+				Duration:    service.Duration,
+				Enabled:     service.Enabled,
+			}
+		}
+		externalAPIConfig.GenericServices = genericServices
+	}
+
+	if config.WebhookURL != "" {
+		externalAPIConfig.WebhookUrl = &config.WebhookURL
+	}
+	if config.WebhookTimeoutSeconds > 0 {
+		timeout := int64(config.WebhookTimeoutSeconds)
+		externalAPIConfig.WebhookTimeoutSeconds = &timeout
+	}
+	if config.WebhookRetryAttempts > 0 {
+		retries := int64(config.WebhookRetryAttempts)
+		externalAPIConfig.WebhookRetryAttempts = &retries
+	}
+
+	return externalAPIConfig, nil
 }
 
 func (s *Service) UpdateExternalAPIConfiguration(ctx context.Context, config *dto.ExternalAPIConfig) (*dto.ExternalAPIConfig, error) {
-	// Validate that the URL contains the ${identifier} placeholder
-	if !strings.Contains(config.UserServicesUrl, "${identifier}") {
-		return nil, fmt.Errorf("URL must contain ${identifier} placeholder. Example: http://api.example.com/users/${identifier}/services")
-	}
-
 	// Convert DTO to types
 	externalAPIConfig := &types.ExternalAPIConfig{
-		UserServicesURL: config.UserServicesUrl,
-		TimeoutSeconds:  int(config.TimeoutSeconds),
-		RetryAttempts:   int(config.RetryAttempts),
-		Headers:         config.Headers,
+		TimeoutSeconds: int(config.TimeoutSeconds),
+		RetryAttempts:  int(config.RetryAttempts),
+		Headers:        config.Headers,
+	}
+
+	// Add optional URLs if they exist
+	if config.AppointmentServicesUrl != nil && *config.AppointmentServicesUrl != "" {
+		// Validate that the URL contains the ${identifier} placeholder
+		if !strings.Contains(*config.AppointmentServicesUrl, "${identifier}") {
+			return nil, fmt.Errorf("URL must contain ${identifier} placeholder. Example: http://api.example.com/users/${identifier}/services")
+		}
+		externalAPIConfig.AppointmentServicesURL = *config.AppointmentServicesUrl
+	}
+	if config.GenericServicesUrl != nil && *config.GenericServicesUrl != "" {
+		externalAPIConfig.GenericServicesURL = *config.GenericServicesUrl
+	}
+
+	// Convert GenericServices from DTO to types
+	if len(config.GenericServices) > 0 {
+		genericServices := make([]types.GenericService, len(config.GenericServices))
+		for i, service := range config.GenericServices {
+			genericServices[i] = types.GenericService{
+				ID:          service.Id,
+				Name:        service.Name,
+				Description: service.Description,
+				Duration:    service.Duration,
+				Enabled:     service.Enabled,
+			}
+		}
+		externalAPIConfig.GenericServices = genericServices
+	}
+
+	if config.WebhookUrl != nil && *config.WebhookUrl != "" {
+		externalAPIConfig.WebhookURL = *config.WebhookUrl
+	}
+	if config.WebhookTimeoutSeconds != nil && *config.WebhookTimeoutSeconds > 0 {
+		externalAPIConfig.WebhookTimeoutSeconds = int(*config.WebhookTimeoutSeconds)
+	}
+	if config.WebhookRetryAttempts != nil && *config.WebhookRetryAttempts > 0 {
+		externalAPIConfig.WebhookRetryAttempts = int(*config.WebhookRetryAttempts)
 	}
 
 	err := s.configService.UpdateExternalAPIConfiguration(ctx, externalAPIConfig)
@@ -159,9 +226,28 @@ func (s *Service) convertSystemConfigurationToDTO(config *types.SystemConfigurat
 
 	// Convert ExternalAPI
 	externalAPI := dto.ExternalAPIConfig{
-		UserServicesUrl: config.ExternalAPI.UserServicesURL,
-		TimeoutSeconds:  int64(config.ExternalAPI.TimeoutSeconds),
-		RetryAttempts:   int64(config.ExternalAPI.RetryAttempts),
+		TimeoutSeconds: int64(config.ExternalAPI.TimeoutSeconds),
+		RetryAttempts:  int64(config.ExternalAPI.RetryAttempts),
+		Headers:        config.ExternalAPI.Headers,
+	}
+
+	// Add optional URLs if they exist
+	if config.ExternalAPI.AppointmentServicesURL != "" {
+		externalAPI.AppointmentServicesUrl = &config.ExternalAPI.AppointmentServicesURL
+	}
+	if config.ExternalAPI.GenericServicesURL != "" {
+		externalAPI.GenericServicesUrl = &config.ExternalAPI.GenericServicesURL
+	}
+	if config.ExternalAPI.WebhookURL != "" {
+		externalAPI.WebhookUrl = &config.ExternalAPI.WebhookURL
+	}
+	if config.ExternalAPI.WebhookTimeoutSeconds > 0 {
+		timeout := int64(config.ExternalAPI.WebhookTimeoutSeconds)
+		externalAPI.WebhookTimeoutSeconds = &timeout
+	}
+	if config.ExternalAPI.WebhookRetryAttempts > 0 {
+		retries := int64(config.ExternalAPI.WebhookRetryAttempts)
+		externalAPI.WebhookRetryAttempts = &retries
 	}
 
 	// Convert Rooms
@@ -189,9 +275,26 @@ func (s *Service) convertDTOToSystemConfiguration(dtoConfig *dto.SystemConfigura
 
 	// Convert ExternalAPI
 	externalAPI := types.ExternalAPIConfig{
-		UserServicesURL: dtoConfig.ExternalAPI.UserServicesUrl,
-		TimeoutSeconds:  int(dtoConfig.ExternalAPI.TimeoutSeconds),
-		RetryAttempts:   int(dtoConfig.ExternalAPI.RetryAttempts),
+		TimeoutSeconds: int(dtoConfig.ExternalAPI.TimeoutSeconds),
+		RetryAttempts:  int(dtoConfig.ExternalAPI.RetryAttempts),
+		Headers:        dtoConfig.ExternalAPI.Headers,
+	}
+
+	// Add optional URLs if they exist
+	if dtoConfig.ExternalAPI.AppointmentServicesUrl != nil && *dtoConfig.ExternalAPI.AppointmentServicesUrl != "" {
+		externalAPI.AppointmentServicesURL = *dtoConfig.ExternalAPI.AppointmentServicesUrl
+	}
+	if dtoConfig.ExternalAPI.GenericServicesUrl != nil && *dtoConfig.ExternalAPI.GenericServicesUrl != "" {
+		externalAPI.GenericServicesURL = *dtoConfig.ExternalAPI.GenericServicesUrl
+	}
+	if dtoConfig.ExternalAPI.WebhookUrl != nil && *dtoConfig.ExternalAPI.WebhookUrl != "" {
+		externalAPI.WebhookURL = *dtoConfig.ExternalAPI.WebhookUrl
+	}
+	if dtoConfig.ExternalAPI.WebhookTimeoutSeconds != nil && *dtoConfig.ExternalAPI.WebhookTimeoutSeconds > 0 {
+		externalAPI.WebhookTimeoutSeconds = int(*dtoConfig.ExternalAPI.WebhookTimeoutSeconds)
+	}
+	if dtoConfig.ExternalAPI.WebhookRetryAttempts != nil && *dtoConfig.ExternalAPI.WebhookRetryAttempts > 0 {
+		externalAPI.WebhookRetryAttempts = int(*dtoConfig.ExternalAPI.WebhookRetryAttempts)
 	}
 
 	// Convert Rooms

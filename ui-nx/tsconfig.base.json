@@ -1,0 +1,24 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "rootDir": ".",
+    "sourceMap": true,
+    "declaration": false,
+    "moduleResolution": "node",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "target": "es2015",
+    "module": "esnext",
+    "lib": ["es2020", "dom"],
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@waiting-room/api-client": ["api-client/src/index.ts"],
+      "@waiting-room/ui": ["ui/src/index.ts"],
+      "@waiting-room/primeng-components": ["primeng-components/src/index.ts"]
+    }
+  },
+  "exclude": ["node_modules", "tmp"]
+}

@@ -50,7 +50,7 @@ func (r *MongoDBConfigRepository) GetSystemConfiguration(ctx context.Context) (*
 		log.Printf("Error retrieving system configuration from MongoDB: %v", err)
 		return nil, err
 	}
-	log.Printf("Retrieved system configuration from MongoDB - External API URL: %s", config.ExternalAPI.UserServicesURL)
+	log.Printf("Retrieved system configuration from MongoDB - External API configured")
 	return &config, nil
 }
 

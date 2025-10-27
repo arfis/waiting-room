@@ -1,4 +1,5 @@
 lsof -ti :8080 | xargs kill -9
+lsof -ti :4200 | xargs kill -9
 lsof -ti :4201 | xargs kill -9
 lsof -ti :4202 | xargs kill -9
 lsof -ti :4203 | xargs kill -9

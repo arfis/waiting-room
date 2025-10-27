@@ -76,10 +76,23 @@ func (cardReaderStatus CardReaderStatus) GetVersion() string {
 }
 
 type ExternalAPIConfig struct {
-	RetryAttempts   int64             `json:"retryAttempts"`
-	TimeoutSeconds  int64             `json:"timeoutSeconds"`
-	UserServicesUrl string            `json:"userServicesUrl" validate:"required"`
-	Headers         map[string]string `json:"headers,omitempty"`
+	RetryAttempts          int64             `json:"retryAttempts"`
+	TimeoutSeconds         int64             `json:"timeoutSeconds"`
+	AppointmentServicesUrl *string           `json:"appointmentServicesUrl,omitempty"`
+	GenericServicesUrl     *string           `json:"genericServicesUrl,omitempty"`
+	GenericServices        []GenericService  `json:"genericServices,omitempty"`
+	WebhookUrl             *string           `json:"webhookUrl,omitempty"`
+	WebhookTimeoutSeconds  *int64            `json:"webhookTimeoutSeconds,omitempty"`
+	WebhookRetryAttempts   *int64            `json:"webhookRetryAttempts,omitempty"`
+	Headers                map[string]string `json:"headers,omitempty"`
+}
+
+type GenericService struct {
+	Id          string `json:"id" validate:"required"`
+	Name        string `json:"name" validate:"required"`
+	Description string `json:"description,omitempty"`
+	Duration    int    `json:"duration,omitempty"` // Duration in minutes
+	Enabled     bool   `json:"enabled"`
 }
 
 func (externalAPIConfig ExternalAPIConfig) GetRetryAttempts() int64 {
@@ -90,12 +103,68 @@ func (externalAPIConfig ExternalAPIConfig) GetTimeoutSeconds() int64 {
 	return externalAPIConfig.TimeoutSeconds
 }
 
-func (externalAPIConfig ExternalAPIConfig) GetUserServicesUrl() string {
-	return externalAPIConfig.UserServicesUrl
-}
-
 func (externalAPIConfig ExternalAPIConfig) GetHeaders() map[string]string {
 	return externalAPIConfig.Headers
+}
+
+func (externalAPIConfig ExternalAPIConfig) GetAppointmentServicesUrl() string {
+	var v string
+	if externalAPIConfig.AppointmentServicesUrl != nil {
+		return *externalAPIConfig.AppointmentServicesUrl
+	}
+	return v
+}
+
+func (externalAPIConfig ExternalAPIConfig) GetGenericServicesUrl() string {
+	var v string
+	if externalAPIConfig.GenericServicesUrl != nil {
+		return *externalAPIConfig.GenericServicesUrl
+	}
+	return v
+}
+
+func (externalAPIConfig ExternalAPIConfig) GetWebhookUrl() string {
+	var v string
+	if externalAPIConfig.WebhookUrl != nil {
+		return *externalAPIConfig.WebhookUrl
+	}
+	return v
+}
+
+func (externalAPIConfig ExternalAPIConfig) GetWebhookTimeoutSeconds() int64 {
+	var v int64
+	if externalAPIConfig.WebhookTimeoutSeconds != nil {
+		return *externalAPIConfig.WebhookTimeoutSeconds
+	}
+	return v
+}
+
+func (externalAPIConfig ExternalAPIConfig) GetWebhookRetryAttempts() int64 {
+	var v int64
+	if externalAPIConfig.WebhookRetryAttempts != nil {
+		return *externalAPIConfig.WebhookRetryAttempts
+	}
+	return v
+}
+
+func (genericService GenericService) GetId() string {
+	return genericService.Id
+}
+
+func (genericService GenericService) GetName() string {
+	return genericService.Name
+}
+
+func (genericService GenericService) GetDescription() string {
+	return genericService.Description
+}
+
+func (genericService GenericService) GetDuration() int {
+	return genericService.Duration
+}
+
+func (genericService GenericService) GetEnabled() bool {
+	return genericService.Enabled
 }
 
 type RestartResponse struct {

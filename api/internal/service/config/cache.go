@@ -79,7 +79,7 @@ func (c *ConfigCache) ReloadConfig(ctx context.Context) {
 	if config != nil {
 		c.config = config
 		c.lastReload = time.Now()
-		log.Printf("Configuration reloaded successfully - External API URL: %s", config.ExternalAPI.UserServicesURL)
+		log.Printf("Configuration reloaded successfully - External API configured")
 	} else {
 		log.Println("No configuration found in database")
 	}

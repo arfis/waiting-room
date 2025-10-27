@@ -1,3 +1,4 @@
+
 #!/bin/bash
 
 echo "=== Testing Headers Frontend Functionality ==="
