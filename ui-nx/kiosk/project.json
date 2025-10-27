@@ -19,6 +19,16 @@
           {
             "glob": "**/*",
             "input": "kiosk/public"
+          },
+          {
+            "glob": "**/*",
+            "input": "kiosk/src/assets",
+            "output": "assets"
+          },
+          {
+            "glob": "**/*",
+            "input": "src/lib/i18n/translations",
+            "output": "assets/i18n/base"
           }
         ],
         "styles": ["kiosk/src/styles.scss"]

@@ -58,7 +58,7 @@ node websocket-server.js &
 KIOSK_PID=$!
 
 # Admin
-npx serve -s "$UI_NX_PATH/dist/apps/admin/browser/browser" -l 4205 &
+npx serve -s "$UI_NX_PATH/dist/admin/browser" -l 4205 &
 ADMIN_PID=$!
 
 # Backoffice

@@ -19,6 +19,16 @@
           {
             "glob": "**/*",
             "input": "tv/public"
+          },
+          {
+            "glob": "**/*",
+            "input": "tv/src/assets",
+            "output": "assets"
+          },
+          {
+            "glob": "**/*",
+            "input": "src/lib/i18n/translations",
+            "output": "assets/i18n/base"
           }
         ],
         "styles": ["tv/src/styles.scss"]

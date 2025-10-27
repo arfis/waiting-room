@@ -9,6 +9,9 @@ database:
     uri: "mongodb://admin:admin@localhost:27017/waiting_room_dev?authSource=admin"
     database: "waiting_room_dev"
     
+deepl:
+  api_key: "1937e097-93e4-46ba-ba89-4c9697b85fd7:fx"
+  
 cors:
   allowed_origins:
     - "http://localhost:4200"

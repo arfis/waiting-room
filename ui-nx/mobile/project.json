@@ -19,6 +19,16 @@
           {
             "glob": "**/*",
             "input": "mobile/public"
+          },
+          {
+            "glob": "**/*",
+            "input": "mobile/src/assets",
+            "output": "assets"
+          },
+          {
+            "glob": "**/*",
+            "input": "src/lib/i18n/translations",
+            "output": "assets/i18n/base"
           }
         ],
         "styles": ["mobile/src/styles.scss"]

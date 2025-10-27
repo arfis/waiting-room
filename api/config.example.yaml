@@ -9,7 +9,10 @@ database:
   mongodb:
     uri: "mongodb://admin:admin@localhost:27017/waiting_room?authSource=admin"
     database: "waiting_room"
-    
+
+deepl:
+  api_key: "1937e097"
+  
 cors:
   allowed_origins:
     - "http://localhost:4200"  # Kiosk

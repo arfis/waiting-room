@@ -128,24 +128,30 @@ export class TranslationService {
   }
 
   /**
-   * Load translations from external JSON files
+   * Load translations from external JSON files (hybrid approach: base + app-specific)
    */
   private async loadTranslations(): Promise<void> {
     try {
-      // Load English translations
-      const enResponse = await fetch('/assets/i18n/en.json');
-      if (enResponse.ok) {
-        const enTranslations = await enResponse.json();
+      // Load base translations (shared across all apps)
+      const baseEnResponse = await fetch('/assets/i18n/base/en.json');
+      const baseSkResponse = await fetch('/assets/i18n/base/sk.json');
+      
+      // Load app-specific translations
+      const appEnResponse = await fetch('/assets/i18n/en.json');
+      const appSkResponse = await fetch('/assets/i18n/sk.json');
+      
+      // Merge base + app-specific translations
+      const enTranslations = await this.mergeTranslations(baseEnResponse, appEnResponse);
+      const skTranslations = await this.mergeTranslations(baseSkResponse, appSkResponse);
+      
+      if (enTranslations) {
         this.addTranslations('en', enTranslations);
       } else {
         console.warn('Failed to load English translations, using fallback');
         this.loadFallbackTranslations();
       }
-
-      // Load Slovak translations
-      const skResponse = await fetch('/assets/i18n/sk.json');
-      if (skResponse.ok) {
-        const skTranslations = await skResponse.json();
+      
+      if (skTranslations) {
         this.addTranslations('sk', skTranslations);
       } else {
         console.warn('Failed to load Slovak translations');
@@ -154,6 +160,41 @@ export class TranslationService {
       console.error('Error loading translations:', error);
       this.loadFallbackTranslations();
     }
+  }
+
+  /**
+   * Merge base and app-specific translations
+   */
+  private async mergeTranslations(baseResponse: Response, appResponse: Response): Promise<any> {
+    let mergedTranslations = {};
+    
+    // Load base translations if available
+    if (baseResponse.ok) {
+      try {
+        const baseTranslations = await baseResponse.json();
+        mergedTranslations = { ...mergedTranslations, ...baseTranslations };
+        console.log('Loaded base translations');
+      } catch (error) {
+        console.warn('Failed to parse base translations:', error);
+      }
+    } else {
+      console.warn('Base translations not found, using app-specific only');
+    }
+    
+    // Load app-specific translations if available
+    if (appResponse.ok) {
+      try {
+        const appTranslations = await appResponse.json();
+        mergedTranslations = { ...mergedTranslations, ...appTranslations };
+        console.log('Loaded app-specific translations');
+      } catch (error) {
+        console.warn('Failed to parse app-specific translations:', error);
+      }
+    } else {
+      console.warn('App-specific translations not found');
+    }
+    
+    return Object.keys(mergedTranslations).length > 0 ? mergedTranslations : null;
   }
 
   /**

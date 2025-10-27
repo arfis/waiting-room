@@ -3,8 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { ConfigService } from '../shared/services/config.service';
-import { TranslationService, TranslatePipe } from '../../../../../src/lib/i18n';
-import { LanguageSelectorComponent } from '@waiting-room/primeng-components';
+import { TranslationService, TranslatePipe } from '../../../../src/lib/i18n';
 
 interface GenericService {
   id: string;
@@ -74,7 +73,7 @@ interface SystemConfiguration {
 @Component({
   selector: 'app-configuration',
   standalone: true,
-  imports: [CommonModule, FormsModule, TranslatePipe, LanguageSelectorComponent],
+  imports: [CommonModule, FormsModule, TranslatePipe],
   templateUrl: './configuration.html',
   styleUrl: './configuration.scss'
 })
@@ -498,9 +497,5 @@ export class ConfigurationComponent {
       return 0;
     }
     return this.externalAPIConfig.genericServices.filter(service => service.enabled).length;
-  }
-
-  protected onLanguageChanged(languageCode: string): void {
-    this.translationService.setLanguage(languageCode);
   }
 }

@@ -16,7 +16,6 @@
     "baseUrl": ".",
     "paths": {
       "@waiting-room/api-client": ["api-client/src/index.ts"],
-      "@waiting-room/ui": ["ui/src/index.ts"],
       "@waiting-room/primeng-components": ["primeng-components/src/index.ts"]
     }
   },
