@@ -494,7 +494,10 @@ export class ConfigurationComponent {
   }
 
   get enabledGenericServicesCount(): number {
-    return this.externalAPIConfig.genericServices?.filter(s => s.enabled).length || 0;
+    if (!this.externalAPIConfig.genericServices) {
+      return 0;
+    }
+    return this.externalAPIConfig.genericServices.filter(service => service.enabled).length;
   }
 
   protected onLanguageChanged(languageCode: string): void {

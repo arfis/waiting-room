@@ -93,62 +93,76 @@
           <span class="font-medium">{{ enabledGenericServicesCount }}</span> enabled
         </div>
         
-        <div class="space-y-3" *ngIf="externalAPIConfig.genericServices && externalAPIConfig.genericServices.length > 0">
-          <div 
-            *ngFor="let service of externalAPIConfig.genericServices; let i = index"
-            class="p-3 bg-white rounded-md border border-purple-200 shadow-sm">
-            <div class="flex items-start justify-between">
-              <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label class="block text-xs font-medium text-gray-600 mb-1">Service Name</label>
-                  <input 
-                    type="text"
-                    [(ngModel)]="service.name"
-                    class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
-                    placeholder="Service name">
-                </div>
-                <div>
-                  <label class="block text-xs font-medium text-gray-600 mb-1">Duration (minutes)</label>
-                  <input 
-                    type="number"
-                    [(ngModel)]="service.duration"
-                    class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
-                    placeholder="30">
-                </div>
-                <div class="md:col-span-2">
-                  <label class="block text-xs font-medium text-gray-600 mb-1">Description</label>
-                  <input 
-                    type="text"
-                    [(ngModel)]="service.description"
-                    class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
-                    placeholder="Service description">
-                </div>
+        @if (externalAPIConfig.genericServices && externalAPIConfig.genericServices.length > 0) {
+          <div class="space-y-3">
+            @for (service of externalAPIConfig.genericServices; track service.id; let i = $index) {
+              <!-- Debug info -->
+              <div class="mb-2 p-2 bg-gray-100 text-xs">
+                <strong>Debug:</strong> 
+                ID: {{service.id}}, 
+                Name: "{{service.name}}" (type: {{typeof service.name}}), 
+                Duration: {{service.duration}} (type: {{typeof service.duration}}),
+                Enabled: {{service.enabled}} (type: {{typeof service.enabled}})
               </div>
-              <div class="flex items-center space-x-2 ml-3">
-                <label class="flex items-center">
-                  <input 
-                    type="checkbox"
-                    [(ngModel)]="service.enabled"
-                    class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
-                  <span class="ml-2 text-xs text-gray-600">Enabled</span>
-                </label>
-                <button 
-                  type="button"
-                  (click)="removeGenericService(i)"
-                  class="px-2 py-1 text-xs text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors">
-                  Remove
-                </button>
+            <div class="p-3 bg-white rounded-md border border-purple-200 shadow-sm">
+              <div class="flex items-start justify-between">
+                <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Service Name</label>
+                    <input
+                      id="service-name-{{service.id}}-{{i}}"
+                      name="service-name-{{i}}"
+                      type="text"
+                      [(ngModel)]="service.name"
+                      class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
+                      placeholder="Service name">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Duration (minutes)</label>
+                    <input 
+                      name="service-duration-{{i}}"
+                      type="number"
+                      [(ngModel)]="service.duration"
+                      class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
+                      placeholder="30">
+                  </div>
+                  <div class="md:col-span-2">
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Description</label>
+                    <input 
+                      name="service-description-{{i}}"
+                      type="text"
+                      [(ngModel)]="service.description"
+                      class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
+                      placeholder="Service description">
+                  </div>
+                </div>
+                <div class="flex items-center space-x-2 ml-3">
+                  <label class="flex items-center">
+                    <input 
+                      name="service-enabled-{{i}}"
+                      type="checkbox"
+                      [(ngModel)]="service.enabled"
+                      class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                    <span class="ml-2 text-xs text-gray-600">Enabled</span>
+                  </label>
+                  <button 
+                    type="button"
+                    (click)="removeGenericService(i)"
+                    class="px-2 py-1 text-xs text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors">
+                    Remove
+                  </button>
+                </div>
               </div>
             </div>
+          }
           </div>
-        </div>
-        
-        <div *ngIf="!externalAPIConfig.genericServices || externalAPIConfig.genericServices.length === 0" 
-             class="text-center py-6 text-gray-500">
+        }
+        @if (!externalAPIConfig.genericServices || externalAPIConfig.genericServices.length === 0) {
+        <div class="text-center py-6 text-gray-500">
           <p class="text-sm">No generic services created yet.</p>
           <p class="text-xs mt-1">Click "Add Service" to create your first generic service.</p>
         </div>
-        
+        }        
         <div class="mt-3 text-xs text-purple-600">
           <p class="font-medium">💡 Admin-created services are always available</p>
           <p>These services will be shown in the kiosk alongside any external services from the URL above.</p>

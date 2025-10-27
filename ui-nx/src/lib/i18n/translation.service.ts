@@ -128,9 +128,38 @@ export class TranslationService {
   }
 
   /**
-   * Load default translations
+   * Load translations from external JSON files
    */
-  private loadTranslations(): void {
+  private async loadTranslations(): Promise<void> {
+    try {
+      // Load English translations
+      const enResponse = await fetch('/assets/i18n/en.json');
+      if (enResponse.ok) {
+        const enTranslations = await enResponse.json();
+        this.addTranslations('en', enTranslations);
+      } else {
+        console.warn('Failed to load English translations, using fallback');
+        this.loadFallbackTranslations();
+      }
+
+      // Load Slovak translations
+      const skResponse = await fetch('/assets/i18n/sk.json');
+      if (skResponse.ok) {
+        const skTranslations = await skResponse.json();
+        this.addTranslations('sk', skTranslations);
+      } else {
+        console.warn('Failed to load Slovak translations');
+      }
+    } catch (error) {
+      console.error('Error loading translations:', error);
+      this.loadFallbackTranslations();
+    }
+  }
+
+  /**
+   * Load fallback translations (hardcoded) when external files fail
+   */
+  private loadFallbackTranslations(): void {
     // English (default)
     this.addTranslations('en', {
       common: {

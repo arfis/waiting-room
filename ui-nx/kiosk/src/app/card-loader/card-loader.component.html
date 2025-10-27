@@ -113,14 +113,14 @@
 
         <!-- Manual ID Entry Section -->
         <div class="text-center">
-          <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ 'kiosk.insertCard' | translate }}</h3>
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ 'kiosk.manualId.title' | translate }}</h3>
           <form (ngSubmit)="onManualIdSubmitted(manualIdNumber())" class="max-w-sm mx-auto">
             <div class="mb-4">
               <input
                 type="text"
                 [(ngModel)]="manualIdNumber"
                 name="manualIdNumber"
-                placeholder="{{ 'kiosk.insertCard' | translate }}"
+                placeholder="{{ 'kiosk.manualId.placeholder' | translate }}"
                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-lg"
                 [class.border-red-500]="error()"
                 required
@@ -180,7 +180,7 @@
               
               @if (ticketData()?.servicePoint) {
                 <div class="mb-6">
-                  <h4 class="text-xl font-semibold text-gray-700 mb-3">Service Point</h4>
+                  <h4 class="text-xl font-semibold text-gray-700 mb-3">{{ 'common.servicePoint' | translate }}</h4>
                   <div class="inline-flex items-center px-6 py-3 rounded-lg text-lg font-medium bg-green-50 text-green-700 border border-green-200">
                     <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>

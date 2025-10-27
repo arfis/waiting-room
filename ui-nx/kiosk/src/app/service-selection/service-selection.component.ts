@@ -46,7 +46,7 @@ import { TranslationService, TranslatePipe } from '../../../../src/lib/i18n';
             @if (section.loading) {
               <div class="text-center py-4">
                 <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400"></div>
-                <p class="mt-2 text-sm text-gray-500">Loading {{ section.title.toLowerCase() }}...</p>
+                <p class="mt-2 text-sm text-gray-500">{{ 'common.loadingServices' | translate }}</p>
               </div>
             } @else if (section.error) {
               <div class="text-center py-4">
@@ -64,7 +64,7 @@ import { TranslationService, TranslatePipe } from '../../../../src/lib/i18n';
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.29-1.009-5.824-2.5M15 6.75a3 3 0 11-6 0 3 3 0 016 0z"></path>
                   </svg>
                 </div>
-                <p class="text-sm text-gray-500">No {{ section.title.toLowerCase() }} available</p>
+                <p class="text-sm text-gray-500">{{ 'common.noServicesAvailable' | translate }}</p>
               </div>
             } @else {
               <div class="space-y-2">
@@ -76,7 +76,7 @@ import { TranslationService, TranslatePipe } from '../../../../src/lib/i18n';
                     <div class="flex items-center justify-between">
                       <div>
                         <h3 class="font-semibold text-gray-900">{{ service.serviceName }}</h3>
-                        <p class="text-sm text-gray-600">Estimated duration: {{ service.duration }} minutes</p>
+                        <p class="text-sm text-gray-600">{{ 'common.estimatedDuration' | translate }}: {{ service.duration }} {{ 'common.minutes' | translate }}</p>
                       </div>
                       <div class="flex items-center">
                         @if (selectedServiceId() === service.id) {
@@ -104,8 +104,8 @@ import { TranslationService, TranslatePipe } from '../../../../src/lib/i18n';
                 <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.29-1.009-5.824-2.5M15 6.75a3 3 0 11-6 0 3 3 0 016 0z"></path>
                 </svg>
-                <p class="text-lg font-medium">No Services Available</p>
-                <p class="text-gray-500">No services are currently available for your account.</p>
+                <p class="text-lg font-medium">{{ 'common.noServicesAvailable' | translate }}</p>
+                <p class="text-gray-500">{{ 'common.noServicesDescription' | translate }}</p>
               </div>
             </div>
           } @else {
@@ -118,7 +118,7 @@ import { TranslationService, TranslatePipe } from '../../../../src/lib/i18n';
                   <div class="flex items-center justify-between">
                     <div>
                       <h3 class="font-semibold text-gray-900">{{ service.serviceName }}</h3>
-                      <p class="text-sm text-gray-600">Estimated duration: {{ service.duration }} minutes</p>
+                      <p class="text-sm text-gray-600">{{ 'common.estimatedDuration' | translate }}: {{ service.duration }} {{ 'common.minutes' | translate }}</p>
                     </div>
                     <div class="flex items-center">
                       @if (selectedServiceId() === service.id) {
@@ -143,7 +143,7 @@ import { TranslationService, TranslatePipe } from '../../../../src/lib/i18n';
             <button 
               class="w-full py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
               (click)="confirmSelection()">
-              Continue with Selected Service
+              {{ 'common.continueWithSelectedService' | translate }}
             </button>
           </div>
         }
