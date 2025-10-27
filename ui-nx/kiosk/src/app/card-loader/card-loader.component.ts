@@ -66,6 +66,8 @@ export class CardLoaderComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
+    // Initialize language synchronization
+    this.cardReaderState.initializeLanguage(this.translationService);
     this.cardReaderState.initialize();
   }
 
