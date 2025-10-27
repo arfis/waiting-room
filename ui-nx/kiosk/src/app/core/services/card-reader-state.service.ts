@@ -223,13 +223,13 @@ export class CardReaderStateService {
       this.error.set(null);
       
       // Load user services instead of directly generating ticket
-      this.loadUserServices(cardData);
+      this.loadUserServices(cardData, payload.roomId);
     } else {
       console.log('No card data in payload');
     }
   }
 
-  private loadUserServices(cardData: CardData): void {
+  private loadUserServices(cardData: CardData, roomId?: string): void {
     console.log('Loading user services for card data:', cardData);
     
     this.isLoadingServices.set(true);
@@ -242,14 +242,14 @@ export class CardReaderStateService {
     // Initialize service sections
     const sections: ServiceSection[] = [
       {
-        title: 'Your Appointments',
+        title: 'kiosk.services.appointments',
         services: [],
         type: 'appointment',
         loading: true,
         error: null
       },
       {
-        title: 'General Services',
+        title: 'kiosk.services.generic',
         services: [],
         type: 'generic',
         loading: true,
@@ -274,12 +274,10 @@ export class CardReaderStateService {
       }
     });
     
-    // Load generic services (using a default service point for now)
-    // In a real implementation, this would be determined by the room or service point
-    const servicePointId = 'default-service-point';
     const genericLang = this.currentLanguage();
+    // Load generic services directly (no servicePointId needed)
     console.log('CardReaderState: Loading generic services with language:', genericLang);
-    this.userServicesService.getGenericServices(servicePointId, genericLang).subscribe({
+    this.userServicesService.getGenericServices(genericLang).subscribe({
       next: (services) => {
         console.log('Generic services loaded:', services);
         this.updateServiceSection('generic', services, false, null);

@@ -20,6 +20,7 @@ type ExternalAPIConfig struct {
 	AppointmentServicesHttpMethod *string           `bson:"appointmentServicesHttpMethod,omitempty" json:"appointmentServicesHttpMethod,omitempty"`
 	GenericServicesURL            string            `bson:"genericServicesUrl,omitempty" json:"genericServicesUrl,omitempty"`
 	GenericServicesHttpMethod     *string           `bson:"genericServicesHttpMethod,omitempty" json:"genericServicesHttpMethod,omitempty"`
+	GenericServicesPostBody       string            `bson:"genericServicesPostBody,omitempty" json:"genericServicesPostBody,omitempty"`
 	GenericServices               []GenericService  `bson:"genericServices,omitempty" json:"genericServices,omitempty"`
 	WebhookURL                    string            `bson:"webhookUrl,omitempty" json:"webhookUrl,omitempty"`
 	WebhookHttpMethod             *string           `bson:"webhookHttpMethod,omitempty" json:"webhookHttpMethod,omitempty"`

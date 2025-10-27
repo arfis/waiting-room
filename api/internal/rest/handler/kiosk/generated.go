@@ -42,15 +42,28 @@ func (h *Handler) GetAppointmentServices(w http.ResponseWriter, r *http.Request)
 	handler.WriteJson(r.Context(), w, 200, resp)
 }
 
+func (h *Handler) GetDefaultServicePoint(w http.ResponseWriter, r *http.Request) {
+	var applicationErr error
+	roomId := handler.QueryParamToString(r, "roomId")
+	var resp *string
+	resp, applicationErr = h.svc.GetDefaultServicePoint(
+		r.Context(),
+		roomId,
+	)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)
+		return
+	}
+	handler.WriteJson(r.Context(), w, 200, resp)
+}
+
 func (h *Handler) GetGenericServices(w http.ResponseWriter, r *http.Request) {
 	var applicationErr error
 	language := handler.QueryOptionalParamToString(r, "language")
-	servicePointId := handler.QueryParamToString(r, "servicePointId")
 	var resp []dto.UserService
 	resp, applicationErr = h.svc.GetGenericServices(
 		r.Context(),
 		language,
-		servicePointId,
 	)
 	if applicationErr != nil {
 		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)

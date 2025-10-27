@@ -36,6 +36,7 @@ func Generated(r chi.Router, diContainer *dig.Container) {
 			protected.Get("/admin/translation/cache/stats", adminHandler.GetTranslationCacheStats)
 			protected.Get("/appointment-services", kioskHandler.GetAppointmentServices)
 			protected.Get("/config", configurationHandler.GetConfiguration)
+			protected.Get("/default-service-point", kioskHandler.GetDefaultServicePoint)
 			protected.Get("/generic-services", kioskHandler.GetGenericServices)
 			protected.Get("/managers/status", servicepointHandler.GetManagerStatus)
 			protected.Post("/managers/{managerId}/login", servicepointHandler.ManagerLogin)

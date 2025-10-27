@@ -168,6 +168,9 @@ func (s *Service) UpdateExternalAPIConfiguration(ctx context.Context, config *dt
 	if config.GenericServicesHttpMethod != nil {
 		externalAPIConfig.GenericServicesHttpMethod = config.GenericServicesHttpMethod
 	}
+	if config.GenericServicesPostBody != nil && *config.GenericServicesPostBody != "" {
+		externalAPIConfig.GenericServicesPostBody = *config.GenericServicesPostBody
+	}
 
 	// Convert GenericServices from DTO to types
 	if len(config.GenericServices) > 0 {

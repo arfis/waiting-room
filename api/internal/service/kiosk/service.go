@@ -145,17 +145,17 @@ func (s *Service) GetUserServices(ctx context.Context, identifier string, langua
 		externalAPIURL := s.config.GetExternalAPIUserServicesURL()
 		timeoutSeconds := s.config.GetExternalAPITimeout()
 		log.Printf("Using fallback config - URL: %s, Timeout: %d, Error: %v", externalAPIURL, timeoutSeconds, err)
-		return s.makeExternalAPICall(ctx, externalAPIURL, timeoutSeconds, nil, identifier, lang, true)
+		return s.makeExternalAPICall(ctx, externalAPIURL, timeoutSeconds, nil, identifier, lang, true, "")
 	}
 
 	// Replace ${identifier} placeholder with actual identifier value
 	actualURL := s.replaceIdentifierInURL(apiConfig.AppointmentServicesURL, identifier)
 
-	return s.makeExternalAPICall(ctx, actualURL, apiConfig.TimeoutSeconds, apiConfig.Headers, identifier, lang, true)
+	return s.makeExternalAPICall(ctx, actualURL, apiConfig.TimeoutSeconds, apiConfig.Headers, identifier, lang, true, "")
 }
 
-// GetGenericServices returns generic services available at a service point
-func (s *Service) GetGenericServices(ctx context.Context, language *string, servicePointId string) ([]dto.UserService, error) {
+// GetGenericServices returns generic services available
+func (s *Service) GetGenericServices(ctx context.Context, language *string) ([]dto.UserService, error) {
 	// Default language to English if not provided
 	lang := "en"
 	if language != nil {
@@ -189,10 +189,23 @@ func (s *Service) GetGenericServices(ctx context.Context, language *string, serv
 	// If external URL is configured, also fetch from external API
 	if apiConfig.GenericServicesURL != "" {
 		log.Printf("Fetching generic services from external URL: %s", apiConfig.GenericServicesURL)
-		// Replace ${servicePointId} placeholder with actual service point ID
-		actualURL := s.replaceServicePointIdInURL(apiConfig.GenericServicesURL, servicePointId)
 
-		externalServices, err := s.makeExternalAPICall(ctx, actualURL, apiConfig.TimeoutSeconds, apiConfig.Headers, "", lang, false)
+		var actualURL string
+		var postBody string
+
+		if apiConfig.GenericServicesHttpMethod != nil && *apiConfig.GenericServicesHttpMethod == "POST" {
+			// For POST requests, use the URL as-is and prepare the body
+			actualURL = apiConfig.GenericServicesURL
+			if apiConfig.GenericServicesPostBody != "" {
+				// Replace placeholders in POST body (no servicePointId needed)
+				postBody = strings.ReplaceAll(apiConfig.GenericServicesPostBody, "${language}", lang)
+			}
+		} else {
+			// For GET requests, use the URL as-is (no servicePointId replacement needed)
+			actualURL = apiConfig.GenericServicesURL
+		}
+
+		externalServices, err := s.makeExternalAPICall(ctx, actualURL, apiConfig.TimeoutSeconds, apiConfig.Headers, "", lang, false, postBody)
 		if err != nil {
 			log.Printf("Failed to fetch external generic services: %v", err)
 		} else {
@@ -262,7 +275,7 @@ func (s *Service) GetAppointmentServices(ctx context.Context, identifier string,
 	// Replace ${identifier} placeholder with actual identifier value
 	actualURL := s.replaceIdentifierInURL(apiConfig.AppointmentServicesURL, identifier)
 
-	return s.makeExternalAPICall(ctx, actualURL, apiConfig.TimeoutSeconds, apiConfig.Headers, identifier, lang, true)
+	return s.makeExternalAPICall(ctx, actualURL, apiConfig.TimeoutSeconds, apiConfig.Headers, identifier, lang, true, "")
 }
 
 // replaceIdentifierInURL replaces ${identifier} placeholder with the actual identifier value
@@ -275,8 +288,18 @@ func (s *Service) replaceServicePointIdInURL(urlTemplate, servicePointId string)
 	return strings.ReplaceAll(urlTemplate, "${servicePointId}", servicePointId)
 }
 
+// GetDefaultServicePoint returns the default service point for a room
+func (s *Service) GetDefaultServicePoint(ctx context.Context, roomId string) (*string, error) {
+	// Get the default service point from config
+	servicePointId := s.config.GetDefaultServicePoint(roomId)
+	if servicePointId == "" {
+		return nil, ngErrors.New(ngErrors.InternalServerErrorCode, "no service points configured for room", 500, nil)
+	}
+	return &servicePointId, nil
+}
+
 // makeExternalAPICall makes the actual HTTP call to the external API
-func (s *Service) makeExternalAPICall(ctx context.Context, externalAPIURL string, timeoutSeconds int, headers map[string]string, identifier string, language string, isAppointmentServices bool) ([]dto.UserService, error) {
+func (s *Service) makeExternalAPICall(ctx context.Context, externalAPIURL string, timeoutSeconds int, headers map[string]string, identifier string, language string, isAppointmentServices bool, postBody string) ([]dto.UserService, error) {
 	// Get external API configuration to check multilingual settings
 	apiConfig, err := s.configService.GetExternalAPIConfig(ctx)
 	if err != nil {
@@ -299,10 +322,20 @@ func (s *Service) makeExternalAPICall(ctx context.Context, externalAPIURL string
 		Timeout: time.Duration(timeoutSeconds) * time.Second,
 	}
 
-	// Create request
-	req, err := http.NewRequestWithContext(ctx, httpMethod, externalAPIURL, nil)
+	// Create request with body if POST method
+	var bodyReader io.Reader
+	if httpMethod == "POST" && postBody != "" {
+		bodyReader = strings.NewReader(postBody)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, httpMethod, externalAPIURL, bodyReader)
 	if err != nil {
 		return nil, ngErrors.New(ngErrors.InternalServerErrorCode, "failed to create request", 500, nil)
+	}
+
+	// Set content type for POST requests
+	if httpMethod == "POST" && postBody != "" {
+		req.Header.Set("Content-Type", "application/json")
 	}
 
 	// Add custom headers if configured

@@ -18,6 +18,7 @@ interface ExternalAPIConfig {
   appointmentServicesHttpMethod?: 'GET' | 'POST';
   genericServicesUrl?: string;
   genericServicesHttpMethod?: 'GET' | 'POST';
+  genericServicesPostBody?: string;
   genericServices?: GenericService[];
   webhookUrl?: string;
   webhookHttpMethod?: 'GET' | 'POST';
@@ -292,12 +293,6 @@ export class ConfigurationComponent {
       return;
     }
     
-    // Validate generic URL if provided
-    if (this.externalAPIConfig.genericServicesUrl && !this.externalAPIConfig.genericServicesUrl.includes('${servicePointId}')) {
-      alert('Generic URL must contain ${servicePointId} placeholder. Example: http://api.example.com/service-points/${servicePointId}/services');
-      return;
-    }
-
     // Sync headers from entries before saving
     this.syncHeadersFromEntries();
 

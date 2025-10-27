@@ -96,6 +96,7 @@ type ExternalAPIConfig struct {
 	GenericServicesHttpMethod           *string           `json:"genericServicesHttpMethod,omitempty"`
 	GenericServicesLanguageHandling     *string           `json:"genericServicesLanguageHandling,omitempty"`
 	GenericServicesLanguageHeader       *string           `json:"genericServicesLanguageHeader,omitempty"`
+	GenericServicesPostBody             *string           `json:"genericServicesPostBody,omitempty"`
 	GenericServicesUrl                  *string           `json:"genericServicesUrl,omitempty"`
 	Headers                             map[string]string `json:"headers,omitempty"`
 	MultilingualSupport                 *bool             `json:"multilingualSupport,omitempty"`
@@ -173,6 +174,14 @@ func (externalAPIConfig ExternalAPIConfig) GetGenericServicesUrl() string {
 	var v string
 	if externalAPIConfig.GenericServicesUrl != nil {
 		return *externalAPIConfig.GenericServicesUrl
+	}
+	return v
+}
+
+func (externalAPIConfig ExternalAPIConfig) GetGenericServicesPostBody() string {
+	var v string
+	if externalAPIConfig.GenericServicesPostBody != nil {
+		return *externalAPIConfig.GenericServicesPostBody
 	}
 	return v
 }

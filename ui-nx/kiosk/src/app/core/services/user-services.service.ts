@@ -48,10 +48,22 @@ export class UserServicesService {
     });
   }
 
-  getGenericServices(servicePointId: string, language: string = 'en'): Observable<UserService[]> {
-    // Call backend API for generic services available at service point
+  getGenericServices(language: string = 'en'): Observable<UserService[]> {
+    // Call backend API for generic services
     return this.http.get<UserService[]>(`${this.apiUrl}/generic-services`, {
-      params: { servicePointId, language },
+      params: { language },
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
+  }
+
+  getDefaultServicePoint(roomId: string): Observable<string> {
+    // Call backend API to get the default service point for a room
+    return this.http.get<string>(`${this.apiUrl}/default-service-point`, {
+      params: { roomId },
       headers: {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',

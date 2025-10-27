@@ -132,13 +132,8 @@ paths:
       tags:
         - Kiosk
       operationId: GetGenericServices
-      summary: Get generic services available at a service point
+      summary: Get generic services available
       parameters:
-        - in: query
-          name: servicePointId
-          required: true
-          schema: { type: string }
-          description: Service point identifier
         - in: query
           name: language
           required: false
@@ -193,6 +188,40 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/UserService'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationError'
+        '500':
+          description: Internal errors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationError'
+  /default-service-point:
+    get:
+      x-generated:
+        package: kiosk
+      tags:
+        - Kiosk
+      operationId: GetDefaultServicePoint
+      summary: Get the default service point for a room
+      parameters:
+        - in: query
+          name: roomId
+          required: true
+          schema: { type: string }
+          description: Room identifier
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+                description: Default service point ID for the room
         '400':
           description: Bad request
           content:

@@ -35,7 +35,7 @@ import { TranslationService, TranslatePipe } from '../../../../src/lib/i18n';
           @for (section of serviceSections(); track section.type) {
           <div class="space-y-4">
             <div class="flex items-center space-x-2">
-              <h2 class="text-lg font-semibold text-gray-900">{{ section.title }}</h2>
+              <h2 class="text-lg font-semibold text-gray-900">{{ section.title | translate }}</h2>
               @if (section.type === 'appointment') {
                 <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">{{ 'kiosk.services.personal' | translate }}</span>
               } @else {
@@ -181,7 +181,8 @@ export class ServiceSelectionComponent {
   }
 
   confirmSelection(): void {
-    const selectedService = this.services().find(s => s.id === this.selectedServiceId());
+    // todo: needs a bit of rework
+    const selectedService = this.services().find(s => s.id === this.selectedServiceId()) || this.serviceSections().find(s => s.services.find(service => service.id === this.selectedServiceId()))?.services.find(service => service.id === this.selectedServiceId()) as UserService;
     if (selectedService) {
       console.log('Confirming service selection:', selectedService);
       this.serviceSelected.emit(selectedService);
