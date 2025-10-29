@@ -60,6 +60,9 @@
     "serve": {
       "continuous": true,
       "executor": "@angular-devkit/build-angular:dev-server",
+      "options": {
+        "port": 4205
+      },
       "configurations": {
         "production": {
           "buildTarget": "admin:build:production"
@@ -92,7 +95,7 @@
       "executor": "@nx/web:file-server",
       "options": {
         "buildTarget": "admin:build",
-        "port": 4200,
+        "port": 4205,
         "spa": true
       }
     }

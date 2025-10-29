@@ -50,12 +50,9 @@
           "outputHashing": "all"
         },
         "development": {
-          "buildOptimizer": false,
           "optimization": false,
-          "vendorChunk": true,
           "extractLicenses": false,
-          "sourceMap": true,
-          "namedChunks": true
+          "sourceMap": true
         }
       },
       "defaultConfiguration": "production"
@@ -63,6 +60,9 @@
     "serve": {
       "continuous": true,
       "executor": "@angular-devkit/build-angular:dev-server",
+      "options": {
+        "port": 4201
+      },
       "configurations": {
         "production": {
           "buildTarget": "kiosk:build:production"
@@ -95,7 +95,7 @@
       "executor": "@nx/web:file-server",
       "options": {
         "buildTarget": "kiosk:build",
-        "port": 4200,
+        "port": 4201,
         "spa": true
       }
     }

@@ -68,6 +68,8 @@
       "title": "Manuálne zadanie ID",
       "description": "Ak nemáte ID kartu, môžete zadať svoje ID číslo manuálne",
       "placeholder": "Zadajte svoje ID číslo",
+      "label": "ID Číslo",
+      "enterManually": "Zadať manuálne",
       "submit": "Odoslať",
       "invalidId": "Neplatný formát ID čísla"
     }

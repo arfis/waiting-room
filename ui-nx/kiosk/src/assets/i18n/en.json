@@ -68,6 +68,8 @@
       "title": "Manual ID Entry",
       "description": "If you don't have an ID card, you can enter your ID number manually",
       "placeholder": "Enter your ID number",
+      "label": "ID Number",
+      "enterManually": "Enter Manually",
       "submit": "Submit",
       "invalidId": "Invalid ID number format"
     }

@@ -1,12 +1,12 @@
-<div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-  <div class="max-w-2xl w-full">
+<div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4 md:p-8">
+  <div class="max-w-4xl w-full">
     <!-- Header -->
-    <div class="flex justify-between items-center mb-8">
-      <div class="text-center flex-1">
-        <h1 class="text-4xl font-bold text-gray-900 mb-2">{{ 'kiosk.title' | translate }}</h1>
-        <p class="text-lg text-gray-600">{{ headerMessage() }}</p>
+    <div class="flex flex-col md:flex-row justify-between items-center mb-8 md:mb-12">
+      <div class="text-center md:text-left flex-1 mb-4 md:mb-0">
+        <h1 class="text-3xl md:text-5xl font-bold text-gray-900 mb-2">{{ 'kiosk.title' | translate }}</h1>
+        <p class="text-lg md:text-xl text-gray-600">{{ headerMessage() }}</p>
       </div>
-      <div class="ml-4">
+      <div class="md:ml-6">
         <ui-language-selector (languageChanged)="onLanguageChanged($event)"></ui-language-selector>
       </div>
     </div>
@@ -34,42 +34,54 @@
       </div>
       }
 
-      <!-- Combined Interface: Card Reader + Manual ID Entry -->
-      @if (!showServiceSelection() && !ticketData()) {
-      <div class="space-y-6">
+      <!-- Card Reader Interface (Main Screen) -->
+      @if (!showServiceSelection() && !ticketData() && !showManualEntry()) {
+      <div class="text-center">
         <!-- Card Reader Section -->
-        <div class="text-center">
-          <div class="mb-4">
+        <div class="p-6 md:p-8 bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
+          <div class="mb-6">
             <!-- Different icons based on state -->
             @if (readerState() === 'waiting') {
-              <svg class="mx-auto w-16 h-16 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-              </svg>
+              <div class="mx-auto w-24 h-24 md:w-32 md:h-32 bg-blue-50 rounded-full flex items-center justify-center mb-4">
+                <svg class="w-12 h-12 md:w-16 md:h-16 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                </svg>
+              </div>
             } @else if (readerState() === 'reading') {
-              <svg class="mx-auto w-16 h-16 text-yellow-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-              </svg>
+              <div class="mx-auto w-24 h-24 md:w-32 md:h-32 bg-yellow-50 rounded-full flex items-center justify-center mb-4 animate-pulse">
+                <svg class="w-12 h-12 md:w-16 md:h-16 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                </svg>
+              </div>
             } @else if (readerState() === 'success') {
-              <svg class="mx-auto w-16 h-16 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
+              <div class="mx-auto w-24 h-24 md:w-32 md:h-32 bg-green-50 rounded-full flex items-center justify-center mb-4">
+                <svg class="w-12 h-12 md:w-16 md:h-16 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              </div>
             } @else if (readerState() === 'error') {
-              <svg class="mx-auto w-16 h-16 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
+              <div class="mx-auto w-24 h-24 md:w-32 md:h-32 bg-red-50 rounded-full flex items-center justify-center mb-4">
+                <svg class="w-12 h-12 md:w-16 md:h-16 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              </div>
             } @else if (readerState() === 'removed') {
-              <svg class="mx-auto w-16 h-16 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-              </svg>
+              <div class="mx-auto w-24 h-24 md:w-32 md:h-32 bg-blue-50 rounded-full flex items-center justify-center mb-4">
+                <svg class="w-12 h-12 md:w-16 md:h-16 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                </svg>
+              </div>
             } @else if (wsConnectionStatus() === 'disconnected') {
-              <svg class="mx-auto w-16 h-16 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-              </svg>
+              <div class="mx-auto w-24 h-24 md:w-32 md:h-32 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                <svg class="w-12 h-12 md:w-16 md:h-16 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                </svg>
+              </div>
             }
           </div>
           
-          <h2 class="text-xl font-semibold mb-2">{{ cardReaderMessage() }}</h2>
-          <p class="text-slate-600 mb-4">
+          <h2 class="text-xl md:text-2xl font-semibold mb-3 text-gray-900">{{ cardReaderMessage() }}</h2>
+          <p class="text-slate-600 mb-6 text-base md:text-lg leading-relaxed">
             @if (wsConnectionStatus() === 'connected') {
               @if (readerState() === 'waiting') {
                 Card reader is ready. Insert your card to automatically read it.
@@ -101,27 +113,60 @@
           }
         </div>
 
-        <!-- Divider -->
-        <div class="relative">
-          <div class="absolute inset-0 flex items-center">
-            <div class="w-full border-t border-gray-300"></div>
-          </div>
-          <div class="relative flex justify-center text-sm">
-            <span class="px-2 bg-white text-gray-500">OR</span>
-          </div>
+        <!-- Manual Entry Option -->
+        <div class="text-center">
+          <button
+            (click)="onShowManualEntry()"
+            class="px-6 md:px-8 py-3 md:py-4 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium text-base md:text-lg"
+          >
+            {{ 'kiosk.manualId.enterManually' | translate }}
+          </button>
+        </div>
+      </div>
+      }
+
+      <!-- Manual ID Entry Screen -->
+      @if (!showServiceSelection() && !ticketData() && showManualEntry()) {
+      <div class="text-center">
+        <!-- Back Button -->
+        <div class="mb-6 text-left">
+          <button
+            (click)="onBackToCardReader()"
+            class="flex items-center px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+          >
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+            {{ 'common.back' | translate }}
+          </button>
         </div>
 
         <!-- Manual ID Entry Section -->
-        <div class="text-center">
-          <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ 'kiosk.manualId.title' | translate }}</h3>
-          <form (ngSubmit)="onManualIdSubmitted(manualIdNumber())" class="max-w-sm mx-auto">
-            <div class="mb-4">
+        <div class="p-6 md:p-8 bg-white rounded-xl shadow-sm border border-gray-200">
+          <div class="text-center mb-6">
+            <div class="mx-auto w-24 h-24 md:w-32 md:h-32 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+              <svg class="w-12 h-12 md:w-16 md:h-16 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+              </svg>
+            </div>
+            <h3 class="text-xl md:text-2xl font-semibold text-gray-900 mb-3">{{ 'kiosk.manualId.title' | translate }}</h3>
+            <p class="text-slate-600 text-base md:text-lg leading-relaxed mb-6">
+              Enter your ID number manually
+            </p>
+          </div>
+          
+          <form (ngSubmit)="onManualIdSubmitted(manualIdNumber())" class="space-y-4">
+            <div>
+              <label for="manualIdNumber" class="block text-sm font-medium text-gray-700 mb-2">
+                {{ 'kiosk.manualId.label' | translate }}
+              </label>
               <input
                 type="text"
+                id="manualIdNumber"
                 [(ngModel)]="manualIdNumber"
                 name="manualIdNumber"
                 placeholder="{{ 'kiosk.manualId.placeholder' | translate }}"
-                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-lg"
+                class="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center transition-colors"
                 [class.border-red-500]="error()"
                 required
                 autocomplete="off"
@@ -132,12 +177,12 @@
             </div>
             <button
               type="submit"
-              class="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              class="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed text-lg"
               [disabled]="!manualIdNumber().trim() || isManualIdSubmitting()"
             >
               @if (isManualIdSubmitting()) {
                 <span class="flex items-center justify-center">
-                  <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
@@ -154,7 +199,7 @@
 
       <!-- Service Selection -->
       @if (showServiceSelection()) {
-        <div class="mt-8">
+        <div class="mt-8 md:mt-12">
           <app-service-selection
             [services]="userServices()"
             [serviceSections]="serviceSections()"
@@ -162,27 +207,28 @@
             [error]="error()"
             (serviceSelected)="onServiceSelected($event)"
             (retry)="onRetryServiceLoading()"
+            (cancel)="onCancelServiceSelection()"
           />
         </div>
       }
 
       <!-- Ticket Display -->
       @if (ticketData()) {
-        <div class="mt-8">
+        <div class="mt-8 md:mt-12">
           <ui-card [title]="'kiosk.yourTicket' | translate" variant="success">
             <div class="text-center">
-              <div class="mb-6">
-                <h3 class="text-3xl font-bold text-gray-900 mb-2">{{ 'kiosk.ticketNumber' | translate }}</h3>
-                <div class="text-6xl font-mono font-bold text-blue-600 bg-blue-50 px-8 py-4 rounded-lg inline-block">
+              <div class="mb-6 md:mb-8">
+                <h3 class="text-2xl md:text-3xl font-bold text-gray-900 mb-3 md:mb-4">{{ 'kiosk.ticketNumber' | translate }}</h3>
+                <div class="text-4xl md:text-6xl font-mono font-bold text-blue-600 bg-blue-50 px-6 md:px-8 py-3 md:py-4 rounded-lg inline-block">
                   {{ ticketData()?.ticketNumber }}
                 </div>
               </div>
               
               @if (ticketData()?.servicePoint) {
-                <div class="mb-6">
-                  <h4 class="text-xl font-semibold text-gray-700 mb-3">{{ 'common.servicePoint' | translate }}</h4>
-                  <div class="inline-flex items-center px-6 py-3 rounded-lg text-lg font-medium bg-green-50 text-green-700 border border-green-200">
-                    <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="mb-6 md:mb-8">
+                  <h4 class="text-lg md:text-xl font-semibold text-gray-700 mb-3 md:mb-4">{{ 'common.servicePoint' | translate }}</h4>
+                  <div class="inline-flex items-center px-4 md:px-6 py-2 md:py-3 rounded-lg text-base md:text-lg font-medium bg-green-50 text-green-700 border border-green-200">
+                    <svg class="w-5 h-5 md:w-6 md:h-6 mr-2 md:mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
                     </svg>
@@ -192,20 +238,20 @@
               }
               
               @if (ticketData()?.serviceName || ticketData()?.serviceDuration) {
-                <div class="mb-6">
-                  <h4 class="text-xl font-semibold text-gray-700 mb-3">Service Details</h4>
-                  <div class="space-y-3">
+                <div class="mb-6 md:mb-8">
+                  <h4 class="text-lg md:text-xl font-semibold text-gray-700 mb-3 md:mb-4">Service Details</h4>
+                  <div class="space-y-3 md:space-y-4">
                     @if (ticketData()?.serviceName) {
-                      <div class="inline-flex items-center px-6 py-3 rounded-lg text-lg font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                        <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div class="inline-flex items-center px-4 md:px-6 py-2 md:py-3 rounded-lg text-base md:text-lg font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                        <svg class="w-5 h-5 md:w-6 md:h-6 mr-2 md:mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                         {{ ticketData()?.serviceName }}
                       </div>
                     }
                     @if (ticketData()?.serviceDuration) {
-                      <div class="inline-flex items-center px-6 py-3 rounded-lg text-lg font-medium bg-purple-50 text-purple-700 border border-purple-200">
-                        <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div class="inline-flex items-center px-4 md:px-6 py-2 md:py-3 rounded-lg text-base md:text-lg font-medium bg-purple-50 text-purple-700 border border-purple-200">
+                        <svg class="w-5 h-5 md:w-6 md:h-6 mr-2 md:mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                         Estimated Duration: {{ ticketData()?.serviceDuration }} minutes
@@ -216,34 +262,34 @@
               }
               
               @if (ticketData()?.qrCodeDataUrl) {
-                <div class="mb-6">
-                  <h4 class="text-lg font-semibold text-gray-700 mb-3">Scan QR Code for Queue Updates</h4>
-                  <div class="inline-block p-4 bg-white rounded-lg shadow-sm border">
-                    <img [src]="ticketData()?.qrCodeDataUrl" alt="QR Code" class="w-48 h-48">
+                <div class="mb-6 md:mb-8">
+                  <h4 class="text-lg md:text-xl font-semibold text-gray-700 mb-3 md:mb-4">Scan QR Code for Queue Updates</h4>
+                  <div class="inline-block p-3 md:p-4 bg-white rounded-lg shadow-sm border">
+                    <img [src]="ticketData()?.qrCodeDataUrl" alt="QR Code" class="w-40 h-40 md:w-48 md:h-48">
                   </div>
                 </div>
               }
               
-              <div class="text-sm text-gray-600">
-                <p>{{ticketData()?.qrUrl}}</p>
+              <div class="text-sm md:text-base text-gray-600 space-y-2">
+                <p class="break-all">{{ticketData()?.qrUrl}}</p>
                 <p class="mb-2">📱 Scan the QR code with your phone to track your position in the queue</p>
-                <p class="text-xs">Your ticket has been added to the waiting queue. Please wait for your number to be called.</p>
+                <p class="text-xs md:text-sm">Your ticket has been added to the waiting queue. Please wait for your number to be called.</p>
               </div>
               
               <!-- Countdown Timer and Return Button -->
-              <div class="mt-8 pt-6 border-t border-gray-200">
+              <div class="mt-6 md:mt-8 pt-4 md:pt-6 border-t border-gray-200">
                 @if (isTicketCountdownActive()) {
                   <div class="text-center">
-                    <div class="mb-4">
-                      <div class="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-lg border border-blue-200">
-                        <svg class="w-5 h-5 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="mb-4 md:mb-6">
+                      <div class="inline-flex items-center px-4 md:px-6 py-2 md:py-3 bg-blue-50 text-blue-700 rounded-lg border border-blue-200">
+                        <svg class="w-5 h-5 md:w-6 md:h-6 mr-2 md:mr-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
-                        <span class="font-medium">Returning to main screen in {{ ticketCountdown() }} seconds</span>
+                        <span class="font-medium text-sm md:text-base">Returning to main screen in {{ ticketCountdown() }} seconds</span>
                       </div>
                     </div>
                     <button 
-                      class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                      class="px-6 md:px-8 py-2 md:py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm md:text-base font-medium"
                       (click)="returnToMainInterface()">
                       Return Now
                     </button>
@@ -251,7 +297,7 @@
                 } @else {
                   <div class="text-center">
                     <button 
-                      class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      class="px-6 md:px-8 py-2 md:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm md:text-base font-medium"
                       (click)="returnToMainInterface()">
                       Return to Main Screen
                     </button>

@@ -9,14 +9,14 @@ import { TranslationService, TranslatePipe } from '../../../../src/lib/i18n';
 import { LanguageSelectorComponent } from '@waiting-room/primeng-components';
 
 @Component({
-  selector: 'app-card-loader',
+  selector: 'app-user-verification',
   standalone: true,
   imports: [CommonModule, FormsModule, CardComponent, ServiceSelectionComponent, TranslatePipe, LanguageSelectorComponent],
-  templateUrl: './card-loader.component.html',
-  styleUrls: ['./card-loader.component.scss'],
+  templateUrl: './user-verification.component.html',
+  styleUrls: ['./user-verification.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class CardLoaderComponent implements OnInit, OnDestroy {
+export class UserVerificationComponent implements OnInit, OnDestroy {
   private readonly cardReaderState = inject(CardReaderStateService);
   private readonly translationService = inject(TranslationService);
 
@@ -41,6 +41,7 @@ export class CardLoaderComponent implements OnInit, OnDestroy {
   // Manual ID entry state
   protected readonly isManualIdSubmitting = this.cardReaderState.isManualIdSubmitting;
   protected readonly manualIdNumber = signal<string>('');
+  protected readonly showManualEntry = signal<boolean>(false);
   
   // Ticket display state
   protected readonly ticketCountdown = this.cardReaderState.ticketCountdown;
@@ -106,10 +107,28 @@ export class CardLoaderComponent implements OnInit, OnDestroy {
     this.cardReaderState.retryServiceLoading();
   }
 
-  protected returnToMainInterface(): void {
+  protected onCancelServiceSelection(): void {
     this.cardReaderState.returnToMainInterface();
+    // Clear the manual ID input and reset manual entry state
+    this.manualIdNumber.set('');
+    this.showManualEntry.set(false);
+  }
+
+  protected onShowManualEntry(): void {
+    this.showManualEntry.set(true);
+  }
+
+  protected onBackToCardReader(): void {
+    this.showManualEntry.set(false);
     // Clear the manual ID input
     this.manualIdNumber.set('');
+  }
+
+  protected returnToMainInterface(): void {
+    this.cardReaderState.returnToMainInterface();
+    // Clear the manual ID input and reset manual entry state
+    this.manualIdNumber.set('');
+    this.showManualEntry.set(false);
   }
 
   protected onManualIdSubmitted(idNumber: string): void {

@@ -50,12 +50,9 @@
           "outputHashing": "all"
         },
         "development": {
-          "buildOptimizer": false,
           "optimization": false,
-          "vendorChunk": true,
           "extractLicenses": false,
-          "sourceMap": true,
-          "namedChunks": true
+          "sourceMap": true
         }
       },
       "defaultConfiguration": "production"
@@ -63,6 +60,9 @@
     "serve": {
       "continuous": true,
       "executor": "@angular-devkit/build-angular:dev-server",
+      "options": {
+        "port": 4204
+      },
       "configurations": {
         "production": {
           "buildTarget": "mobile:build:production"
@@ -95,7 +95,7 @@
       "executor": "@nx/web:file-server",
       "options": {
         "buildTarget": "mobile:build",
-        "port": 4200,
+        "port": 4204,
         "spa": true
       }
     }
