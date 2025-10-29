@@ -60,7 +60,7 @@ func (s *Service) GetAppointmentsForPatient(ctx context.Context, nationalID stri
 
 	for _, event := range events.GetContent() {
 		resp = append(resp, dto.AppointmentResp{
-			ID:            event.GetId(),
+			Id:            strconv.FormatInt(event.GetId(), 10),
 			Duration:      event.GetDuration(),
 			RequestedTime: event.GetRequestedTime(),
 			ServiceName:   event.RequestedService.GetName(),

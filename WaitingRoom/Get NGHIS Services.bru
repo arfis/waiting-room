@@ -1,0 +1,27 @@
+meta {
+  name: Get NGHIS Services
+  type: http
+  seq: 1
+}
+
+post {
+  url: http://localhost:8060/nghis-adapter/services
+  body: json
+  auth: inherit
+}
+
+headers {
+  x-tenant-id: 9999
+}
+
+body:json {
+  {
+    "orgUnitCodes": ["Zubná ambulancia"],
+    "limit": 100
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -4,7 +4,7 @@ package register
 
 import (
 	"github.com/arfis/waiting-room/nghis-adapter/internal/rest/handler/appointment"
-	"github.com/arfis/waiting-room/nghis-adapter/internal/rest/handler/service"
+	"github.com/arfis/waiting-room/nghis-adapter/internal/rest/handler/services"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/dig"
 )
@@ -12,10 +12,10 @@ import (
 func Generated(r chi.Router, diContainer *dig.Container) {
 	err := diContainer.Invoke(func(
 		appointmentHandler *appointment.Handler,
-		serviceHandler *service.Handler,
+		servicesHandler *services.Handler,
 	) error {
 		r.Get("/patient/{nationalID}/appointments", appointmentHandler.GetAppointmentsForPatient)
-		r.Post("/services", serviceHandler.FindServices)
+		r.Post("/services", servicesHandler.FindServices)
 		return nil
 	})
 	if err != nil {

@@ -10,7 +10,7 @@ paths:
   /services:
     post:
       x-generated:
-        package: service
+        package: services
       operationId: FindServices
       requestBody:
         description: FindServicesReq
@@ -60,14 +60,13 @@ components:
       title: FindServicesReq
       type: object
       required:
-        - orgUnitIDs
+        - orgUnitCodes
         - limit
       properties:
-        orgUnitIDs:
+        orgUnitCodes:
           type: array
           items:
-            type: integer
-            format: int64
+            type: string
         limit:
           type: integer
           format: int32

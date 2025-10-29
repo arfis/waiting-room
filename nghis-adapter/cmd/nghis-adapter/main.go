@@ -18,7 +18,9 @@ import (
 	"github.com/arfis/waiting-room/nghis-adapter/internal/middleware"
 	"github.com/arfis/waiting-room/nghis-adapter/internal/rest"
 	appointmentRest "github.com/arfis/waiting-room/nghis-adapter/internal/rest/handler/appointment"
+	svcRest "github.com/arfis/waiting-room/nghis-adapter/internal/rest/handler/services"
 	"github.com/arfis/waiting-room/nghis-adapter/internal/service/appointment"
+	svcService "github.com/arfis/waiting-room/nghis-adapter/internal/service/services"
 	"go.uber.org/dig"
 )
 
@@ -50,6 +52,9 @@ func DIContainer() *dig.Container {
 
 		{Constructor: appointmentRest.New},
 		{Constructor: appointment.NewService},
+
+		{Constructor: svcRest.New},
+		{Constructor: svcService.NewService},
 	}
 
 	container := dig.New()

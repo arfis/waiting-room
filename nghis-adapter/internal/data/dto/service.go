@@ -3,16 +3,16 @@
 package dto
 
 type FindServicesReq struct {
-	Limit      int32   `json:"limit"`
-	OrgUnitIDs []int64 `json:"orgUnitIDs" validate:"required,dive"`
+	Limit        int32    `json:"limit"`
+	OrgUnitCodes []string `json:"orgUnitCodes" validate:"required,dive"`
 }
 
 func (findServicesReq FindServicesReq) GetLimit() int32 {
 	return findServicesReq.Limit
 }
 
-func (findServicesReq FindServicesReq) GetOrgUnitIDs() []int64 {
-	return findServicesReq.OrgUnitIDs
+func (findServicesReq FindServicesReq) GetOrgUnitCodes() []string {
+	return findServicesReq.OrgUnitCodes
 }
 
 type ServicesResp struct {
