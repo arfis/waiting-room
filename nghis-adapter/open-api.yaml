@@ -1,12 +1,34 @@
 openapi: 3.0.0
 info:
   title: nghis-adapter
-  version: 0.1.0
+  version: 0.2.0
   description: nghis-adapter
   x-artifact-name: nghis-adapter
 x-configuration:
   module: github.com/arfis/waiting-room/nghis-adapter
 paths:
+  /services:
+    post:
+      x-generated:
+        package: service
+      operationId: FindServices
+      requestBody:
+        description: FindServicesReq
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FindServicesReq"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ServicesResp'
+          description: OK
+      summary: FindServices
   /patient/{nationalID}/appointments:
     parameters:
       - name: nationalID
@@ -33,6 +55,42 @@ paths:
       summary: GetAppointmentsForPatient
 components:
   schemas:
+    FindServicesReq:
+      x-group: service
+      title: FindServicesReq
+      type: object
+      required:
+        - orgUnitIDs
+        - limit
+      properties:
+        orgUnitIDs:
+          type: array
+          items:
+            type: integer
+            format: int64
+        limit:
+          type: integer
+          format: int32
+    ServicesResp:
+      x-group: service
+      title: ServicesResp
+      type: object
+      required:
+        - id
+        - code
+        - name
+        - duration
+      properties:
+        id:
+          format: int64
+          type: integer
+        code:
+          type: string
+        name:
+          type: string
+        duration:
+          format: int64
+          type: integer
     AppointmentResp:
       x-group: appointment
       title: AppointmentResp
