@@ -110,6 +110,7 @@ export class ConfigurationComponent {
     genericServicesLanguageHandling: 'query_param',
     genericServicesLanguageHeader: 'Accept-Language',
     genericServicesHttpMethod: 'GET',
+    genericServicesPostBody: '',
     webhookHttpMethod: 'POST',
     genericServices: []
   };
@@ -233,6 +234,7 @@ export class ConfigurationComponent {
               genericServicesLanguageHandling: response.genericServicesLanguageHandling || 'query_param',
               genericServicesLanguageHeader: response.genericServicesLanguageHeader || 'Accept-Language',
               genericServicesHttpMethod: response.genericServicesHttpMethod || 'GET',
+              genericServicesPostBody: response.genericServicesPostBody || '',
               webhookHttpMethod: response.webhookHttpMethod || 'POST',
               appointmentServicesUrl: response.appointmentServicesUrl,
               genericServicesUrl: response.genericServicesUrl,
@@ -311,6 +313,7 @@ export class ConfigurationComponent {
         appointmentServicesHttpMethod: this.externalAPIConfig.appointmentServicesHttpMethod || 'GET',
         genericServicesUrl: this.externalAPIConfig.genericServicesUrl,
         genericServicesHttpMethod: this.externalAPIConfig.genericServicesHttpMethod || 'GET',
+        genericServicesPostBody: this.externalAPIConfig.genericServicesPostBody || '',
         genericServices: this.externalAPIConfig.genericServices || [],
         webhookUrl: this.externalAPIConfig.webhookUrl,
         webhookHttpMethod: this.externalAPIConfig.webhookHttpMethod || 'POST',

@@ -76,7 +76,8 @@ import { TranslationService, TranslatePipe } from '../../../../src/lib/i18n';
                     <div class="flex items-center justify-between h-full">
                       <div class="flex-1">
                         <h3 class="font-semibold text-gray-900 text-base md:text-lg mb-1 md:mb-2">{{ service.serviceName }}</h3>
-                        <p class="text-sm md:text-base text-gray-600">{{ 'common.estimatedDuration' | translate }}: {{ service.duration }} {{ 'common.minutes' | translate }}</p>
+                        <!-- TODO needs to be removed the / 60 part  -->
+                        <p class="text-sm md:text-base text-gray-600">{{ 'common.estimatedDuration' | translate }}: {{ service.duration / 60}} {{ 'common.minutes' | translate }}</p>
                       </div>
                       <div class="flex items-center ml-3 md:ml-4">
                         @if (selectedServiceId() === service.id) {

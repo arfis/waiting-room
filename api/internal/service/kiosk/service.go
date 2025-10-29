@@ -170,6 +170,7 @@ func (s *Service) GetGenericServices(ctx context.Context, language *string) ([]d
 	}
 
 	var services []dto.UserService
+	var adminCreatedServices []dto.UserService
 
 	// First, try to get admin-created generic services
 	if len(apiConfig.GenericServices) > 0 {
@@ -182,8 +183,10 @@ func (s *Service) GetGenericServices(ctx context.Context, language *string) ([]d
 					Duration:    int64(service.Duration),
 				}
 				services = append(services, userService)
+				adminCreatedServices = append(adminCreatedServices, userService)
 			}
 		}
+		log.Printf("Added %d enabled admin-created services", len(adminCreatedServices))
 	}
 
 	// If external URL is configured, also fetch from external API
@@ -210,7 +213,9 @@ func (s *Service) GetGenericServices(ctx context.Context, language *string) ([]d
 			log.Printf("Failed to fetch external generic services: %v", err)
 		} else {
 			// Append external services to admin-created services
+			log.Printf("Fetched %d external generic services, appending to %d admin-created services", len(externalServices), len(services))
 			services = append(services, externalServices...)
+			log.Printf("Total services before translation: %d (admin-created + external)", len(services))
 		}
 	}
 
@@ -220,27 +225,107 @@ func (s *Service) GetGenericServices(ctx context.Context, language *string) ([]d
 		return []dto.UserService{}, nil
 	}
 
-	// Apply DeepL translation if configured for admin-created services
+	// Apply DeepL translation if configured for all generic services (both admin-created and external)
 	if apiConfig != nil && apiConfig.UseDeepLTranslation != nil && *apiConfig.UseDeepLTranslation {
-		log.Printf("DeepL translation is enabled for generic services")
+		log.Printf("DeepL translation is enabled for generic services (admin-created + external)")
 
 		if s.translationService == nil {
 			log.Printf("WARNING: DeepL translation is enabled but translation service is nil")
 		} else {
-			needsTranslation := (lang != "en")
+			// Always attempt translation if we have external services (they might be in Slovak)
+			// or if target language is not English
+			needsTranslation := true // Always try to translate generic services
 
 			log.Printf("Generic services translation decision: needsTranslation=%v, targetLanguage=%s", needsTranslation, lang)
 
 			if needsTranslation {
-				log.Printf("Attempting to translate %d generic services to %s", len(services), lang)
-				translatedServices, err := s.translateServices(services, lang)
-				if err != nil {
-					log.Printf("Failed to translate generic services: %v", err)
-					// Return original services if translation fails
+				if len(services) == 0 {
+					log.Printf("No services to translate (services array is empty)")
 				} else {
-					log.Printf("Successfully translated generic services")
-					services = translatedServices
+					// Separate admin-created and external services to translate them with different source languages
+					// We track admin-created services separately when building the list
+					externalServices := make([]dto.UserService, 0)
+
+					// Find external services by comparing with admin-created list
+					for _, service := range services {
+						isAdminCreated := false
+						for _, adminService := range adminCreatedServices {
+							if service.Id == adminService.Id && service.ServiceName == adminService.ServiceName {
+								isAdminCreated = true
+								break
+							}
+						}
+						if !isAdminCreated {
+							externalServices = append(externalServices, service)
+						}
+					}
+
+					log.Printf("Services breakdown: %d admin-created (assumed EN), %d external (source varies)", len(adminCreatedServices), len(externalServices))
+
+					// Determine source language for external services based on language handling configuration
+					externalSourceLanguage := "en" // Default
+					if apiConfig.GenericServicesLanguageHandling != nil {
+						if *apiConfig.GenericServicesLanguageHandling == "none" {
+							// When language handling is "none", external API returns in its default language (SK)
+							externalSourceLanguage = "sk"
+							log.Printf("Language handling is 'none' - external services are in Slovak (sk)")
+						} else {
+							// If language handling is query_param or header, API might return in requested language
+							// In this case, check if the requested language matches target (no translation needed)
+							externalSourceLanguage = "en" // Assuming API can return in requested language or default EN
+							log.Printf("Language handling is '%s' - external services may already be in target language", *apiConfig.GenericServicesLanguageHandling)
+						}
+					} else {
+						// No language handling config - assume external services are in their default language (SK)
+						externalSourceLanguage = "sk"
+						log.Printf("No language handling config - assuming external services are in Slovak (sk)")
+					}
+
+					// Use tracked admin-created services
+					adminServices := adminCreatedServices
+
+					var allTranslatedServices []dto.UserService
+
+					// Translate admin-created services from English (only if target is not English)
+					if len(adminServices) > 0 {
+						if lang != "en" {
+							log.Printf("Translating %d admin-created services from en to %s", len(adminServices), lang)
+							translatedAdmin, err := s.translateServices(adminServices, "en", lang)
+							if err != nil {
+								log.Printf("Failed to translate admin-created services: %v (keeping original)", err)
+								allTranslatedServices = append(allTranslatedServices, adminServices...)
+							} else {
+								allTranslatedServices = append(allTranslatedServices, translatedAdmin...)
+							}
+						} else {
+							log.Printf("Target language is English - keeping %d admin-created services as-is", len(adminServices))
+							allTranslatedServices = append(allTranslatedServices, adminServices...)
+						}
+					}
+
+					// Translate external services from their source language
+					if len(externalServices) > 0 {
+						// Only translate if source and target are different
+						if externalSourceLanguage != lang {
+							log.Printf("Translating %d external services from %s to %s", len(externalServices), externalSourceLanguage, lang)
+							translatedExternal, err := s.translateServices(externalServices, externalSourceLanguage, lang)
+							if err != nil {
+								log.Printf("Failed to translate external services: %v (keeping original)", err)
+								allTranslatedServices = append(allTranslatedServices, externalServices...)
+							} else {
+								allTranslatedServices = append(allTranslatedServices, translatedExternal...)
+							}
+						} else {
+							log.Printf("External services source language (%s) matches target (%s) - keeping as-is", externalSourceLanguage, lang)
+							allTranslatedServices = append(allTranslatedServices, externalServices...)
+						}
+					}
+
+					log.Printf("Translation complete: %d total services processed (admin-created + external)", len(allTranslatedServices))
+					services = allTranslatedServices
 				}
+			} else {
+				log.Printf("Translation not needed - language is English (en)")
 			}
 		}
 	} else {
@@ -408,35 +493,80 @@ func (s *Service) makeExternalAPICall(ctx context.Context, externalAPIURL string
 		return nil, ngErrors.New(ngErrors.InternalServerErrorCode, "failed to read response body", 500, nil)
 	}
 
-	// Parse JSON response
+	log.Printf("External API response body: %s", string(body))
+
+	// Try to parse as external API format first (with code, id as int64, name)
+	type ExternalService struct {
+		Code     string `json:"code"`
+		Duration int64  `json:"duration"`
+		Id       int64  `json:"id"`
+		Name     string `json:"name"`
+	}
+
+	var externalServices []ExternalService
 	var services []dto.UserService
-	if err := json.Unmarshal(body, &services); err != nil {
-		return nil, ngErrors.New(ngErrors.InternalServerErrorCode, "failed to parse response", 500, nil)
+
+	// Try parsing as external API format first
+	if err := json.Unmarshal(body, &externalServices); err == nil {
+		if len(externalServices) > 0 {
+			// Transform external format to UserService format
+			services = make([]dto.UserService, len(externalServices))
+			for i, ext := range externalServices {
+				services[i] = dto.UserService{
+					Id:          fmt.Sprintf("%d", ext.Id), // Convert int64 id to string
+					ServiceName: ext.Name,
+					Duration:    ext.Duration,
+				}
+			}
+			log.Printf("Successfully parsed %d services from external API format", len(services))
+		} else {
+			log.Printf("External API format parsed successfully but returned empty array")
+			services = []dto.UserService{}
+		}
+	} else {
+		// Fallback: try parsing as direct UserService format
+		externalErr := err
+		if parseErr := json.Unmarshal(body, &services); parseErr != nil {
+			log.Printf("Failed to parse response in both formats. External format error: %v, Direct format error: %v", externalErr, parseErr)
+			log.Printf("Response body was: %s", string(body))
+			return nil, ngErrors.New(ngErrors.InternalServerErrorCode, fmt.Sprintf("failed to parse response. External format: %v, Direct format: %v", externalErr, parseErr), 500, nil)
+		}
+		log.Printf("Successfully parsed %d services from direct UserService format", len(services))
 	}
 
 	// Apply DeepL translation if configured and needed
+	// Note: For generic services, translation will be handled in GetGenericServices after merging with admin-created services
+	// For appointment services, translation happens here since they are returned directly
 	if apiConfig != nil && apiConfig.UseDeepLTranslation != nil && *apiConfig.UseDeepLTranslation {
-		log.Printf("DeepL translation is enabled in config")
+		// Only translate here for appointment services (isAppointmentServices = true)
+		// Generic services will be translated later in GetGenericServices after merging
+		if isAppointmentServices {
+			log.Printf("DeepL translation is enabled in config for appointment services")
 
-		if s.translationService == nil {
-			log.Printf("WARNING: DeepL translation is enabled but translation service is nil")
-		} else {
-			// Always translate if language is not English, regardless of language handling configuration
-			needsTranslation := (language != "en")
+			if s.translationService == nil {
+				log.Printf("WARNING: DeepL translation is enabled but translation service is nil")
+			} else {
+				// Always attempt translation for appointment services
+				needsTranslation := true
 
-			log.Printf("Translation decision: needsTranslation=%v, targetLanguage=%s", needsTranslation, language)
+				log.Printf("Translation decision for appointment services: needsTranslation=%v, targetLanguage=%s", needsTranslation, language)
 
-			if needsTranslation {
-				log.Printf("Attempting to translate %d services to %s", len(services), language)
-				translatedServices, err := s.translateServices(services, language)
-				if err != nil {
-					log.Printf("Failed to translate services: %v", err)
-					// Return original services if translation fails
-				} else {
-					log.Printf("Successfully translated services %s", translatedServices)
-					services = translatedServices
+				if needsTranslation {
+					// Appointment services are typically in English, so use "en" as source
+					sourceLanguage := "en"
+					log.Printf("Attempting to translate %d appointment services from %s to %s", len(services), sourceLanguage, language)
+					translatedServices, err := s.translateServices(services, sourceLanguage, language)
+					if err != nil {
+						log.Printf("Failed to translate appointment services: %v", err)
+						// Return original services if translation fails
+					} else {
+						log.Printf("Successfully translated appointment services")
+						services = translatedServices
+					}
 				}
 			}
+		} else {
+			log.Printf("Skipping translation in makeExternalAPICall for generic services - will be handled in GetGenericServices after merging")
 		}
 	} else {
 		log.Printf("DeepL translation not enabled or not configured properly")
@@ -446,37 +576,53 @@ func (s *Service) makeExternalAPICall(ctx context.Context, externalAPIURL string
 }
 
 // translateServices translates service names and descriptions using DeepL
-func (s *Service) translateServices(services []dto.UserService, targetLanguage string) ([]dto.UserService, error) {
-	if s.translationService == nil || !s.translationService.IsConfigured() {
+func (s *Service) translateServices(services []dto.UserService, sourceLanguage, targetLanguage string) ([]dto.UserService, error) {
+	log.Printf("translateServices called with %d services, sourceLanguage=%s, targetLanguage=%s", len(services), sourceLanguage, targetLanguage)
+
+	if s.translationService == nil {
+		log.Printf("ERROR: translationService is nil")
+		return services, fmt.Errorf("DeepL translation service is nil")
+	}
+
+	if !s.translationService.IsConfigured() {
+		log.Printf("ERROR: translationService is not configured")
 		return services, fmt.Errorf("DeepL translation service not configured")
 	}
 
-	// Assume source language is English if not specified
-	sourceLanguage := "en"
-
-	// Skip translation if target language is English
-	if targetLanguage == "en" {
+	// Skip translation if source and target languages are the same
+	if sourceLanguage == targetLanguage {
+		log.Printf("Skipping translation - source and target languages are the same (%s)", targetLanguage)
 		return services, nil
 	}
 
+	log.Printf("Starting translation of %d services from %s to %s", len(services), sourceLanguage, targetLanguage)
 	translatedServices := make([]dto.UserService, len(services))
+	successCount := 0
+	failCount := 0
 
 	for i, service := range services {
 		translatedService := service
 
 		// Translate service name
 		if service.ServiceName != "" {
+			log.Printf("Translating service %d: '%s' from %s to %s", i, service.ServiceName, sourceLanguage, targetLanguage)
 			translatedName, err := s.translationService.Translate(service.ServiceName, sourceLanguage, targetLanguage)
 			if err != nil {
-				log.Printf("Failed to translate service name '%s': %v", service.ServiceName, err)
+				log.Printf("Failed to translate service name '%s': %v (keeping original)", service.ServiceName, err)
+				failCount++
 				// Keep original name if translation fails
 			} else {
+				log.Printf("Successfully translated '%s' -> '%s'", service.ServiceName, translatedName)
 				translatedService.ServiceName = translatedName
+				successCount++
 			}
+		} else {
+			log.Printf("Service %d has empty ServiceName, skipping translation", i)
 		}
 
 		translatedServices[i] = translatedService
 	}
 
+	log.Printf("Translation complete: %d succeeded, %d failed out of %d total", successCount, failCount, len(services))
 	return translatedServices, nil
 }
