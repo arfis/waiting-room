@@ -138,6 +138,54 @@ func (s *Service) FinishCurrent(ctx context.Context, roomId string) (*dto.QueueE
 	return queueEntry, nil
 }
 
+func (s *Service) CallSpecificEntry(ctx context.Context, entryId string, roomId string, servicePointId string) (*dto.QueueEntry, error) {
+	entry, err := s.queueService.CallSpecificEntryForServicePoint(ctx, roomId, servicePointId, entryId)
+	if err != nil {
+		return nil, ngErrors.New(ngErrors.InternalServerErrorCode, "failed to call specific entry", 500, nil)
+	}
+
+	// Convert to QueueEntry
+	queueEntry := &dto.QueueEntry{
+		ID:            entry.ID,
+		WaitingRoomID: entry.WaitingRoomID,
+		TicketNumber:  entry.TicketNumber,
+		Status:        queueentrystatus.QueueEntryStatus(entry.Status),
+		Position:      int64(entry.Position),
+		ServicePoint:  &entry.ServicePoint,
+	}
+	if entry.ServicePoint != "" {
+		queueEntry.ServicePoint = &entry.ServicePoint
+	}
+	if entry.ServiceName != "" {
+		queueEntry.ServiceName = &entry.ServiceName
+	}
+	if entry.ApproximateDurationSeconds > 0 {
+		durationMinutes := entry.ApproximateDurationSeconds / 60 // Convert seconds to minutes for API
+		queueEntry.ServiceDuration = &durationMinutes
+	}
+
+	// Broadcast queue update - only to the tenant that changed
+	if s.broadcastFunc != nil {
+		tenantID := service.GetTenantID(ctx)
+		log.Printf("[QueueService] Broadcasting queue update for room %s, tenantID: '%s' (length: %d)", roomId, tenantID, len(tenantID))
+		if tenantID == "" {
+			log.Printf("[QueueService] WARNING: tenantID is empty, broadcasting to all clients")
+		}
+		s.broadcastFunc(roomId, tenantID)
+	}
+
+	// Send webhook notification for ticket called
+	if s.webhookService != nil {
+		go func() {
+			if err := s.webhookService.SendTicketCalledWebhook(ctx, entry.ID, roomId, servicePointId, ""); err != nil {
+				log.Printf("Failed to send webhook notification for ticket called: %v", err)
+			}
+		}()
+	}
+
+	return queueEntry, nil
+}
+
 func (s *Service) GetQueueEntries(ctx context.Context, roomId string, states []string) ([]dto.QueueEntry, error) {
 	// Log tenant ID from context for debugging
 	tenantID := ctx.Value(middleware.TENANT)
@@ -171,8 +219,9 @@ func (s *Service) GetQueueEntries(ctx context.Context, roomId string, states []s
 		if entry.ServiceName != "" {
 			queueEntry.ServiceName = &entry.ServiceName
 		}
-		if entry.ApproximateDurationMinutes > 0 {
-			queueEntry.ServiceDuration = &entry.ApproximateDurationMinutes
+	if entry.ApproximateDurationSeconds > 0 {
+		durationMinutes := entry.ApproximateDurationSeconds / 60 // Convert seconds to minutes for API
+		queueEntry.ServiceDuration = &durationMinutes
 		}
 		queueEntries = append(queueEntries, queueEntry)
 	}

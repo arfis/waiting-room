@@ -309,7 +309,7 @@ func (s *Server) handleQueueWebSocket(w http.ResponseWriter, r *http.Request) {
 				"cardData":        entry.CardData,
 				"servicePoint":    entry.ServicePoint,
 				"serviceName":     entry.ServiceName,
-				"serviceDuration": entry.ApproximateDurationMinutes,
+				"serviceDuration": entry.ApproximateDurationSeconds / 60, // Convert seconds to minutes for API
 			}
 			wsEntries = append(wsEntries, wsEntry)
 		}
@@ -475,7 +475,7 @@ func (s *Server) broadcastQueueUpdate(roomId string, targetTenantID string) {
 			"cardData":        entry.CardData,
 			"servicePoint":    entry.ServicePoint,
 			"serviceName":     entry.ServiceName,
-			"serviceDuration": entry.ApproximateDurationMinutes,
+			"serviceDuration": entry.ApproximateDurationSeconds / 60, // Convert seconds to minutes for API
 		}
 		wsEntries = append(wsEntries, wsEntry)
 	}

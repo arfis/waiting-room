@@ -130,6 +130,21 @@ export class QueueStateService {
     });
   }
 
+  callSpecificEntry(roomId: string, servicePointId: string, entryId: string): void {
+    this.isLoading.set(true);
+    
+    this.queueApiService.callSpecificEntry(roomId, servicePointId, entryId).subscribe({
+      next: (response) => {
+        this.addActivity(response.ticketNumber, 'Called to service');
+        this.isLoading.set(false);
+      },
+      error: (error) => {
+        console.error('Failed to call specific entry:', error);
+        this.isLoading.set(false);
+      }
+    });
+  }
+
   refreshQueue(roomId: string): void {
     this.isLoading.set(true);
     

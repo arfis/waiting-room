@@ -44,4 +44,8 @@ export class QueueApiService {
   finishCurrent(roomId: string): Observable<CallNextResponse> {
     return this.http.post<CallNextResponse>(`${this.apiUrl}/waiting-rooms/${roomId}/finish`, {});
   }
+
+  callSpecificEntry(roomId: string, servicePointId: string, entryId: string): Observable<CallNextResponse> {
+    return this.http.post<CallNextResponse>(`${this.apiUrl}/waiting-rooms/${roomId}/service-points/${servicePointId}/call/${entryId}`, {});
+  }
 }

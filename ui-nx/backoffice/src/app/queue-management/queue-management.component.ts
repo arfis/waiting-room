@@ -130,10 +130,14 @@ export class QueueManagementComponent implements OnInit, OnDestroy {
   }
 
   protected onCallSpecificEntry(entry: WebSocketQueueEntry): void {
-   
-    // For now, just call the next person
-    // In a real implementation, you might want a specific endpoint for calling a particular entry
-    this.queueState.callNext(this.roomId, this.selectedServicePoint()?.id || '');
+    const servicePoint = this.selectedServicePoint();
+    if (!servicePoint) {
+      console.warn('Cannot call entry: No service point selected');
+      return;
+    }
+    
+    // Call the specific entry by ID
+    this.queueState.callSpecificEntry(this.roomId, servicePoint.id, entry.id);
   }
 
   protected getStatusText(status: string): string {

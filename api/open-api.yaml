@@ -301,6 +301,46 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApplicationError'
+  /waiting-rooms/{roomId}/service-points/{servicePointId}/call/{entryId}:
+    post:
+      x-generated:
+        package: queue
+      tags:
+        - Queue
+      operationId: CallSpecificEntry
+      summary: Call a specific entry by ID
+      parameters:
+        - in: path
+          name: roomId
+          required: true
+          schema: { type: string }
+        - in: path
+          name: servicePointId
+          required: true
+          schema: { type: string }
+        - in: path
+          name: entryId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueEntry'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationError'
+        '500':
+          description: Internal errors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationError'
   /waiting-rooms/{roomId}/finish:
     post:
       x-generated:

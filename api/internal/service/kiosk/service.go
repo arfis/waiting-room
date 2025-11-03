@@ -51,10 +51,11 @@ func (s *Service) SwipeCard(ctx context.Context, roomId string, req *dto.SwipeRe
 		Source:   "card-reader",
 	}
 
-	// Use service duration from request, fallback to 5 minutes if not provided
-	approximateDurationMinutes := req.GetServiceDuration()
-	if approximateDurationMinutes == 0 {
-		approximateDurationMinutes = 5 // Default fallback
+	// Use service duration from request, convert from minutes to seconds
+	// Fallback to 5 minutes (300 seconds) if not provided
+	approximateDurationSeconds := req.GetServiceDuration() * 60 // Convert minutes to seconds
+	if approximateDurationSeconds == 0 {
+		approximateDurationSeconds = 300 // Default fallback: 5 minutes = 300 seconds
 	}
 
 	// Get service name if service ID is provided
@@ -74,7 +75,7 @@ func (s *Service) SwipeCard(ctx context.Context, roomId string, req *dto.SwipeRe
 	}
 
 	// Create queue entry using the existing queue service (pass context for tenant info)
-	entry, err := s.queueService.CreateEntry(ctx, roomId, cardData, approximateDurationMinutes, serviceName)
+	entry, err := s.queueService.CreateEntry(ctx, roomId, cardData, approximateDurationSeconds, serviceName)
 	if err != nil {
 		return nil, ngErrors.New(ngErrors.InternalServerErrorCode, "failed to create queue entry", 500, nil)
 	}
@@ -109,9 +110,10 @@ func (s *Service) SwipeCard(ctx context.Context, roomId string, req *dto.SwipeRe
 		QrUrl:        qrUrl,
 	}
 
-	// Add service duration if provided
-	if approximateDurationMinutes > 0 {
-		result.ServiceDuration = &approximateDurationMinutes
+	// Add service duration if provided (convert back to minutes for API response)
+	if approximateDurationSeconds > 0 {
+		durationMinutes := approximateDurationSeconds / 60
+		result.ServiceDuration = &durationMinutes
 	}
 
 	// Add service name if service ID is provided

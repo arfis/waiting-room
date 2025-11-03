@@ -12,7 +12,7 @@ import { TenantService } from './tenant.service';
       <button
         type="button"
         (click)="toggleDropdown()"
-        class="flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[200px] justify-between"
+        class="flex items-center px-3 py-2 text-sm font-medium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[200px] justify-between shadow-sm"
         [class.opacity-50]="loading()"
         [disabled]="loading()">
         <div class="flex items-center space-x-2">
@@ -22,7 +22,7 @@ import { TenantService } from './tenant.service';
           <span class="truncate">{{ getSelectedTenantName() }}</span>
         </div>
         <svg 
-          class="w-4 h-4 text-gray-400 transition-transform duration-200"
+          class="w-4 h-4 text-gray-500 dark:text-gray-300 transition-transform duration-200"
           [class.rotate-180]="isOpen()"
           fill="none" 
           stroke="currentColor" 
@@ -70,8 +70,8 @@ import { TenantService } from './tenant.service';
                   [class.bg-blue-50]="selectedTenantId() === tenant.id"
                   [class.text-blue-700]="selectedTenantId() === tenant.id"
                   [class.font-medium]="selectedTenantId() === tenant.id">
-                  <div class="font-medium">{{tenant.buildingId}}:{{ tenant.name }}</div>
-                  <div class="text-xs text-gray-500">{{ tenant.sectionId }}</div>
+                  <div class="font-medium text-gray-900 dark:text-gray-100">{{tenant.buildingId}}:{{ tenant.name }}</div>
+                  <div class="text-xs text-gray-600 dark:text-gray-400">{{ tenant.sectionId }}</div>
                 </button>
               }
               @if (showCreateButton()) {

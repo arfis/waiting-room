@@ -14,7 +14,7 @@ type Entry struct {
 	ServicePoint               string    `bson:"servicePoint,omitempty" json:"servicePoint,omitempty"` // Which service point (door/window) to go to
 	CreatedAt                  time.Time `bson:"createdAt" json:"createdAt"`
 	UpdatedAt                  time.Time `bson:"updatedAt" json:"updatedAt"`
-	ApproximateDurationMinutes int64     `bson:"approximateDuration" json:"approximateDuration"`
+	ApproximateDurationSeconds int64     `bson:"approximateDuration" json:"approximateDuration"` // Duration in seconds
 	ServiceName                string    `bson:"serviceName,omitempty" json:"serviceName,omitempty"`
 	CardData                   CardData  `bson:"cardData,omitempty" json:"cardData,omitempty"`
 }
