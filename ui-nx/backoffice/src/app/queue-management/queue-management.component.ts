@@ -1,11 +1,14 @@
-import { Component, inject, OnInit, OnDestroy, ChangeDetectionStrategy, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, ChangeDetectionStrategy, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { QueueStateService } from '../core/services/queue-state.service';
 import { QueueActionsComponent } from './components/queue-actions/queue-actions.component';
 import { CurrentEntryCardComponent } from './components/current-entry-card/current-entry-card.component';
 import { WaitingQueueListComponent } from './components/waiting-queue-list/waiting-queue-list.component';
 import { ActivityLogComponent } from './components/activity-log/activity-log.component';
-import { WebSocketQueueEntry, Api, ConfigurationResponse, ServicePointConfiguration, QueueEntryStatus } from '@waiting-room/api-client';
+import { WebSocketQueueEntry, ConfigurationResponse, ServicePointConfiguration, QueueEntryStatus } from '@waiting-room/api-client';
+import { TenantSelectorComponent, TenantService } from '@lib/tenant';
+import { environment } from '../../environments/environment';
 
 @Component({
   selector: 'app-queue-management',
@@ -16,7 +19,7 @@ import { WebSocketQueueEntry, Api, ConfigurationResponse, ServicePointConfigurat
     CurrentEntryCardComponent,
     WaitingQueueListComponent,
     ActivityLogComponent,
-
+    TenantSelectorComponent,
   ],
   templateUrl: './queue-management.component.html',
   styleUrl: './queue-management.component.scss',
@@ -24,7 +27,9 @@ import { WebSocketQueueEntry, Api, ConfigurationResponse, ServicePointConfigurat
 })
 export class QueueManagementComponent implements OnInit, OnDestroy {
   private readonly queueState = inject(QueueStateService);
-  private readonly api = new Api();
+  private readonly tenantService = inject(TenantService);
+  private readonly http = inject(HttpClient);
+  private readonly apiUrl = environment.apiUrl || 'http://localhost:8080/api';
   private readonly roomId = 'triage-1';
 
   // Configuration state
@@ -62,11 +67,45 @@ export class QueueManagementComponent implements OnInit, OnDestroy {
     return !this.isConfigLoading() && !this.configError() && !!this.selectedServicePoint();
   });
 
+  private lastTenantId: string | null = null;
+
+  constructor() {
+    // Watch for tenant and service point availability to initialize queue state
+    effect(() => {
+      const tenantId = this.tenantService.selectedTenantId();
+      const servicePoint = this.selectedServicePoint();
+      const configLoaded = !this.isConfigLoading() && !this.configError();
+      
+      // Initialize queue state if we have tenant, service point, and config loaded
+      if (tenantId && servicePoint && configLoaded && this.lastTenantId === null) {
+        console.log('Initializing queue state with tenant:', tenantId, 'service point:', servicePoint.name);
+        this.lastTenantId = tenantId;
+        // Initialize queue state
+        this.queueState.initialize(this.roomId, ['WAITING', 'IN_SERVICE']);
+      }
+      // Reload if tenant actually changed (not just initial load)
+      else if (tenantId && servicePoint && configLoaded && tenantId !== this.lastTenantId && this.lastTenantId !== null) {
+        console.log('Tenant changed in component from', this.lastTenantId, 'to', tenantId, '- reloading queue data');
+        this.lastTenantId = tenantId;
+        // Use the same states that were used during initialization
+        this.queueState.initialize(this.roomId, ['WAITING', 'IN_SERVICE']);
+      }
+    });
+  }
+
   async ngOnInit(): Promise<void> {
+    // Check if tenant is selected before proceeding
+    const tenantId = this.tenantService.getSelectedTenantIdSync();
+    if (!tenantId) {
+      console.warn('Cannot initialize queue management: No tenant selected');
+      return;
+    }
+    
     // Load configuration first, then initialize queue state
     await this.loadConfiguration();
   
-    // Only initialize queue state if we have a selected service point
+    // Initialize queue state if we have a selected service point
+    // (service point might be auto-selected during loadConfiguration if there's only one)
     if (this.selectedServicePoint()) {
       await this.queueState.initialize(this.roomId, ['WAITING', 'IN_SERVICE']);
     }
@@ -115,13 +154,16 @@ export class QueueManagementComponent implements OnInit, OnDestroy {
     this.configError.set(null);
     
     try {
-      const config = await this.api.configuration.getConfiguration();
-      this.configuration.set(config);
-      
-      // If there's only one service point, auto-select it
-      const servicePoints = this.availableServicePoints();
-      if (servicePoints.length === 1) {
-        this.selectedServicePoint.set(servicePoints[0]);
+      // Use HttpClient directly so it goes through the tenant interceptor
+      const config = await this.http.get<ConfigurationResponse>(`${this.apiUrl}/config`).toPromise();
+      if (config) {
+        this.configuration.set(config);
+        
+        // If there's only one service point, auto-select it
+        const servicePoints = this.availableServicePoints();
+        if (servicePoints.length === 1) {
+          this.selectedServicePoint.set(servicePoints[0]);
+        }
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load configuration';
@@ -134,8 +176,17 @@ export class QueueManagementComponent implements OnInit, OnDestroy {
 
   protected selectServicePoint(servicePoint: ServicePointConfiguration): void {
     this.selectedServicePoint.set(servicePoint);
+    
+    // Check if tenant is selected before initializing
+    const tenantId = this.tenantService.getSelectedTenantIdSync();
+    if (!tenantId) {
+      console.warn('Cannot initialize queue state: No tenant selected');
+      return;
+    }
+    
     // Initialize queue state after service point selection - load waiting and current entries
-    this.queueState.initialize(this.roomId, ['WAITING', 'CALLED']);
+    // Use same states as ngOnInit to ensure consistency
+    this.queueState.initialize(this.roomId, ['WAITING', 'IN_SERVICE']);
   }
 
   protected clearServicePoint(): void {

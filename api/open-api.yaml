@@ -807,6 +807,118 @@ paths:
           description: Card reader not found
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /admin/tenants:
+    get:
+      x-generated:
+        package: admin
+      tags:
+        - Admin
+      operationId: GetAllTenants
+      summary: Get all tenants
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tenant'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      x-generated:
+        package: admin
+      tags:
+        - Admin
+      operationId: CreateTenant
+      summary: Create a new tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTenantRequest'
+      responses:
+        '201':
+          description: Tenant created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      x-generated:
+        package: admin
+      tags:
+        - Admin
+      operationId: UpdateTenant
+      summary: Update an existing tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTenantRequest'
+      responses:
+        '200':
+          description: Tenant updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Tenant not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /admin/tenants/{id}:
+    get:
+      x-generated:
+        package: admin
+      tags:
+        - Admin
+      operationId: GetTenant
+      summary: Get a specific tenant by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+        '404':
+          description: Tenant not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      x-generated:
+        package: admin
+      tags:
+        - Admin
+      operationId: DeleteTenant
+      summary: Delete a tenant
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '204':
+          description: Tenant deleted successfully
+        '404':
+          description: Tenant not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 components:
   securitySchemes:
     ApiKeyAuth: { type: apiKey, in: header, name: X-API-Key }
@@ -1142,6 +1254,59 @@ components:
         message:
           type: string
           description: Response message
+    Tenant:
+      x-group: admin
+      title: Tenant
+      type: object
+      required:
+        - buildingId
+        - sectionId
+        - name
+      properties:
+        id:
+          type: string
+          description: Tenant ID in format "buildingId:sectionId"
+        buildingId:
+          type: string
+          description: Building identifier
+        sectionId:
+          type: string
+          description: Section identifier
+        name:
+          type: string
+          description: Tenant name
+        description:
+          type: string
+          description: Optional tenant description
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+    CreateTenantRequest:
+      x-group: admin
+      title: CreateTenantRequest
+      type: object
+      required:
+        - buildingId
+        - sectionId
+        - name
+      properties:
+        buildingId:
+          type: string
+          description: Building identifier
+        sectionId:
+          type: string
+          description: Section identifier
+        name:
+          type: string
+          description: Tenant name
+        description:
+          type: string
+          description: Optional tenant description
     ExternalAPIConfig:
       x-group: admin
       title: ExternalAPIConfig

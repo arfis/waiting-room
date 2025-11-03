@@ -38,6 +38,10 @@ export class ConfigService {
     return `${this._apiUrl}/admin/card-readers`;
   }
 
+  get adminTenantsUrl(): string {
+    return `${this._apiUrl}/admin/tenants`;
+  }
+
   // Queue endpoints
   get queueUrl(): string {
     return `${this._apiUrl}/waiting-rooms`;

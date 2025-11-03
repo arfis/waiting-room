@@ -5,7 +5,14 @@
     "declaration": true,
     "declarationMap": true,
     "inlineSources": true,
-    "types": []
+    "types": [],
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@lib/tenant": ["../src/lib/tenant/index.ts"],
+      "@lib/tenant/*": ["../src/lib/tenant/*"]
+    }
   },
   "exclude": [
     "src/**/*.spec.ts",

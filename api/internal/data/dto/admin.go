@@ -87,6 +87,33 @@ func (cardReaderStatus CardReaderStatus) GetVersion() string {
 	return v
 }
 
+type CreateTenantRequest struct {
+	BuildingId  string  `json:"buildingId" validate:"required"`
+	Description *string `json:"description,omitempty"`
+	Name        string  `json:"name" validate:"required"`
+	SectionId   string  `json:"sectionId" validate:"required"`
+}
+
+func (createTenantRequest CreateTenantRequest) GetBuildingId() string {
+	return createTenantRequest.BuildingId
+}
+
+func (createTenantRequest CreateTenantRequest) GetDescription() string {
+	var v string
+	if createTenantRequest.Description != nil {
+		return *createTenantRequest.Description
+	}
+	return v
+}
+
+func (createTenantRequest CreateTenantRequest) GetName() string {
+	return createTenantRequest.Name
+}
+
+func (createTenantRequest CreateTenantRequest) GetSectionId() string {
+	return createTenantRequest.SectionId
+}
+
 type ExternalAPIConfig struct {
 	AppointmentServicesHttpMethod       *string           `json:"appointmentServicesHttpMethod,omitempty"`
 	AppointmentServicesLanguageHandling *string           `json:"appointmentServicesLanguageHandling,omitempty"`
@@ -96,7 +123,6 @@ type ExternalAPIConfig struct {
 	GenericServicesHttpMethod           *string           `json:"genericServicesHttpMethod,omitempty"`
 	GenericServicesLanguageHandling     *string           `json:"genericServicesLanguageHandling,omitempty"`
 	GenericServicesLanguageHeader       *string           `json:"genericServicesLanguageHeader,omitempty"`
-	GenericServicesPostBody             *string           `json:"genericServicesPostBody,omitempty"`
 	GenericServicesUrl                  *string           `json:"genericServicesUrl,omitempty"`
 	Headers                             map[string]string `json:"headers,omitempty"`
 	MultilingualSupport                 *bool             `json:"multilingualSupport,omitempty"`
@@ -174,14 +200,6 @@ func (externalAPIConfig ExternalAPIConfig) GetGenericServicesUrl() string {
 	var v string
 	if externalAPIConfig.GenericServicesUrl != nil {
 		return *externalAPIConfig.GenericServicesUrl
-	}
-	return v
-}
-
-func (externalAPIConfig ExternalAPIConfig) GetGenericServicesPostBody() string {
-	var v string
-	if externalAPIConfig.GenericServicesPostBody != nil {
-		return *externalAPIConfig.GenericServicesPostBody
 	}
 	return v
 }
@@ -428,6 +446,60 @@ func (systemConfiguration SystemConfiguration) GetUpdatedAt() time.Time {
 
 func (systemConfiguration SystemConfiguration) GetWebSocketPath() string {
 	return systemConfiguration.WebSocketPath
+}
+
+type Tenant struct {
+	BuildingId  string     `json:"buildingId" validate:"required"`
+	CreatedAt   *time.Time `json:"createdAt,omitempty"`
+	Description *string    `json:"description,omitempty"`
+	Id          *string    `json:"id,omitempty"`
+	Name        string     `json:"name" validate:"required"`
+	SectionId   string     `json:"sectionId" validate:"required"`
+	UpdatedAt   *time.Time `json:"updatedAt,omitempty"`
+}
+
+func (tenant Tenant) GetBuildingId() string {
+	return tenant.BuildingId
+}
+
+func (tenant Tenant) GetCreatedAt() time.Time {
+	var v time.Time
+	if tenant.CreatedAt != nil {
+		return *tenant.CreatedAt
+	}
+	return v
+}
+
+func (tenant Tenant) GetDescription() string {
+	var v string
+	if tenant.Description != nil {
+		return *tenant.Description
+	}
+	return v
+}
+
+func (tenant Tenant) GetId() string {
+	var v string
+	if tenant.Id != nil {
+		return *tenant.Id
+	}
+	return v
+}
+
+func (tenant Tenant) GetName() string {
+	return tenant.Name
+}
+
+func (tenant Tenant) GetSectionId() string {
+	return tenant.SectionId
+}
+
+func (tenant Tenant) GetUpdatedAt() time.Time {
+	var v time.Time
+	if tenant.UpdatedAt != nil {
+		return *tenant.UpdatedAt
+	}
+	return v
 }
 
 type TranslationCacheStats struct {

@@ -156,11 +156,18 @@ import { TranslationService, TranslatePipe } from '../../../../src/lib/i18n';
           </div>
         } @else {
           <div class="mt-8 md:mt-12 pt-6 md:pt-8 border-t border-gray-200">
-            <button 
-              class="w-full py-4 md:py-5 px-6 md:px-8 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium text-lg md:text-xl"
-              (click)="cancel.emit()">
-              {{ 'common.cancel' | translate }}
-            </button>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+              <button 
+                class="py-4 md:py-5 px-6 md:px-8 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium text-lg md:text-xl"
+                (click)="cancel.emit()">
+                {{ 'common.cancel' | translate }}
+              </button>
+              <button 
+                class="py-4 md:py-5 px-6 md:px-8 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-lg md:text-xl"
+                (click)="proceedWithoutService.emit()">
+                {{ 'kiosk.services.proceedWithoutService' | translate }}
+              </button>
+            </div>
           </div>
         }
       }
@@ -188,6 +195,7 @@ export class ServiceSelectionComponent {
   serviceSelected = output<UserService>();
   retry = output<void>();
   cancel = output<void>();
+  proceedWithoutService = output<void>();
 
   // Local state
   selectedServiceId = signal<string | null>(null);

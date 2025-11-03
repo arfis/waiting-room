@@ -2,11 +2,13 @@ package config
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"strconv"
 
 	"github.com/arfis/waiting-room/internal/repository"
+	"github.com/arfis/waiting-room/internal/service"
 	"github.com/arfis/waiting-room/internal/types"
 )
 
@@ -31,6 +33,27 @@ func (s *Service) Stop() {
 
 // GetSystemConfiguration gets the complete system configuration from cache
 func (s *Service) GetSystemConfiguration(ctx context.Context) (*types.SystemConfiguration, error) {
+	// Check if tenant ID is in context - if so, bypass cache and query repository directly
+	// This ensures tenant-specific configurations are always fresh
+	tenantID := service.GetTenantID(ctx)
+	if tenantID != "" {
+		// Bypass cache for tenant-specific requests
+		log.Printf("[ConfigService] Tenant-specific config requested for: %s, querying repository directly (bypassing cache)", tenantID)
+		config, err := s.repo.GetSystemConfiguration(ctx)
+		if err != nil {
+			log.Printf("[ConfigService] Error querying repository for tenant %s: %v", tenantID, err)
+			return nil, err
+		}
+		if config != nil {
+			log.Printf("[ConfigService] Found configuration for tenant %s - config ID: %s, config tenantId: %s", tenantID, config.ID, config.TenantID)
+			return config, nil
+		}
+		// No tenant-specific config found, return nil
+		log.Printf("[ConfigService] No configuration found for tenant: %s", tenantID)
+		return nil, nil
+	}
+
+	// For non-tenant requests, use cache (legacy/system configs)
 	config := s.cache.GetSystemConfiguration()
 	if config != nil {
 		return config, nil
@@ -74,6 +97,23 @@ func (s *Service) UpdateSystemConfiguration(ctx context.Context, updates map[str
 
 // GetExternalAPIConfig gets external API configuration from cache
 func (s *Service) GetExternalAPIConfig(ctx context.Context) (*types.ExternalAPIConfig, error) {
+	// Check if tenant ID is in context - if so, bypass cache and query repository directly
+	tenantID := service.GetTenantID(ctx)
+	if tenantID != "" {
+		// Bypass cache for tenant-specific requests
+		log.Printf("Tenant-specific external API config requested for: %s, querying repository directly", tenantID)
+		systemConfig, err := s.repo.GetSystemConfiguration(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if systemConfig != nil {
+			return &systemConfig.ExternalAPI, nil
+		}
+		// No tenant-specific config found, return nil
+		return nil, nil
+	}
+
+	// For non-tenant requests, use cache (legacy/system configs)
 	config := s.cache.GetExternalAPIConfig()
 	if config != nil {
 		log.Printf("Using cached config - Timeout: %d", config.TimeoutSeconds)
@@ -87,12 +127,32 @@ func (s *Service) GetExternalAPIConfig(ctx context.Context) (*types.ExternalAPIC
 
 // SetExternalAPIConfig updates external API configuration
 func (s *Service) SetExternalAPIConfig(ctx context.Context, apiConfig *types.ExternalAPIConfig) error {
+	if apiConfig == nil {
+		return fmt.Errorf("apiConfig cannot be nil")
+	}
 	log.Printf("Updating external API config - Timeout: %d", apiConfig.TimeoutSeconds)
 	return s.cache.UpdateExternalAPIConfiguration(ctx, apiConfig)
 }
 
 // GetRoomsConfig gets rooms configuration from cache
 func (s *Service) GetRoomsConfig(ctx context.Context) ([]types.RoomConfig, error) {
+	// Check if tenant ID is in context - if so, bypass cache and query repository directly
+	tenantID := service.GetTenantID(ctx)
+	if tenantID != "" {
+		// Bypass cache for tenant-specific requests
+		log.Printf("Tenant-specific rooms config requested for: %s, querying repository directly", tenantID)
+		systemConfig, err := s.repo.GetSystemConfiguration(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if systemConfig != nil && len(systemConfig.Rooms) > 0 {
+			return systemConfig.Rooms, nil
+		}
+		// No tenant-specific config found, return empty
+		return []types.RoomConfig{}, nil
+	}
+
+	// For non-tenant requests, use cache (legacy/system configs)
 	rooms := s.cache.GetRoomsConfig()
 	if len(rooms) > 0 {
 		return rooms, nil

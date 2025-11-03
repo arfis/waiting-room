@@ -167,6 +167,96 @@ func (h *Handler) UpdateRoomsConfiguration(w http.ResponseWriter, r *http.Reques
 	handler.WriteJson(r.Context(), w, 200, resp)
 }
 
+func (h *Handler) GetAllTenants(w http.ResponseWriter, r *http.Request) {
+	var applicationErr error
+	var resp []dto.Tenant
+	resp, applicationErr = h.svc.GetAllTenants(
+		r.Context(),
+	)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)
+		return
+	}
+	handler.WriteJson(r.Context(), w, 200, resp)
+}
+
+func (h *Handler) CreateTenant(w http.ResponseWriter, r *http.Request) {
+	var applicationErr error
+	req := dto.CreateTenantRequest{}
+	applicationErr = json.NewDecoder(r.Body).Decode(&req)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, ngErrors.New(ngErrors.InternalServerErrorCode, "problem decoding request body", http.StatusInternalServerError, nil))
+		return
+	}
+	applicationErr = handler.GetValidator().Struct(req)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, ngErrors.RequestValidation(applicationErr))
+		return
+	}
+	var resp *dto.Tenant
+	resp, applicationErr = h.svc.CreateTenant(
+		r.Context(), &req,
+	)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)
+		return
+	}
+	handler.WriteJson(r.Context(), w, 201, resp)
+}
+
+func (h *Handler) UpdateTenant(w http.ResponseWriter, r *http.Request) {
+	var applicationErr error
+	req := dto.CreateTenantRequest{}
+	applicationErr = json.NewDecoder(r.Body).Decode(&req)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, ngErrors.New(ngErrors.InternalServerErrorCode, "problem decoding request body", http.StatusInternalServerError, nil))
+		return
+	}
+	applicationErr = handler.GetValidator().Struct(req)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, ngErrors.RequestValidation(applicationErr))
+		return
+	}
+	var resp *dto.Tenant
+	resp, applicationErr = h.svc.UpdateTenant(
+		r.Context(), &req,
+	)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)
+		return
+	}
+	handler.WriteJson(r.Context(), w, 200, resp)
+}
+
+func (h *Handler) DeleteTenant(w http.ResponseWriter, r *http.Request) {
+	var applicationErr error
+	id := handler.PathParamToString(r, "id")
+	applicationErr = h.svc.DeleteTenant(
+		r.Context(),
+		id,
+	)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)
+		return
+	}
+	w.WriteHeader(204)
+}
+
+func (h *Handler) GetTenant(w http.ResponseWriter, r *http.Request) {
+	var applicationErr error
+	id := handler.PathParamToString(r, "id")
+	var resp *dto.Tenant
+	resp, applicationErr = h.svc.GetTenant(
+		r.Context(),
+		id,
+	)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)
+		return
+	}
+	handler.WriteJson(r.Context(), w, 200, resp)
+}
+
 func (h *Handler) ClearTranslationCache(w http.ResponseWriter, r *http.Request) {
 	var applicationErr error
 	var resp *dto.CacheClearResponse

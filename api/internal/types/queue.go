@@ -5,6 +5,8 @@ import "time"
 type Entry struct {
 	ID                         string    `bson:"_id,omitempty" json:"id"`
 	WaitingRoomID              string    `bson:"waitingRoomId" json:"waitingRoomId"`
+	TenantID                   string    `bson:"tenantId,omitempty" json:"tenantId,omitempty"` // Building/Hospital ID (e.g., "Nemocnica Spiska nova ves")
+	SectionID                  string    `bson:"sectionId,omitempty" json:"sectionId,omitempty"` // Section/Department within tenant (e.g., "Kardiologia pavilon B", "Dentist")
 	TicketNumber               string    `bson:"ticketNumber" json:"ticketNumber"`
 	QRToken                    string    `bson:"qrToken" json:"qrToken"`
 	Status                     string    `bson:"status" json:"status"` // WAITING, CALLED, IN_SERVICE, COMPLETED, SKIPPED, CANCELLED, NO_SHOW

@@ -1,8 +1,0 @@
-{
-  "compilerOptions": {
-    "paths": {
-      "@wr/api-client": ["libs/api-client/src/public-api"],
-      "@wr/ui": ["libs/ui/src/public-api"]
-    }
-  }
-}

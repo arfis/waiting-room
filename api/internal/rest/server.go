@@ -1,8 +1,10 @@
 package rest
 
 import (
+	"context"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -11,18 +13,27 @@ import (
 	"go.uber.org/dig"
 
 	"github.com/arfis/waiting-room/internal/config"
+	"github.com/arfis/waiting-room/internal/middleware"
 	queueService "github.com/arfis/waiting-room/internal/queue"
 	"github.com/arfis/waiting-room/internal/rest/register"
 	kioskService "github.com/arfis/waiting-room/internal/service/kiosk"
 	queueServiceGenerated "github.com/arfis/waiting-room/internal/service/queue"
 )
 
+// ClientInfo stores information about a WebSocket client
+type ClientInfo struct {
+	conn     *websocket.Conn
+	tenantID string // tenantID from query parameter or header
+}
+
 // Server represents the HTTP server with WebSocket support
 type Server struct {
 	queueService *queueService.WaitingQueue
 	upgrader     websocket.Upgrader
-	clients      map[string]map[*websocket.Conn]bool
-	clientsMux   sync.RWMutex
+	// clients structure: roomId -> tenantID -> []*ClientInfo
+	// This allows us to efficiently find all clients for a specific tenant
+	clients    map[string]map[string][]*ClientInfo
+	clientsMux sync.RWMutex
 }
 
 // NewServer creates and configures the HTTP server with all routes and middleware
@@ -80,7 +91,7 @@ func NewServer(diContainer *dig.Container, cfg *config.Config) *http.Server {
 					return true // Allow all origins for development
 				},
 			},
-			clients: make(map[string]map[*websocket.Conn]bool),
+			clients: make(map[string]map[string][]*ClientInfo),
 		}
 
 		// Set up broadcast function for services that need it
@@ -164,7 +175,38 @@ func (s *Server) handleQueueWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("Attempting to upgrade WebSocket connection for room: %s", roomId)
+	// Extract tenant ID from query parameter or header
+	// Query parameters are automatically URL-decoded by Go's URL.Query()
+	// Log the raw URL for debugging
+	log.Printf("[WebSocket] Raw request URL: %s", r.URL.String())
+	log.Printf("[WebSocket] Raw request URL path: %s", r.URL.Path)
+	log.Printf("[WebSocket] Raw request URL raw query: %s", r.URL.RawQuery)
+
+	// Get all query parameters
+	queryParams := r.URL.Query()
+	log.Printf("[WebSocket] Query parameters map: %v", queryParams)
+	log.Printf("[WebSocket] Query parameters count: %d", len(queryParams))
+
+	// Try to get tenantId from query parameters
+	tenantID := queryParams.Get("tenantId")
+	if tenantID == "" {
+		// Try with different casing
+		tenantID = queryParams.Get("tenantID")
+	}
+	if tenantID == "" {
+		tenantID = queryParams.Get("tenant-id")
+	}
+	if tenantID == "" {
+		tenantID = r.Header.Get("X-Tenant-ID")
+		log.Printf("[WebSocket] Tenant ID not found in query params, checking header: '%s'", tenantID)
+	} else {
+		log.Printf("[WebSocket] Found tenant ID in query parameters: '%s'", tenantID)
+	}
+
+	// Log all query parameters for debugging
+	log.Printf("[WebSocket] All query parameters: %v", queryParams)
+	log.Printf("[WebSocket] Headers: X-Tenant-ID=%s", r.Header.Get("X-Tenant-ID"))
+	log.Printf("[WebSocket] Attempting to upgrade WebSocket connection for room: %s, tenantID: '%s' (length: %d, raw bytes: %v)", roomId, tenantID, len(tenantID), []byte(tenantID))
 
 	// Check if the response writer supports hijacking
 	if _, ok := w.(http.Hijacker); !ok {
@@ -180,25 +222,156 @@ func (s *Server) handleQueueWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	// Add client to room
+	// Normalize tenant ID: trim whitespace for consistency
+	normalizedTenantID := strings.TrimSpace(tenantID)
+
+	// Store client info with normalized tenantID
+	clientInfo := &ClientInfo{
+		conn:     conn,
+		tenantID: normalizedTenantID,
+	}
+
+	// Use normalized tenant ID as key (use "default" for empty tenant ID)
+	tenantKey := normalizedTenantID
+	if tenantKey == "" {
+		tenantKey = "default"
+		log.Printf("[WebSocket] Empty tenantID provided, using 'default' as key")
+	}
+
+	log.Printf("[WebSocket] Normalized tenantID: '%s' -> '%s' (key: '%s')", tenantID, normalizedTenantID, tenantKey)
+
+	// Add client to room, organized by tenantID
 	s.clientsMux.Lock()
 	if s.clients[roomId] == nil {
-		s.clients[roomId] = make(map[*websocket.Conn]bool)
+		s.clients[roomId] = make(map[string][]*ClientInfo)
 	}
-	s.clients[roomId][conn] = true
+	if s.clients[roomId][tenantKey] == nil {
+		s.clients[roomId][tenantKey] = make([]*ClientInfo, 0)
+	}
+	s.clients[roomId][tenantKey] = append(s.clients[roomId][tenantKey], clientInfo)
+
+	totalClients := 0
+	for _, tenantClients := range s.clients[roomId] {
+		totalClients += len(tenantClients)
+	}
 	s.clientsMux.Unlock()
 
-	log.Printf("WebSocket client connected to room: %s", roomId)
+	log.Printf("[WebSocket] Client connected to room: %s, tenantID: '%s' (stored under key: '%s')", roomId, tenantID, tenantKey)
+	log.Printf("[WebSocket] Total clients in room %s: %d (clients for tenant '%s': %d)", roomId, totalClients, tenantKey, len(s.clients[roomId][tenantKey]))
+
+	// Send initial queue data to the newly connected client ONLY
+	// We need to send to just this one client, not broadcast to all clients with the same tenantID
+	go func() {
+		// Small delay to ensure the client is fully connected
+		time.Sleep(100 * time.Millisecond)
+		log.Printf("[WebSocket] Sending initial queue data to newly connected client for tenantID: '%s' (normalized: '%s', key: '%s')", tenantID, normalizedTenantID, tenantKey)
+
+		// Create context with normalized tenantID for filtering
+		ctx := context.Background()
+		// Use the normalized tenantID from the connection (same format as stored)
+		if normalizedTenantID != "" && normalizedTenantID != "default" {
+			ctx = context.WithValue(ctx, middleware.TENANT, normalizedTenantID)
+			log.Printf("[WebSocket] Using normalized tenantID '%s' for filtering initial data", normalizedTenantID)
+		} else {
+			log.Printf("[WebSocket] WARNING: normalized tenantID is empty or 'default', will get all entries (no tenant filter)")
+			// Don't set tenant in context - this will get all entries
+		}
+
+		// Get queue entries filtered by tenant
+		entries, err := s.queueService.GetQueueEntriesWithContext(ctx, roomId, []string{"WAITING", "CALLED", "IN_SERVICE"})
+		if err != nil {
+			log.Printf("[WebSocket] Failed to get initial queue entries for tenantID '%s': %v", tenantID, err)
+			return
+		}
+
+		log.Printf("[WebSocket] Retrieved %d initial entries for tenantID '%s' (key: '%s') in room %s", len(entries), tenantID, tenantKey, roomId)
+
+		// Log first few entry IDs and their tenant IDs for debugging
+		if len(entries) > 0 {
+			log.Printf("[WebSocket] First entry tenantID: '%s', sectionID: '%s'", entries[0].TenantID, entries[0].SectionID)
+			if len(entries) > 5 {
+				log.Printf("[WebSocket] ... and %d more entries", len(entries)-5)
+			}
+		}
+
+		// Convert to WebSocket format
+		var wsEntries []map[string]interface{}
+		for _, entry := range entries {
+			wsEntry := map[string]interface{}{
+				"id":              entry.ID,
+				"waitingRoomId":   entry.WaitingRoomID,
+				"ticketNumber":    entry.TicketNumber,
+				"qrToken":         entry.QRToken,
+				"status":          entry.Status,
+				"position":        entry.Position,
+				"createdAt":       entry.CreatedAt,
+				"updatedAt":       entry.UpdatedAt,
+				"cardData":        entry.CardData,
+				"servicePoint":    entry.ServicePoint,
+				"serviceName":     entry.ServiceName,
+				"serviceDuration": entry.ApproximateDurationMinutes,
+			}
+			wsEntries = append(wsEntries, wsEntry)
+		}
+
+		message := map[string]interface{}{
+			"type":    "queue_update",
+			"roomId":  roomId,
+			"entries": wsEntries,
+		}
+
+		// Send to only this specific client
+		s.clientsMux.RLock()
+		// Find the client in the tenant's list
+		var foundClient *ClientInfo
+		if roomClients, exists := s.clients[roomId]; exists {
+			if tenantClients, exists := roomClients[tenantKey]; exists {
+				for _, client := range tenantClients {
+					if client.conn == conn {
+						foundClient = client
+						break
+					}
+				}
+			}
+		}
+		s.clientsMux.RUnlock()
+
+		if foundClient != nil {
+			if err := foundClient.conn.WriteJSON(message); err != nil {
+				log.Printf("[WebSocket] Failed to send initial queue data: %v", err)
+			} else {
+				log.Printf("[WebSocket] Successfully sent initial queue data (%d entries) to client with tenantID: '%s' (normalized: '%s')", len(wsEntries), tenantID, normalizedTenantID)
+			}
+		} else {
+			log.Printf("[WebSocket] Client not found in room %s for tenant '%s' for initial data send", roomId, tenantKey)
+		}
+	}()
 
 	// Remove client when connection closes
 	defer func() {
 		s.clientsMux.Lock()
-		delete(s.clients[roomId], conn)
-		if len(s.clients[roomId]) == 0 {
-			delete(s.clients, roomId)
+		// Find and remove this client from its tenant's list
+		if roomClients, exists := s.clients[roomId]; exists {
+			if tenantClients, exists := roomClients[tenantKey]; exists {
+				for i, client := range tenantClients {
+					if client.conn == conn {
+						// Remove this client from the slice
+						s.clients[roomId][tenantKey] = append(tenantClients[:i], tenantClients[i+1:]...)
+						break
+					}
+				}
+				// If this was the last client for this tenant, remove the tenant entry
+				if len(s.clients[roomId][tenantKey]) == 0 {
+					delete(s.clients[roomId], tenantKey)
+				}
+			}
+			// If this was the last tenant in the room, remove the room entry
+			if len(s.clients[roomId]) == 0 {
+				delete(s.clients, roomId)
+			}
 		}
 		s.clientsMux.Unlock()
-		log.Printf("WebSocket client disconnected from room: %s", roomId)
+		log.Printf("[WebSocket] Client disconnected from room: %s, tenantID: %s (key: '%s')", roomId, tenantID, tenantKey)
 	}()
 
 	// Keep connection alive
@@ -213,24 +386,79 @@ func (s *Server) handleQueueWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Broadcast queue update to all connected clients
-func (s *Server) broadcastQueueUpdate(roomId string) {
+// Broadcast queue update to clients for a specific tenant (only refresh that tenant's data)
+func (s *Server) broadcastQueueUpdate(roomId string, targetTenantID string) {
 	s.clientsMux.RLock()
-	clients, exists := s.clients[roomId]
+	roomClients, roomExists := s.clients[roomId]
 	s.clientsMux.RUnlock()
 
-	if !exists || len(clients) == 0 {
-		log.Printf("No WebSocket clients connected to room: %s", roomId)
+	if !roomExists || len(roomClients) == 0 {
+		log.Printf("[WebSocket] No WebSocket clients connected to room: %s", roomId)
 		return
 	}
 
-	// Get current queue entries
-	// for now we only broadcast waiting entries
-	entries, err := s.queueService.GetQueueEntries(roomId, []string{"WAITING", "CALLED"})
-	if err != nil {
-		log.Printf("Failed to get queue entries for broadcast: %v", err)
+	// Normalize tenant ID: trim whitespace and use "default" as key for empty tenant ID
+	// This ensures consistent key matching with how clients are stored
+	normalizedTargetTenantID := strings.TrimSpace(targetTenantID)
+	tenantKey := normalizedTargetTenantID
+	if tenantKey == "" {
+		tenantKey = "default"
+		log.Printf("[WebSocket] WARNING: targetTenantID is empty, using 'default' as key")
+	}
+
+	log.Printf("[WebSocket] Broadcasting for tenantID: '%s' (normalized: '%s', key: '%s')", targetTenantID, normalizedTargetTenantID, tenantKey)
+	log.Printf("[WebSocket] Looking for clients with tenantKey: '%s'", tenantKey)
+
+	// Get clients for this specific tenant
+	s.clientsMux.RLock()
+	tenantClients, tenantExists := s.clients[roomId][tenantKey]
+
+	// Log all available tenant keys for debugging
+	availableTenants := make([]string, 0, len(roomClients))
+	for k := range roomClients {
+		availableTenants = append(availableTenants, k)
+	}
+	s.clientsMux.RUnlock()
+
+	if !tenantExists || len(tenantClients) == 0 {
+		log.Printf("[WebSocket] No clients found for tenantID '%s' (key: '%s') in room %s", targetTenantID, tenantKey, roomId)
+		log.Printf("[WebSocket] Available tenant keys in room %s: %v", roomId, availableTenants)
+		log.Printf("[WebSocket] Available tenant keys count: %d", len(availableTenants))
+		// Log each tenant key and its client count for debugging
+		s.clientsMux.RLock()
+		for k, clients := range roomClients {
+			log.Printf("[WebSocket]   Tenant key '%s': %d clients", k, len(clients))
+			for i, client := range clients {
+				log.Printf("[WebSocket]     Client %d: tenantID='%s'", i, client.tenantID)
+			}
+		}
+		s.clientsMux.RUnlock()
 		return
 	}
+
+	log.Printf("[WebSocket] Broadcasting queue update for room %s, tenantID: '%s' (key: '%s'), found %d clients",
+		roomId, targetTenantID, tenantKey, len(tenantClients))
+
+	// Create context with normalized tenantID for this tenant group
+	// Use normalizedTargetTenantID (not targetTenantID) to match what's stored
+	ctx := context.Background()
+	if normalizedTargetTenantID != "" && normalizedTargetTenantID != "default" {
+		ctx = context.WithValue(ctx, middleware.TENANT, normalizedTargetTenantID)
+		log.Printf("[WebSocket] Creating context with normalized tenantID: '%s' for %d clients", normalizedTargetTenantID, len(tenantClients))
+	} else {
+		log.Printf("[WebSocket] WARNING: Using default context (no tenantID) for %d clients - this will return all entries!", len(tenantClients))
+		// Don't set tenant in context - this will get all entries (not what we want)
+	}
+
+	// Get queue entries filtered by tenant (repository will filter by tenantID from context)
+	// Include all statuses that might be relevant for the queue display
+	entries, err := s.queueService.GetQueueEntriesWithContext(ctx, roomId, []string{"WAITING", "CALLED", "IN_SERVICE"})
+	if err != nil {
+		log.Printf("[WebSocket] Failed to get queue entries for broadcast (tenantID: '%s'): %v", targetTenantID, err)
+		return
+	}
+
+	log.Printf("[WebSocket] Retrieved %d entries for tenantID '%s' in room %s", len(entries), targetTenantID, roomId)
 
 	// Convert to WebSocket format
 	var wsEntries []map[string]interface{}
@@ -258,18 +486,21 @@ func (s *Server) broadcastQueueUpdate(roomId string) {
 		"entries": wsEntries,
 	}
 
-	log.Printf("Broadcasting queue update to %d clients in room %s: %d entries", len(clients), roomId, len(wsEntries))
+	log.Printf("[WebSocket] Broadcasting queue update to %d clients with tenantID '%s' in room %s: %d entries", len(tenantClients), targetTenantID, roomId, len(wsEntries))
 
-	// Send to all clients
-	s.clientsMux.RLock()
-	for client := range clients {
-		if err := client.WriteJSON(message); err != nil {
-			log.Printf("Failed to send WebSocket message: %v", err)
-			client.Close()
-			delete(clients, client)
+	// Send to clients in this tenant group
+	sentCount := 0
+	for _, clientInfo := range tenantClients {
+		if err := clientInfo.conn.WriteJSON(message); err != nil {
+			log.Printf("[WebSocket] Failed to send WebSocket message: %v", err)
+			clientInfo.conn.Close()
+			// Note: Failed clients will be cleaned up on disconnect
+		} else {
+			sentCount++
+			log.Printf("[WebSocket] Successfully sent message to client with tenantID: '%s'", clientInfo.tenantID)
 		}
 	}
-	s.clientsMux.RUnlock()
+	log.Printf("[WebSocket] Successfully sent queue update to %d/%d clients for tenantID '%s'", sentCount, len(tenantClients), targetTenantID)
 }
 
 // contains checks if a string slice contains a specific string

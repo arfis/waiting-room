@@ -56,7 +56,8 @@
       "loadingServices": "Loading services...",
       "serviceError": "Failed to load services",
       "selectService": "Please select the service you need",
-      "success": "Thank you for checking in!"
+      "success": "Thank you for checking in!",
+      "proceedWithoutService": "Proceed Without Service"
     },
     "connection": {
       "connected": "Connected",

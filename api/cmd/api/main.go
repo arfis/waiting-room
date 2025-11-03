@@ -32,6 +32,7 @@ import (
 	kioskService "github.com/arfis/waiting-room/internal/service/kiosk"
 	queueServiceGenerated "github.com/arfis/waiting-room/internal/service/queue"
 	servicepointService "github.com/arfis/waiting-room/internal/service/servicepoint"
+	tenantService "github.com/arfis/waiting-room/internal/service/tenant"
 	"github.com/arfis/waiting-room/internal/service/translation"
 	webhookService "github.com/arfis/waiting-room/internal/service/webhook"
 )
@@ -96,6 +97,7 @@ func DIContainer(cfg *config.Config) *dig.Container {
 
 		// Middleware
 		{Constructor: middleware.NewAuthorizationMiddleware},
+		{Constructor: middleware.NewTenantMiddleware},
 		{Constructor: middleware.NewLoggingMiddleware},
 		{Constructor: ngErrors.NewResponseErrorHandler},
 
@@ -120,8 +122,11 @@ func DIContainer(cfg *config.Config) *dig.Container {
 		{Constructor: func(repo repository.ConfigRepository) *configService.Service {
 			return configService.NewService(repo)
 		}},
-		{Constructor: func(configService *configService.Service, translationService *translation.DeepLTranslationService) *adminService.Service {
-			return adminService.NewService(configService, translationService)
+		{Constructor: func(repo repository.ConfigRepository) *tenantService.Service {
+			return tenantService.NewService(repo)
+		}},
+		{Constructor: func(configService *configService.Service, translationService *translation.DeepLTranslationService, tenantService *tenantService.Service) *adminService.Service {
+			return adminService.NewService(configService, translationService, tenantService)
 		}},
 
 		// Generated handlers

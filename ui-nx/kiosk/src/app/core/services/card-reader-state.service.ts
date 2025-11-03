@@ -239,6 +239,11 @@ export class CardReaderStateService {
     // Use ID number as identifier for external API
     const identifier = cardData.id_number;
     
+    // Track loading state for each service type
+    let appointmentLoaded = false;
+    let genericLoaded = false;
+    let userServicesLoaded = false;
+    
     // Initialize service sections
     const sections: ServiceSection[] = [
       {
@@ -260,17 +265,38 @@ export class CardReaderStateService {
     this.serviceSections.set(sections);
     console.log('ServiceSelectionComponent - Service sections initialized:', sections);
     
+    // Helper function to check if all services are loaded and proceed if none available
+    const checkAndProceedIfNoServices = () => {
+      if (appointmentLoaded && genericLoaded && userServicesLoaded) {
+        const allSections = this.serviceSections();
+        const hasAnyServices = allSections.some(section => section.services.length > 0) || this.userServices().length > 0;
+        
+        if (!hasAnyServices) {
+          console.log('No services available - automatically generating ticket without service');
+          this.isLoadingServices.set(false);
+          this.isManualIdSubmitting.set(false);
+          this.showServiceSelection.set(false);
+          // Automatically generate ticket without service
+          this.generateTicketWithoutService();
+        }
+      }
+    };
+    
     // Load appointment services
     const appointmentLang = this.currentLanguage();
     console.log('CardReaderState: Loading appointment services with language:', appointmentLang);
     this.userServicesService.getAppointmentServices(identifier, appointmentLang).subscribe({
       next: (services) => {
         console.log('Appointment services loaded:', services);
+        appointmentLoaded = true;
         this.updateServiceSection('appointment', services, false, null);
+        checkAndProceedIfNoServices();
       },
       error: (error) => {
         console.error('Failed to load appointment services:', error);
+        appointmentLoaded = true;
         this.updateServiceSection('appointment', [], false, 'Failed to load appointment services');
+        checkAndProceedIfNoServices();
       }
     });
     
@@ -280,11 +306,15 @@ export class CardReaderStateService {
     this.userServicesService.getGenericServices(genericLang).subscribe({
       next: (services) => {
         console.log('Generic services loaded:', services);
+        genericLoaded = true;
         this.updateServiceSection('generic', services, false, null);
+        checkAndProceedIfNoServices();
       },
       error: (error) => {
         console.error('Failed to load generic services:', error);
+        genericLoaded = true;
         this.updateServiceSection('generic', [], false, 'Failed to load generic services');
+        checkAndProceedIfNoServices();
       }
     });
     
@@ -295,29 +325,17 @@ export class CardReaderStateService {
       next: (services) => {
         console.log('User services loaded:', services);
         this.userServices.set(services);
+        userServicesLoaded = true;
         this.isLoadingServices.set(false);
         this.isManualIdSubmitting.set(false);
-        
-        // Check if we have any services in any section
-        const allSections = this.serviceSections();
-        const hasAnyServices = allSections.some(section => section.services.length > 0) || services.length > 0;
-        
-        if (!hasAnyServices) {
-          this.error.set('No services available. Please contact support.');
-        }
+        checkAndProceedIfNoServices();
       },
       error: (error) => {
         console.error('Failed to load user services:', error);
+        userServicesLoaded = true;
         this.isLoadingServices.set(false);
         this.isManualIdSubmitting.set(false);
-        
-        // Only show error if no other services loaded
-        const allSections = this.serviceSections();
-        const hasAnyServices = allSections.some(section => section.services.length > 0);
-        
-        if (!hasAnyServices) {
-          this.error.set('Failed to load available services. Please try again.');
-        }
+        checkAndProceedIfNoServices();
       }
     });
   }
@@ -371,10 +389,20 @@ export class CardReaderStateService {
     const selectedService = this.selectedService();
     const cardData = this.cardData();
     
-    if (selectedService && cardData) {
-      console.log('Confirming service selection and generating ticket');
+    if (cardData) {
+      console.log('Confirming service selection and generating ticket', selectedService ? `with service: ${selectedService.id}` : 'without service');
       this.showServiceSelection.set(false);
-      this.generateTicket(cardData, selectedService.id);
+      this.generateTicket(cardData, selectedService?.id);
+    }
+  }
+  
+  // Allow generating ticket without service when no services are available
+  generateTicketWithoutService(): void {
+    const cardData = this.cardData();
+    if (cardData) {
+      console.log('Generating ticket without service');
+      this.showServiceSelection.set(false);
+      this.generateTicket(cardData);
     }
   }
 

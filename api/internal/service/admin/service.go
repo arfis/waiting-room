@@ -7,6 +7,7 @@ import (
 
 	"github.com/arfis/waiting-room/internal/data/dto"
 	"github.com/arfis/waiting-room/internal/service/config"
+	tenantService "github.com/arfis/waiting-room/internal/service/tenant"
 	"github.com/arfis/waiting-room/internal/service/translation"
 	"github.com/arfis/waiting-room/internal/types"
 )
@@ -14,12 +15,14 @@ import (
 type Service struct {
 	configService      *config.Service
 	translationService *translation.DeepLTranslationService
+	tenantService      *tenantService.Service
 }
 
-func NewService(configService *config.Service, translationService *translation.DeepLTranslationService) *Service {
+func NewService(configService *config.Service, translationService *translation.DeepLTranslationService, tenantService *tenantService.Service) *Service {
 	return &Service{
 		configService:      configService,
 		translationService: translationService,
+		tenantService:      tenantService,
 	}
 }
 
@@ -77,9 +80,7 @@ func (s *Service) GetExternalAPIConfiguration(ctx context.Context) (*dto.Externa
 	if config.GenericServicesHttpMethod != nil {
 		externalAPIConfig.GenericServicesHttpMethod = config.GenericServicesHttpMethod
 	}
-	if config.GenericServicesPostBody != "" {
-		externalAPIConfig.GenericServicesPostBody = &config.GenericServicesPostBody
-	}
+	// Note: GenericServicesPostBody removed from DTO
 
 	// Convert GenericServices from types to DTO
 	if len(config.GenericServices) > 0 {
@@ -171,9 +172,7 @@ func (s *Service) UpdateExternalAPIConfiguration(ctx context.Context, config *dt
 	if config.GenericServicesHttpMethod != nil {
 		externalAPIConfig.GenericServicesHttpMethod = config.GenericServicesHttpMethod
 	}
-	if config.GenericServicesPostBody != nil && *config.GenericServicesPostBody != "" {
-		externalAPIConfig.GenericServicesPostBody = *config.GenericServicesPostBody
-	}
+	// Note: GenericServicesPostBody removed from DTO
 
 	// Convert GenericServices from DTO to types
 	if len(config.GenericServices) > 0 {
@@ -568,4 +567,39 @@ func (s *Service) ClearTranslationCache(ctx context.Context) (*dto.CacheClearRes
 	s.translationService.ClearCache()
 	msg := "Cache cleared successfully"
 	return &dto.CacheClearResponse{Message: &msg}, nil
+}
+
+// Tenant methods
+func (s *Service) GetAllTenants(ctx context.Context) ([]dto.Tenant, error) {
+	return s.tenantService.GetAllTenants(ctx)
+}
+
+func (s *Service) GetTenant(ctx context.Context, id string) (*dto.Tenant, error) {
+	return s.tenantService.GetTenant(ctx, id)
+}
+
+func (s *Service) CreateTenant(ctx context.Context, req *dto.CreateTenantRequest) (*dto.Tenant, error) {
+	// Convert CreateTenantRequest to Tenant DTO
+	tenantDTO := &dto.Tenant{
+		BuildingId:  req.BuildingId,
+		SectionId:   req.SectionId,
+		Name:        req.Name,
+		Description: req.Description,
+	}
+	return s.tenantService.CreateTenant(ctx, tenantDTO)
+}
+
+func (s *Service) UpdateTenant(ctx context.Context, req *dto.CreateTenantRequest) (*dto.Tenant, error) {
+	// Convert CreateTenantRequest to Tenant DTO
+	tenantDTO := &dto.Tenant{
+		BuildingId:  req.BuildingId,
+		SectionId:   req.SectionId,
+		Name:        req.Name,
+		Description: req.Description,
+	}
+	return s.tenantService.UpdateTenant(ctx, tenantDTO)
+}
+
+func (s *Service) DeleteTenant(ctx context.Context, id string) error {
+	return s.tenantService.DeleteTenant(ctx, id)
 }

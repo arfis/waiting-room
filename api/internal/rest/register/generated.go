@@ -20,10 +20,15 @@ func Generated(r chi.Router, diContainer *dig.Container) {
 		servicepointHandler *servicepoint.Handler,
 		queueHandler *queue.Handler,
 		authorizationMiddleware *middleware.AuthorizationMiddleware,
+		tenantMiddleware *middleware.TenantMiddleware,
 	) error {
 
 		// Protected routes (require JWT)
-		r.With(authorizationMiddleware.Middleware()).Group(func(protected chi.Router) {
+		// Add tenant middleware to extract tenant ID from headers
+		r.With(
+			authorizationMiddleware.Middleware(),
+			tenantMiddleware.Middleware(),
+		).Group(func(protected chi.Router) {
 			protected.Get("/admin/card-readers", adminHandler.GetCardReaders)
 			protected.Post("/admin/card-readers/{id}/restart", adminHandler.RestartCardReader)
 			protected.Get("/admin/configuration", adminHandler.GetSystemConfiguration)
@@ -32,6 +37,11 @@ func Generated(r chi.Router, diContainer *dig.Container) {
 			protected.Put("/admin/configuration/external-api", adminHandler.UpdateExternalAPIConfiguration)
 			protected.Get("/admin/configuration/rooms", adminHandler.GetRoomsConfiguration)
 			protected.Put("/admin/configuration/rooms", adminHandler.UpdateRoomsConfiguration)
+			protected.Get("/admin/tenants", adminHandler.GetAllTenants)
+			protected.Post("/admin/tenants", adminHandler.CreateTenant)
+			protected.Put("/admin/tenants", adminHandler.UpdateTenant)
+			protected.Delete("/admin/tenants/{id}", adminHandler.DeleteTenant)
+			protected.Get("/admin/tenants/{id}", adminHandler.GetTenant)
 			protected.Delete("/admin/translation/cache", adminHandler.ClearTranslationCache)
 			protected.Get("/admin/translation/cache/stats", adminHandler.GetTranslationCacheStats)
 			protected.Get("/appointment-services", kioskHandler.GetAppointmentServices)

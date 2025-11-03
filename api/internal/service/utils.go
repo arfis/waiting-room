@@ -4,6 +4,7 @@ package service
 import (
 	"context"
 	appContext "github.com/arfis/waiting-room/internal/context"
+	"github.com/arfis/waiting-room/internal/middleware"
 )
 
 const system = "system"
@@ -24,4 +25,13 @@ func GetCompany(ctx context.Context) string {
 		return ""
 	}
 	return company.(string)
+}
+
+// GetTenantID returns tenant ID from context when available
+func GetTenantID(ctx context.Context) string {
+	tenantID := ctx.Value(middleware.TENANT)
+	if tenantID == nil {
+		return ""
+	}
+	return tenantID.(string)
 }

@@ -7,17 +7,19 @@ import (
 	"github.com/arfis/waiting-room/internal/data/dto"
 	"github.com/arfis/waiting-room/internal/data/dto/queueentrystatus"
 	ngErrors "github.com/arfis/waiting-room/internal/errors"
+	"github.com/arfis/waiting-room/internal/middleware"
 	"github.com/arfis/waiting-room/internal/queue"
+	"github.com/arfis/waiting-room/internal/service"
 	"github.com/arfis/waiting-room/internal/service/webhook"
 )
 
 type Service struct {
 	queueService   *queue.WaitingQueue
-	broadcastFunc  func(string) // Function to broadcast queue updates
+	broadcastFunc  func(string, string) // Function to broadcast queue updates (roomId, tenantID)
 	webhookService *webhook.Service
 }
 
-func New(queueService *queue.WaitingQueue, broadcastFunc func(string), webhookService *webhook.Service) *Service {
+func New(queueService *queue.WaitingQueue, broadcastFunc func(string, string), webhookService *webhook.Service) *Service {
 	return &Service{
 		queueService:   queueService,
 		broadcastFunc:  broadcastFunc,
@@ -25,7 +27,7 @@ func New(queueService *queue.WaitingQueue, broadcastFunc func(string), webhookSe
 	}
 }
 
-func (s *Service) SetBroadcastFunc(f func(string)) {
+func (s *Service) SetBroadcastFunc(f func(string, string)) {
 	s.broadcastFunc = f
 }
 
@@ -68,9 +70,15 @@ func (s *Service) CallNext(ctx context.Context, roomId string, servicePointId st
 		queueEntry.ServicePoint = &entry.ServicePoint
 	}
 
-	// Broadcast queue update
+	// Broadcast queue update - only to the tenant that changed
+	// Extract tenant ID from context (format: "buildingId:sectionId")
 	if s.broadcastFunc != nil {
-		s.broadcastFunc(roomId)
+		tenantID := service.GetTenantID(ctx)
+		log.Printf("[QueueService] Broadcasting queue update for room %s, tenantID: '%s' (length: %d)", roomId, tenantID, len(tenantID))
+		if tenantID == "" {
+			log.Printf("[QueueService] WARNING: tenantID is empty, broadcasting to all clients")
+		}
+		s.broadcastFunc(roomId, tenantID)
 	}
 
 	// Send webhook notification for ticket called
@@ -107,9 +115,15 @@ func (s *Service) FinishCurrent(ctx context.Context, roomId string) (*dto.QueueE
 		queueEntry.ServicePoint = &entry.ServicePoint
 	}
 
-	// Broadcast queue update
+	// Broadcast queue update - only to the tenant that changed
+	// Extract tenant ID from context (format: "buildingId:sectionId")
 	if s.broadcastFunc != nil {
-		s.broadcastFunc(roomId)
+		tenantID := service.GetTenantID(ctx)
+		log.Printf("[QueueService] Broadcasting queue update for room %s, tenantID: '%s' (length: %d)", roomId, tenantID, len(tenantID))
+		if tenantID == "" {
+			log.Printf("[QueueService] WARNING: tenantID is empty, broadcasting to all clients")
+		}
+		s.broadcastFunc(roomId, tenantID)
 	}
 
 	// Send webhook notification for ticket completed
@@ -125,10 +139,21 @@ func (s *Service) FinishCurrent(ctx context.Context, roomId string) (*dto.QueueE
 }
 
 func (s *Service) GetQueueEntries(ctx context.Context, roomId string, states []string) ([]dto.QueueEntry, error) {
-	entries, err := s.queueService.GetQueueEntries(roomId, states)
+	// Log tenant ID from context for debugging
+	tenantID := ctx.Value(middleware.TENANT)
+	if tenantID != nil {
+		log.Printf("[QueueService] GetQueueEntries for room %s with tenant ID: %s", roomId, tenantID.(string))
+	} else {
+		log.Printf("[QueueService] GetQueueEntries for room %s without tenant ID", roomId)
+	}
+	
+	// Use GetQueueEntriesWithContext to preserve tenant ID from context
+	entries, err := s.queueService.GetQueueEntriesWithContext(ctx, roomId, states)
 	if err != nil {
 		return nil, ngErrors.New(ngErrors.InternalServerErrorCode, "failed to get queue entries", 500, nil)
 	}
+	
+	log.Printf("[QueueService] GetQueueEntries returned %d entries for room %s", len(entries), roomId)
 
 	// Convert to DTOs
 	var queueEntries []dto.QueueEntry

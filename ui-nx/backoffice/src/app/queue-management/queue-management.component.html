@@ -89,12 +89,15 @@
                 }
               </p>
             </div>
-            <button 
-              class="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-              (click)="clearServicePoint()"
-            >
-              Change Service Point
-            </button>
+            <div class="flex items-center gap-4">
+              <app-tenant-selector></app-tenant-selector>
+              <button 
+                class="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                (click)="clearServicePoint()"
+              >
+                Change Service Point
+              </button>
+            </div>
           </div>
         </div>
 

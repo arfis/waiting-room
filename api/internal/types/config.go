@@ -1,10 +1,15 @@
 package types
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // SystemConfiguration represents the complete system configuration stored in MongoDB
 type SystemConfiguration struct {
 	ID            string            `bson:"_id,omitempty" json:"id"`
+	TenantID      string            `bson:"tenantId,omitempty" json:"tenantId,omitempty"` // Building/Hospital ID (e.g., "Nemocnica Spiska nova ves")
+	SectionID     string            `bson:"sectionId,omitempty" json:"sectionId,omitempty"` // Section/Department within tenant (e.g., "Kardiologia pavilon B", "Dentist")
 	ExternalAPI   ExternalAPIConfig `bson:"externalAPI" json:"externalAPI"`
 	Rooms         []RoomConfig      `bson:"rooms" json:"rooms"`
 	DefaultRoom   string            `bson:"defaultRoom" json:"defaultRoom"`
@@ -71,6 +76,7 @@ type ServicePointConfig struct {
 // CardReaderStatus represents the status of a card reader
 type CardReaderStatus struct {
 	ID        string    `bson:"id" json:"id"`
+	TenantID  string    `bson:"tenantId,omitempty" json:"tenantId,omitempty"`
 	Name      string    `bson:"name" json:"name"`
 	Status    string    `bson:"status" json:"status"` // "online", "offline", "error"
 	LastSeen  time.Time `bson:"lastSeen" json:"lastSeen"`
@@ -79,4 +85,52 @@ type CardReaderStatus struct {
 	LastError string    `bson:"lastError,omitempty" json:"lastError,omitempty"`
 	CreatedAt time.Time `bson:"createdAt" json:"createdAt"`
 	UpdatedAt time.Time `bson:"updatedAt" json:"updatedAt"`
+}
+
+// Tenant represents a tenant in the system
+type Tenant struct {
+	ID          string    `bson:"id" json:"id"`
+	BuildingID  string    `bson:"buildingId" json:"buildingId"`
+	SectionID   string    `bson:"sectionId" json:"sectionId"`
+	Name        string    `bson:"name" json:"name"`
+	Description string    `bson:"description,omitempty" json:"description,omitempty"`
+	CreatedAt   time.Time `bson:"createdAt" json:"createdAt"`
+	UpdatedAt   time.Time `bson:"updatedAt" json:"updatedAt"`
+}
+
+// GetTenantID returns the tenant ID (just the buildingId - the hospital/building)
+// Note: This is now just the buildingId, not buildingId:sectionId
+// The sectionId is a separate field that identifies departments within the tenant
+func (t *Tenant) GetTenantID() string {
+	return t.BuildingID
+}
+
+// GetFullTenantID returns the full identifier in format "buildingId:sectionId" for backwards compatibility
+// This is used when sending the tenant ID in headers
+func (t *Tenant) GetFullTenantID() string {
+	return t.BuildingID + ":" + t.SectionID
+}
+
+// ParseTenantID parses a tenant ID string in the format "buildingId:sectionId"
+// Returns buildingId (tenant), sectionId (section/department), and an error if the format is invalid
+// For backwards compatibility, if no colon is present, treats the entire string as buildingId
+func ParseTenantID(tenantID string) (buildingID, sectionID string, err error) {
+	if tenantID == "" {
+		return "", "", fmt.Errorf("invalid tenant ID format: tenant ID must not be empty")
+	}
+	
+	// Check if it contains a colon (format: "buildingId:sectionId")
+	for i, char := range tenantID {
+		if char == ':' {
+			buildingID = tenantID[:i]
+			sectionID = tenantID[i+1:]
+			if buildingID == "" {
+				return "", "", fmt.Errorf("invalid tenant ID format: building ID must not be empty")
+			}
+			// sectionID can be empty (for tenant-level configs)
+			return buildingID, sectionID, nil
+		}
+	}
+	// If no colon, treat the entire string as buildingId (tenant only, no section)
+	return tenantID, "", nil
 }

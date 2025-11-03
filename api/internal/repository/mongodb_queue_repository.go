@@ -95,14 +95,28 @@ func (r *MongoDBQueueRepository) CreateEntry(ctx context.Context, entry *types.E
 
 	// Generate ticket number and QR token if not set
 	if entry.TicketNumber == "" {
-		// Get current count for this specific room to generate ticket number
-		count, err := r.collection.CountDocuments(ctx, bson.M{"waitingRoomId": entry.WaitingRoomID})
+		// Build filter for counting entries: same room + same tenant + same section
+		// This ensures numbering is per tenant/section, not global
+		countFilter := bson.M{"waitingRoomId": entry.WaitingRoomID}
+		
+		// Only add tenant filter if tenant ID is set
+		if entry.TenantID != "" {
+			countFilter["tenantId"] = entry.TenantID
+		}
+		
+		// Only add section filter if section ID is set
+		if entry.SectionID != "" {
+			countFilter["sectionId"] = entry.SectionID
+		}
+		
+		// Get current count for this specific room + tenant + section to generate ticket number
+		count, err := r.collection.CountDocuments(ctx, countFilter)
 		if err != nil {
-			log.Printf("MongoDB: Failed to count documents for room %s: %v", entry.WaitingRoomID, err)
+			log.Printf("MongoDB: Failed to count documents for room %s, tenant %s, section %s: %v", entry.WaitingRoomID, entry.TenantID, entry.SectionID, err)
 			count = 0 // Fallback to 0 if count fails
 		}
 		entry.TicketNumber = fmt.Sprintf("%s-%03d", strings.ToUpper(entry.WaitingRoomID), count+1)
-		log.Printf("MongoDB: Generated ticket number: %s for room: %s", entry.TicketNumber, entry.WaitingRoomID)
+		log.Printf("MongoDB: Generated ticket number: %s for room: %s, tenant: %s, section: %s (count: %d)", entry.TicketNumber, entry.WaitingRoomID, entry.TenantID, entry.SectionID, count)
 	}
 
 	if entry.QRToken == "" {
@@ -126,12 +140,38 @@ func (r *MongoDBQueueRepository) CreateEntry(ctx context.Context, entry *types.E
 	return nil
 }
 
-// GetQueueEntries retrieves all queue entries for a room
+// GetQueueEntries retrieves all queue entries for a room (filtered by tenant if provided)
 func (r *MongoDBQueueRepository) GetQueueEntries(ctx context.Context, roomId string, states []string) ([]*types.Entry, error) {
+	// Extract tenant ID from context (format: "buildingId:sectionId")
+	tenantIDHeader := getTenantIDFromContext(ctx)
+	buildingID, sectionID, _ := types.ParseTenantID(tenantIDHeader)
+	
 	filter := bson.M{"waitingRoomId": roomId}
+	
+	// Add tenant filtering if tenant ID is provided
+	// If tenant ID is empty, we should NOT return all entries - we should return empty or only entries without tenant
+	// But for now, if tenant ID is empty, we'll still filter by roomId only (for backward compatibility)
+	// The caller should ensure tenant ID is always provided
+	if buildingID != "" {
+		filter["tenantId"] = buildingID
+		log.Printf("[QueueRepository] Filtering by tenantId: '%s'", buildingID)
+	} else {
+		log.Printf("[QueueRepository] WARNING: buildingID is empty, filter will include entries from all tenants")
+	}
+	if sectionID != "" {
+		filter["sectionId"] = sectionID
+		log.Printf("[QueueRepository] Filtering by sectionId: '%s'", sectionID)
+	} else if tenantIDHeader != "" {
+		// If we have a tenant ID header but no section ID, that's OK (tenant-level only)
+		log.Printf("[QueueRepository] No sectionId provided (tenant-level only)")
+	}
+	
 	if len(states) > 0 {
 		filter["status"] = bson.M{"$in": states}
 	}
+	
+	log.Printf("[QueueRepository] GetQueueEntries for room %s, tenantIDHeader: '%s', buildingId: '%s', sectionId: '%s', filter: %+v", roomId, tenantIDHeader, buildingID, sectionID, filter)
+	
 	opts := options.Find().SetSort(bson.D{{Key: "position", Value: 1}})
 
 	cursor, err := r.collection.Find(ctx, filter, opts)
@@ -274,17 +314,30 @@ func (r *MongoDBQueueRepository) UpdateEntryServicePoint(ctx context.Context, id
 	return nil
 }
 
-// GetNextWaitingEntry gets the next waiting entry for a room
+// GetNextWaitingEntry gets the next waiting entry for a room (filtered by tenant if provided)
 func (r *MongoDBQueueRepository) GetNextWaitingEntry(ctx context.Context, roomId string) (*types.Entry, error) {
-	log.Printf("MongoDB: GetNextWaitingEntry for room %s", roomId)
+	// Extract tenant ID from context (format: "buildingId:sectionId")
+	tenantIDHeader := getTenantIDFromContext(ctx)
+	buildingID, sectionID, _ := types.ParseTenantID(tenantIDHeader)
+	
+	log.Printf("[QueueRepository] GetNextWaitingEntry for room %s, buildingId: %s, sectionId: %s", roomId, buildingID, sectionID)
 
 	filter := bson.M{
 		"waitingRoomId": roomId,
 		"status":        "WAITING",
 	}
+	
+	// Add tenant filtering if tenant ID is provided
+	if buildingID != "" {
+		filter["tenantId"] = buildingID
+	}
+	if sectionID != "" {
+		filter["sectionId"] = sectionID
+	}
+	
 	opts := options.FindOne().SetSort(bson.D{{Key: "position", Value: 1}})
 
-	log.Printf("MongoDB: Filter: %+v", filter)
+	log.Printf("[QueueRepository] GetNextWaitingEntry filter: %+v", filter)
 
 	// First, let's count how many documents match this filter
 	count, err := r.collection.CountDocuments(ctx, filter)
@@ -309,13 +362,25 @@ func (r *MongoDBQueueRepository) GetNextWaitingEntry(ctx context.Context, roomId
 	return &entry, nil
 }
 
-// GetCurrentServedEntry gets the currently served entry for a room
+// GetCurrentServedEntry gets the currently served entry for a room (filtered by tenant if provided)
 func (r *MongoDBQueueRepository) GetCurrentServedEntry(ctx context.Context, roomId string) (*types.Entry, error) {
+	// Extract tenant ID from context (format: "buildingId:sectionId")
+	tenantIDHeader := getTenantIDFromContext(ctx)
+	buildingID, sectionID, _ := types.ParseTenantID(tenantIDHeader)
+	
 	filter := bson.M{
 		"waitingRoomId": roomId,
 		"status": bson.M{
 			"$in": []string{"CALLED", "IN_SERVICE"},
 		},
+	}
+	
+	// Add tenant filtering if tenant ID is provided
+	if buildingID != "" {
+		filter["tenantId"] = buildingID
+	}
+	if sectionID != "" {
+		filter["sectionId"] = sectionID
 	}
 
 	var entry types.Entry
@@ -330,12 +395,24 @@ func (r *MongoDBQueueRepository) GetCurrentServedEntry(ctx context.Context, room
 	return &entry, nil
 }
 
-// RecalculatePositions recalculates positions for all waiting entries in a room
+// RecalculatePositions recalculates positions for all waiting entries in a room (filtered by tenant if provided)
 func (r *MongoDBQueueRepository) RecalculatePositions(ctx context.Context, roomId string) error {
+	// Extract tenant ID from context (format: "buildingId:sectionId")
+	tenantIDHeader := getTenantIDFromContext(ctx)
+	buildingID, sectionID, _ := types.ParseTenantID(tenantIDHeader)
+	
 	// Get all waiting entries sorted by creation time
 	filter := bson.M{
 		"waitingRoomId": roomId,
 		"status":        "WAITING",
+	}
+	
+	// Add tenant filtering if tenant ID is provided
+	if buildingID != "" {
+		filter["tenantId"] = buildingID
+	}
+	if sectionID != "" {
+		filter["sectionId"] = sectionID
 	}
 	opts := options.Find().SetSort(bson.D{{Key: "createdAt", Value: 1}})
 
@@ -385,14 +462,26 @@ func (r *MongoDBQueueRepository) DeleteEntry(ctx context.Context, id string) err
 	return nil
 }
 
-// GetNextWaitingEntryForServicePoint gets the next waiting entry for a specific service point
+// GetNextWaitingEntryForServicePoint gets the next waiting entry for a specific service point (filtered by tenant if provided)
 func (r *MongoDBQueueRepository) GetNextWaitingEntryForServicePoint(ctx context.Context, roomId, servicePointId string) (*types.Entry, error) {
+	// Extract tenant ID from context (format: "buildingId:sectionId")
+	tenantIDHeader := getTenantIDFromContext(ctx)
+	buildingID, sectionID, _ := types.ParseTenantID(tenantIDHeader)
+	
 	collection := r.database.Collection("queue_entries")
 
 	filter := bson.M{
 		"waitingRoomId": roomId,
 		"servicePoint":  servicePointId,
 		"status":        "WAITING",
+	}
+	
+	// Add tenant filtering if tenant ID is provided
+	if buildingID != "" {
+		filter["tenantId"] = buildingID
+	}
+	if sectionID != "" {
+		filter["sectionId"] = sectionID
 	}
 
 	opts := options.FindOne().SetSort(bson.M{"position": 1})
@@ -409,14 +498,26 @@ func (r *MongoDBQueueRepository) GetNextWaitingEntryForServicePoint(ctx context.
 	return &entry, nil
 }
 
-// GetCurrentServedEntryForServicePoint gets the currently served entry for a specific service point
+// GetCurrentServedEntryForServicePoint gets the currently served entry for a specific service point (filtered by tenant if provided)
 func (r *MongoDBQueueRepository) GetCurrentServedEntryForServicePoint(ctx context.Context, roomId, servicePointId string) (*types.Entry, error) {
+	// Extract tenant ID from context (format: "buildingId:sectionId")
+	tenantIDHeader := getTenantIDFromContext(ctx)
+	buildingID, sectionID, _ := types.ParseTenantID(tenantIDHeader)
+	
 	collection := r.database.Collection("queue_entries")
 
 	filter := bson.M{
 		"waitingRoomId": roomId,
 		"servicePoint":  servicePointId,
 		"status":        bson.M{"$in": []string{"CALLED", "IN_ROOM", "IN_SERVICE"}},
+	}
+	
+	// Add tenant filtering if tenant ID is provided
+	if buildingID != "" {
+		filter["tenantId"] = buildingID
+	}
+	if sectionID != "" {
+		filter["sectionId"] = sectionID
 	}
 
 	opts := options.FindOne().SetSort(bson.M{"updatedAt": -1})

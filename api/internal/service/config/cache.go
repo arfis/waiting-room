@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -118,6 +119,10 @@ func (c *ConfigCache) UpdateConfiguration(ctx context.Context, config *types.Sys
 
 // UpdateExternalAPIConfiguration updates only the external API configuration
 func (c *ConfigCache) UpdateExternalAPIConfiguration(ctx context.Context, apiConfig *types.ExternalAPIConfig) error {
+	if apiConfig == nil {
+		return fmt.Errorf("apiConfig cannot be nil")
+	}
+	
 	// Get current config
 	currentConfig := c.GetSystemConfiguration()
 	if currentConfig == nil {

@@ -1,8 +1,9 @@
-import { Component, signal, computed } from '@angular/core';
+import { Component, signal, computed, inject, OnInit, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { ConfigService } from '../shared/services/config.service';
+import { TenantService } from '@lib/tenant';
 import { TranslationService, TranslatePipe } from '../../../../src/lib/i18n';
 
 interface GenericService {
@@ -78,13 +79,40 @@ interface SystemConfiguration {
   templateUrl: './configuration.html',
   styleUrl: './configuration.scss'
 })
-export class ConfigurationComponent {
+export class ConfigurationComponent implements OnInit {
+  private tenantService = inject(TenantService);
+  private currentTenantId = signal<string>('');
+  
   constructor(
     private http: HttpClient,
     private configService: ConfigService,
     private translationService: TranslationService
   ) {
-    this.loadConfiguration();
+    // Watch for tenant selection and load configuration when tenant is selected or changes
+    effect(() => {
+      const tenantId = this.tenantService.selectedTenantId();
+      const previousTenantId = this.currentTenantId();
+      
+      // Load configuration if:
+      // 1. Tenant is selected AND
+      // 2. (We haven't loaded yet OR tenant has changed)
+      if (tenantId && (tenantId !== previousTenantId)) {
+        this.currentTenantId.set(tenantId);
+        this.loadConfiguration();
+      } else if (!tenantId) {
+        // Clear current tenant if none selected
+        this.currentTenantId.set('');
+      }
+    });
+  }
+  
+  ngOnInit(): void {
+    // Check if tenant is already selected on init
+    const tenantId = this.tenantService.selectedTenantId();
+    if (tenantId && tenantId !== this.currentTenantId()) {
+      this.currentTenantId.set(tenantId);
+      this.loadConfiguration();
+    }
   }
   
   isSaving = signal(false);
@@ -214,10 +242,14 @@ export class ConfigurationComponent {
   }
 
   loadConfiguration(): void {
+    const tenantId = this.tenantService.selectedTenantId();
+    console.log(`[ConfigurationComponent] Loading configuration for tenant: ${tenantId || 'none'}`);
+    
     // Load external API configuration
     this.http.get(this.configService.adminExternalApiUrl)
       .subscribe({
         next: (response: any) => {
+          console.log(`[ConfigurationComponent] Received external API config:`, response);
           if (response) {
             this.systemConfig.externalAPI = response;
             // Sync with externalAPIConfig for form binding, ensuring all fields are present
@@ -246,10 +278,72 @@ export class ConfigurationComponent {
             this.updateHeaderEntries();
             console.log('Loaded external API configuration:', response);
             console.log('Synced externalAPIConfig:', this.externalAPIConfig);
+          } else {
+            // Reset to default/empty values when no config is found
+            console.log('[ConfigurationComponent] No external API config found, resetting to defaults');
+            this.externalAPIConfig = {
+              timeoutSeconds: 30,
+              retryAttempts: 3,
+              headers: {},
+              multilingualSupport: false,
+              supportedLanguages: ['en'],
+              useDeepLTranslation: false,
+              appointmentServicesLanguageHandling: 'query_param',
+              appointmentServicesLanguageHeader: 'Accept-Language',
+              appointmentServicesHttpMethod: 'GET',
+              genericServicesLanguageHandling: 'query_param',
+              genericServicesLanguageHeader: 'Accept-Language',
+              genericServicesHttpMethod: 'GET',
+              genericServicesPostBody: '',
+              webhookHttpMethod: 'POST',
+              appointmentServicesUrl: '',
+              genericServicesUrl: '',
+              genericServices: [],
+              webhookUrl: '',
+              webhookTimeoutSeconds: 5,
+              webhookRetryAttempts: 2
+            };
+            this.systemConfig.externalAPI = {
+              timeoutSeconds: 30,
+              retryAttempts: 3,
+              headers: {},
+              multilingualSupport: false,
+              supportedLanguages: ['en'],
+              useDeepLTranslation: false,
+              appointmentServicesLanguageHandling: 'query_param',
+              appointmentServicesLanguageHeader: 'Accept-Language',
+              genericServicesLanguageHandling: 'query_param',
+              genericServicesLanguageHeader: 'Accept-Language'
+            };
+            this.updateHeaderEntries();
           }
         },
         error: (error) => {
           console.error('Failed to load external API configuration:', error);
+          // On error, also reset to defaults
+          this.externalAPIConfig = {
+            timeoutSeconds: 30,
+            retryAttempts: 3,
+            headers: {},
+            multilingualSupport: false,
+            supportedLanguages: ['en'],
+            useDeepLTranslation: false,
+            appointmentServicesLanguageHandling: 'query_param',
+            appointmentServicesLanguageHeader: 'Accept-Language',
+            appointmentServicesHttpMethod: 'GET',
+            genericServicesLanguageHandling: 'query_param',
+            genericServicesLanguageHeader: 'Accept-Language',
+            genericServicesHttpMethod: 'GET',
+            genericServicesPostBody: '',
+            webhookHttpMethod: 'POST',
+            appointmentServicesUrl: '',
+            genericServicesUrl: '',
+            genericServices: [],
+            webhookUrl: '',
+            webhookTimeoutSeconds: 5,
+            webhookRetryAttempts: 2
+          };
+          this.updateHeaderEntries();
         }
       });
 
@@ -266,10 +360,26 @@ export class ConfigurationComponent {
             this.systemConfig.createdAt = response.createdAt;
             this.systemConfig.updatedAt = response.updatedAt;
             console.log('Loaded system configuration:', response);
+          } else {
+            // Reset to default/empty values when no config is found
+            console.log('[ConfigurationComponent] No system config found, resetting to defaults');
+            this.systemConfig.defaultRoom = '';
+            this.systemConfig.webSocketPath = '/ws/queue';
+            this.systemConfig.allowWildcard = false;
+            this.systemConfig.id = '';
+            this.systemConfig.createdAt = undefined;
+            this.systemConfig.updatedAt = undefined;
           }
         },
         error: (error) => {
           console.error('Failed to load system configuration:', error);
+          // On error, also reset to defaults
+          this.systemConfig.defaultRoom = '';
+          this.systemConfig.webSocketPath = '/ws/queue';
+          this.systemConfig.allowWildcard = false;
+          this.systemConfig.id = '';
+          this.systemConfig.createdAt = undefined;
+          this.systemConfig.updatedAt = undefined;
         }
       });
 
@@ -277,13 +387,19 @@ export class ConfigurationComponent {
     this.http.get(this.configService.adminRoomsUrl)
       .subscribe({
         next: (response: any) => {
-          if (response && Array.isArray(response)) {
+          if (response && Array.isArray(response) && response.length > 0) {
             this.systemConfig.rooms = response;
             console.log('Loaded rooms configuration:', response);
+          } else {
+            // Reset to empty array when no rooms config is found
+            console.log('[ConfigurationComponent] No rooms config found, resetting to empty array');
+            this.systemConfig.rooms = [];
           }
         },
         error: (error) => {
           console.error('Failed to load rooms configuration:', error);
+          // On error, also reset to empty array
+          this.systemConfig.rooms = [];
         }
       });
   }

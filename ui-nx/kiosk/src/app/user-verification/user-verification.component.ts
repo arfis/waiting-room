@@ -7,11 +7,12 @@ import { ServiceSelectionComponent } from '../service-selection/service-selectio
 import { UserService } from '../core/services/user-services.service';
 import { TranslationService, TranslatePipe } from '../../../../src/lib/i18n';
 import { LanguageSelectorComponent } from '@waiting-room/primeng-components';
+import { TenantSelectorComponent } from '@lib/tenant';
 
 @Component({
   selector: 'app-user-verification',
   standalone: true,
-  imports: [CommonModule, FormsModule, CardComponent, ServiceSelectionComponent, TranslatePipe, LanguageSelectorComponent],
+  imports: [CommonModule, FormsModule, CardComponent, ServiceSelectionComponent, TranslatePipe, LanguageSelectorComponent, TenantSelectorComponent],
   templateUrl: './user-verification.component.html',
   styleUrls: ['./user-verification.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -143,5 +144,9 @@ export class UserVerificationComponent implements OnInit, OnDestroy {
     if (this.cardReaderState.showServiceSelection()) {
       this.cardReaderState.loadServices();
     }
+  }
+
+  protected onProceedWithoutService(): void {
+    this.cardReaderState.generateTicketWithoutService();
   }
 }

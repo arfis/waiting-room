@@ -1,6 +1,7 @@
 import { Injectable, signal, computed, inject, effect } from '@angular/core';
 import { QueueWebSocketService, WebSocketQueueEntry, QueueEntryStatus } from '@waiting-room/api-client';
 import { QueueApiService } from './queue-api.service';
+import { TenantService } from '@lib/tenant';
 
 export interface ActivityLog {
   id: string;
@@ -15,6 +16,7 @@ export interface ActivityLog {
 export class QueueStateService {
   private readonly queueWebSocket = inject(QueueWebSocketService);
   private readonly queueApiService = inject(QueueApiService);
+  private readonly tenantService = inject(TenantService);
   
   // WebSocket state
   readonly queueEntries = this.queueWebSocket.queueEntries;
@@ -53,15 +55,44 @@ export class QueueStateService {
     return waiting.length * 5;
   });
 
+  private currentRoomId: string | null = null;
+  private currentStates: QueueEntryStatus[] | undefined = undefined;
+  private lastTenantId: string | null = null;
+
   constructor() {
     // Update last updated timestamp when queue entries change
     effect(() => {
       this.queueEntries();
       this.lastUpdated.set(new Date());
     });
+    
+    // Watch for tenant changes and reload queue data
+    effect(() => {
+      const tenantId = this.tenantService.selectedTenantId();
+      const roomId = this.currentRoomId;
+      const states = this.currentStates;
+      
+      // Only reload if tenant actually changed (not just initial load)
+      if (tenantId && roomId && tenantId !== this.lastTenantId && this.lastTenantId !== null) {
+        console.log('Tenant changed from', this.lastTenantId, 'to', tenantId, '- reloading queue data with states:', states);
+        // Clear old queue entries before loading new tenant's data
+        this.queueEntries.set([]);
+        this.lastTenantId = tenantId;
+        // Reload queue data when tenant changes, using the same states that were originally requested
+        this.queueWebSocket.initialize(roomId, states);
+      } else if (tenantId && this.lastTenantId === null) {
+        // Store initial tenant ID to prevent unnecessary reloads on first load
+        this.lastTenantId = tenantId;
+      }
+    });
   }
 
   async initialize(roomId: string, states?: QueueEntryStatus[]): Promise<void> {
+    this.currentRoomId = roomId;
+    this.currentStates = states;
+    // Store current tenant ID to track changes
+    const currentTenantId = this.tenantService.getSelectedTenantIdSync();
+    this.lastTenantId = currentTenantId;
     await this.queueWebSocket.initialize(roomId, states);
   }
 
@@ -102,8 +133,12 @@ export class QueueStateService {
   refreshQueue(roomId: string): void {
     this.isLoading.set(true);
     
+    const tenantId = this.tenantService.getSelectedTenantIdSync();
+    console.log(`Refreshing queue for room ${roomId}, tenant: ${tenantId || 'none'}`);
+    
     this.queueApiService.getQueue(roomId).subscribe({
       next: (entries) => {
+        console.log(`Queue refreshed: ${entries.length} entries for tenant ${tenantId || 'none'}`);
         // The WebSocket service will handle updating the entries
         this.queueEntries.set(entries as WebSocketQueueEntry[]);
         this.isLoading.set(false);
@@ -118,8 +153,12 @@ export class QueueStateService {
   refreshWaitingEntries(roomId: string): void {
     this.isLoading.set(true);
     
+    const tenantId = this.tenantService.getSelectedTenantIdSync();
+    console.log(`Refreshing waiting entries for room ${roomId}, tenant: ${tenantId || 'none'}`);
+    
     this.queueApiService.getQueue(roomId, ['WAITING']).subscribe({
       next: (entries) => {
+        console.log(`Waiting entries refreshed: ${entries.length} entries for tenant ${tenantId || 'none'}`);
         // Update only waiting entries
         const currentEntries = this.queueEntries();
         const nonWaitingEntries = currentEntries.filter(entry => entry.status !== 'WAITING');
@@ -137,8 +176,12 @@ export class QueueStateService {
   refreshCurrentEntry(roomId: string): void {
     this.isLoading.set(true);
     
+    const tenantId = this.tenantService.getSelectedTenantIdSync();
+    console.log(`Refreshing current entry for room ${roomId}, tenant: ${tenantId || 'none'}`);
+    
     this.queueApiService.getQueue(roomId, ['IN_SERVICE']).subscribe({
       next: (entries) => {
+        console.log(`Current entry refreshed: ${entries.length} entries for tenant ${tenantId || 'none'}`);
         // Update current entry (IN_SERVICE)
         const currentEntries = this.queueEntries();
         const nonCurrentEntries = currentEntries.filter(entry => entry.status !== 'IN_SERVICE');

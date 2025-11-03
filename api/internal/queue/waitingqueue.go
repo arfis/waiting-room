@@ -10,6 +10,7 @@ import (
 	"github.com/arfis/waiting-room/internal/data/dto"
 	"github.com/arfis/waiting-room/internal/data/dto/queueentrystatus"
 	"github.com/arfis/waiting-room/internal/repository"
+	"github.com/arfis/waiting-room/internal/service"
 	"github.com/arfis/waiting-room/internal/service/servicepoint"
 	"github.com/arfis/waiting-room/internal/types"
 )
@@ -33,10 +34,16 @@ func NewWaitingQueue(repo repository.QueueRepository, cfg *config.Config, servic
 }
 
 // CreateEntry creates a new queue entry
-func (s *WaitingQueue) CreateEntry(roomId string, cardData CardData, approximateDurationMinutes int64, serviceName string) (*Entry, error) {
-	ctx := context.Background()
+func (s *WaitingQueue) CreateEntry(ctx context.Context, roomId string, cardData CardData, approximateDurationMinutes int64, serviceName string) (*Entry, error) {
+	// Extract tenant ID from context (format: "buildingId:sectionId")
+	tenantIDHeader := service.GetTenantID(ctx)
+	
+	// Parse tenant ID to extract buildingId and sectionId
+	buildingID, sectionID, _ := types.ParseTenantID(tenantIDHeader)
+	
+	log.Printf("[WaitingQueue] Creating entry for room %s, buildingId: %s, sectionId: %s", roomId, buildingID, sectionID)
 
-	// Get current WAITING entries to determine position
+	// Get current WAITING entries to determine position (filtered by tenant and section)
 	entries, err := s.repo.GetQueueEntries(ctx, roomId, []string{"WAITING"})
 	if err != nil {
 		log.Printf("Failed to get queue entries: %v", err)
@@ -50,6 +57,8 @@ func (s *WaitingQueue) CreateEntry(roomId string, cardData CardData, approximate
 	// Create new entry
 	entry := &Entry{
 		WaitingRoomID:              roomId,
+		TenantID:                   buildingID,
+		SectionID:                  sectionID,
 		TicketNumber:               "", // Will be set by repository
 		QRToken:                    "", // Will be set by repository
 		Status:                     "WAITING",
@@ -64,12 +73,12 @@ func (s *WaitingQueue) CreateEntry(roomId string, cardData CardData, approximate
 		return nil, fmt.Errorf("failed to create queue entry: %w", err)
 	}
 
-	// Recalculate positions to ensure consistency
+	// Recalculate positions to ensure consistency (filtered by tenant and section)
 	if err := s.repo.RecalculatePositions(ctx, roomId); err != nil {
 		log.Printf("Warning: Failed to recalculate positions after creating entry: %v", err)
 	}
 
-	log.Printf("Created queue entry %s with ticket %s for room %s", entry.ID, entry.TicketNumber, roomId)
+	log.Printf("Created queue entry %s with ticket %s for room %s, buildingId: %s, sectionId: %s", entry.ID, entry.TicketNumber, roomId, buildingID, sectionID)
 	return entry, nil
 }
 
@@ -97,6 +106,15 @@ func (s *WaitingQueue) GetServicePoints(ctx context.Context, roomId string) ([]d
 // GetQueueEntries retrieves all queue entries for a room
 func (s *WaitingQueue) GetQueueEntries(roomId string, states []string) ([]*Entry, error) {
 	ctx := context.Background()
+	entries, err := s.repo.GetQueueEntries(ctx, roomId, states)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get queue entries: %w", err)
+	}
+	return entries, nil
+}
+
+// GetQueueEntriesWithContext retrieves all queue entries for a room with a specific context (for tenant filtering)
+func (s *WaitingQueue) GetQueueEntriesWithContext(ctx context.Context, roomId string, states []string) ([]*Entry, error) {
 	entries, err := s.repo.GetQueueEntries(ctx, roomId, states)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get queue entries: %w", err)

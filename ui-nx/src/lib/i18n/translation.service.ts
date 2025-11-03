@@ -42,7 +42,7 @@ export class TranslationService {
   translate(key: string, params?: Record<string, string | number>): string {
     const translation = this.getNestedTranslation(key);
     if (!translation) {
-      console.warn(`Translation missing for key: ${key}`);
+      // Silently return the key if translation is missing (no warning)
       return key;
     }
 

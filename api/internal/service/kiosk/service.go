@@ -14,6 +14,7 @@ import (
 	"github.com/arfis/waiting-room/internal/data/dto"
 	ngErrors "github.com/arfis/waiting-room/internal/errors"
 	"github.com/arfis/waiting-room/internal/queue"
+	"github.com/arfis/waiting-room/internal/service"
 	configService "github.com/arfis/waiting-room/internal/service/config"
 	"github.com/arfis/waiting-room/internal/service/translation"
 	"github.com/arfis/waiting-room/internal/service/webhook"
@@ -21,14 +22,14 @@ import (
 
 type Service struct {
 	queueService       *queue.WaitingQueue
-	broadcastFunc      func(string) // Function to broadcast queue updates
+	broadcastFunc      func(string, string) // Function to broadcast queue updates (roomId, tenantID)
 	config             *config.Config
 	configService      *configService.Service
 	webhookService     *webhook.Service
 	translationService *translation.DeepLTranslationService
 }
 
-func New(queueService *queue.WaitingQueue, broadcastFunc func(string), config *config.Config, configService *configService.Service, webhookService *webhook.Service, translationService *translation.DeepLTranslationService) *Service {
+func New(queueService *queue.WaitingQueue, broadcastFunc func(string, string), config *config.Config, configService *configService.Service, webhookService *webhook.Service, translationService *translation.DeepLTranslationService) *Service {
 	return &Service{
 		queueService:       queueService,
 		broadcastFunc:      broadcastFunc,
@@ -39,7 +40,7 @@ func New(queueService *queue.WaitingQueue, broadcastFunc func(string), config *c
 	}
 }
 
-func (s *Service) SetBroadcastFunc(f func(string)) {
+func (s *Service) SetBroadcastFunc(f func(string, string)) {
 	s.broadcastFunc = f
 }
 
@@ -72,8 +73,8 @@ func (s *Service) SwipeCard(ctx context.Context, roomId string, req *dto.SwipeRe
 		}
 	}
 
-	// Create queue entry using the existing queue service
-	entry, err := s.queueService.CreateEntry(roomId, cardData, approximateDurationMinutes, serviceName)
+	// Create queue entry using the existing queue service (pass context for tenant info)
+	entry, err := s.queueService.CreateEntry(ctx, roomId, cardData, approximateDurationMinutes, serviceName)
 	if err != nil {
 		return nil, ngErrors.New(ngErrors.InternalServerErrorCode, "failed to create queue entry", 500, nil)
 	}
@@ -81,9 +82,15 @@ func (s *Service) SwipeCard(ctx context.Context, roomId string, req *dto.SwipeRe
 	// Generate QR URL
 	qrUrl := "http://localhost:4204/q/" + entry.QRToken
 
-	// Broadcast queue update
+	// Broadcast queue update - only to the tenant that changed
+	// Extract tenant ID from context (format: "buildingId:sectionId")
 	if s.broadcastFunc != nil {
-		s.broadcastFunc(roomId)
+		tenantID := service.GetTenantID(ctx)
+		log.Printf("[KioskService] Broadcasting queue update for room %s, tenantID: '%s' (length: %d)", roomId, tenantID, len(tenantID))
+		if tenantID == "" {
+			log.Printf("[KioskService] WARNING: tenantID is empty, broadcasting to all clients")
+		}
+		s.broadcastFunc(roomId, tenantID)
 	}
 
 	// Send webhook notification for service selected (if service was selected)
@@ -143,15 +150,30 @@ func (s *Service) GetUserServices(ctx context.Context, identifier string, langua
 	if err != nil {
 		// Fallback to environment variables if cache fails
 		externalAPIURL := s.config.GetExternalAPIUserServicesURL()
+		if externalAPIURL == "" {
+			log.Printf("No external API URL configured for user services (fallback)")
+			return []dto.UserService{}, nil // Return empty list if not configured
+		}
 		timeoutSeconds := s.config.GetExternalAPITimeout()
 		log.Printf("Using fallback config - URL: %s, Timeout: %d, Error: %v", externalAPIURL, timeoutSeconds, err)
 		return s.makeExternalAPICall(ctx, externalAPIURL, timeoutSeconds, nil, identifier, lang, true, "")
 	}
 
+	// Check if config is nil or appointment services URL is not configured
+	if apiConfig == nil || apiConfig.AppointmentServicesURL == "" {
+		log.Printf("Appointment services URL not configured for user services")
+		return []dto.UserService{}, nil // Return empty list if not configured
+	}
+
 	// Replace ${identifier} placeholder with actual identifier value
 	actualURL := s.replaceIdentifierInURL(apiConfig.AppointmentServicesURL, identifier)
 
-	return s.makeExternalAPICall(ctx, actualURL, apiConfig.TimeoutSeconds, apiConfig.Headers, identifier, lang, true, "")
+	timeoutSeconds := apiConfig.TimeoutSeconds
+	if timeoutSeconds == 0 {
+		timeoutSeconds = 10 // Default timeout
+	}
+
+	return s.makeExternalAPICall(ctx, actualURL, timeoutSeconds, apiConfig.Headers, identifier, lang, true, "")
 }
 
 // GetGenericServices returns generic services available
@@ -167,6 +189,12 @@ func (s *Service) GetGenericServices(ctx context.Context, language *string) ([]d
 	if err != nil {
 		log.Printf("Failed to get external API config for generic services: %v", err)
 		return []dto.UserService{}, nil // Return empty list if config fails
+	}
+
+	// If no config found, return empty list
+	if apiConfig == nil {
+		log.Printf("No external API config found for generic services")
+		return []dto.UserService{}, nil
 	}
 
 	var services []dto.UserService
@@ -351,8 +379,8 @@ func (s *Service) GetAppointmentServices(ctx context.Context, identifier string,
 		return []dto.UserService{}, nil // Return empty list if config fails
 	}
 
-	// Check if appointment services URL is configured
-	if apiConfig.AppointmentServicesURL == "" {
+	// Check if config is nil or appointment services URL is not configured
+	if apiConfig == nil || apiConfig.AppointmentServicesURL == "" {
 		log.Printf("Appointment services URL not configured")
 		return []dto.UserService{}, nil // Return empty list if not configured
 	}
@@ -360,7 +388,12 @@ func (s *Service) GetAppointmentServices(ctx context.Context, identifier string,
 	// Replace ${identifier} placeholder with actual identifier value
 	actualURL := s.replaceIdentifierInURL(apiConfig.AppointmentServicesURL, identifier)
 
-	return s.makeExternalAPICall(ctx, actualURL, apiConfig.TimeoutSeconds, apiConfig.Headers, identifier, lang, true, "")
+	timeoutSeconds := apiConfig.TimeoutSeconds
+	if timeoutSeconds == 0 {
+		timeoutSeconds = 10 // Default timeout
+	}
+
+	return s.makeExternalAPICall(ctx, actualURL, timeoutSeconds, apiConfig.Headers, identifier, lang, true, "")
 }
 
 // replaceIdentifierInURL replaces ${identifier} placeholder with the actual identifier value
@@ -400,6 +433,11 @@ func (s *Service) makeExternalAPICall(ctx context.Context, externalAPIURL string
 		} else if !isAppointmentServices && apiConfig.GenericServicesHttpMethod != nil {
 			httpMethod = *apiConfig.GenericServicesHttpMethod
 		}
+	}
+
+	// Ensure timeout is valid (default to 10 seconds if 0)
+	if timeoutSeconds == 0 {
+		timeoutSeconds = 10
 	}
 
 	// Create HTTP client with configured timeout
@@ -478,19 +516,25 @@ func (s *Service) makeExternalAPICall(ctx context.Context, externalAPIURL string
 	// Make request
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, ngErrors.New(ngErrors.InternalServerErrorCode, fmt.Sprintf("failed to call external API: %s", externalAPIURL), 500, nil)
+		log.Printf("Failed to call external API %s: %v", externalAPIURL, err)
+		// Return empty list instead of error to allow proceeding without services
+		return []dto.UserService{}, nil
 	}
 	defer resp.Body.Close()
 
 	// Check response status
 	if resp.StatusCode != http.StatusOK {
-		return nil, ngErrors.New(ngErrors.InternalServerErrorCode, fmt.Sprintf("external API returned status %d", resp.StatusCode), 500, nil)
+		log.Printf("External API %s returned status %d", externalAPIURL, resp.StatusCode)
+		// Return empty list instead of error to allow proceeding without services
+		return []dto.UserService{}, nil
 	}
 
 	// Read response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, ngErrors.New(ngErrors.InternalServerErrorCode, "failed to read response body", 500, nil)
+		log.Printf("Failed to read response body from external API %s: %v", externalAPIURL, err)
+		// Return empty list instead of error to allow proceeding without services
+		return []dto.UserService{}, nil
 	}
 
 	log.Printf("External API response body: %s", string(body))
@@ -529,7 +573,8 @@ func (s *Service) makeExternalAPICall(ctx context.Context, externalAPIURL string
 		if parseErr := json.Unmarshal(body, &services); parseErr != nil {
 			log.Printf("Failed to parse response in both formats. External format error: %v, Direct format error: %v", externalErr, parseErr)
 			log.Printf("Response body was: %s", string(body))
-			return nil, ngErrors.New(ngErrors.InternalServerErrorCode, fmt.Sprintf("failed to parse response. External format: %v, Direct format: %v", externalErr, parseErr), 500, nil)
+			// Return empty list instead of error to allow proceeding without services
+			return []dto.UserService{}, nil
 		}
 		log.Printf("Successfully parsed %d services from direct UserService format", len(services))
 	}

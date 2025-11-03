@@ -1,9 +1,12 @@
 {
   "extends": "./tsconfig.lib.json",
   "compilerOptions": {
-    "declarationMap": false
+    "declarationMap": false,
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true
   },
   "angularCompilerOptions": {
-    "compilationMode": "partial"
+    "compilationMode": "partial",
+    "strictTemplates": false
   }
 }

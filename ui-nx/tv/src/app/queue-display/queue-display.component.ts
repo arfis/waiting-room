@@ -6,13 +6,14 @@ import { QueueWebSocketService, WebSocketQueueEntry } from '@waiting-room/api-cl
 import { CalledTicketComponent } from './components/called-ticket/called-ticket.component';
 import { WaitingTicketComponent } from './components/waiting-ticket/waiting-ticket.component';
 import { CurrentEntryComponent } from './components/current-entry/current-entry.component';
+import { TenantSelectorComponent } from '@lib/tenant';
 
 // Using WebSocketQueueEntry from api-client
 
 @Component({
   selector: 'app-queue-display',
   standalone: true,
-  imports: [CommonModule, CardComponent, CalledTicketComponent, WaitingTicketComponent, CurrentEntryComponent],
+  imports: [CommonModule, CardComponent, CalledTicketComponent, WaitingTicketComponent, CurrentEntryComponent, TenantSelectorComponent],
   templateUrl: './queue-display.component.html',
   styleUrls: ['./queue-display.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
