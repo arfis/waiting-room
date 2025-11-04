@@ -74,11 +74,15 @@ func (s *Service) CallNext(ctx context.Context, roomId string, servicePointId st
 	// Extract tenant ID from context (format: "buildingId:sectionId")
 	if s.broadcastFunc != nil {
 		tenantID := service.GetTenantID(ctx)
-		log.Printf("[QueueService] Broadcasting queue update for room %s, tenantID: '%s' (length: %d)", roomId, tenantID, len(tenantID))
+		log.Printf("[QueueService] CallNext: Broadcasting queue update for room %s, tenantID: '%s' (length: %d)", roomId, tenantID, len(tenantID))
 		if tenantID == "" {
-			log.Printf("[QueueService] WARNING: tenantID is empty, broadcasting to all clients")
+			log.Printf("[QueueService] CallNext: WARNING: tenantID is empty, broadcasting to all clients")
 		}
+		log.Printf("[QueueService] CallNext: About to call broadcastFunc for room %s, tenantID '%s'", roomId, tenantID)
 		s.broadcastFunc(roomId, tenantID)
+		log.Printf("[QueueService] CallNext: broadcastFunc called for room %s, tenantID '%s'", roomId, tenantID)
+	} else {
+		log.Printf("[QueueService] CallNext: WARNING: broadcastFunc is nil, cannot broadcast update")
 	}
 
 	// Send webhook notification for ticket called
@@ -167,11 +171,15 @@ func (s *Service) CallSpecificEntry(ctx context.Context, entryId string, roomId 
 	// Broadcast queue update - only to the tenant that changed
 	if s.broadcastFunc != nil {
 		tenantID := service.GetTenantID(ctx)
-		log.Printf("[QueueService] Broadcasting queue update for room %s, tenantID: '%s' (length: %d)", roomId, tenantID, len(tenantID))
+		log.Printf("[QueueService] CallSpecificEntry: Broadcasting queue update for room %s, tenantID: '%s' (length: %d)", roomId, tenantID, len(tenantID))
 		if tenantID == "" {
-			log.Printf("[QueueService] WARNING: tenantID is empty, broadcasting to all clients")
+			log.Printf("[QueueService] CallSpecificEntry: WARNING: tenantID is empty, broadcasting to all clients")
 		}
+		log.Printf("[QueueService] CallSpecificEntry: About to call broadcastFunc for room %s, tenantID '%s'", roomId, tenantID)
 		s.broadcastFunc(roomId, tenantID)
+		log.Printf("[QueueService] CallSpecificEntry: broadcastFunc called for room %s, tenantID '%s'", roomId, tenantID)
+	} else {
+		log.Printf("[QueueService] CallSpecificEntry: WARNING: broadcastFunc is nil, cannot broadcast update")
 	}
 
 	// Send webhook notification for ticket called

@@ -61,12 +61,31 @@ func (r *MongoDBConfigRepository) GetSystemConfiguration(ctx context.Context) (*
 	if tenantIDHeader != "" {
 		// When tenant ID is provided, filter by both tenantId (building) and sectionId (section)
 		// This allows multiple sections within the same tenant to have different configurations
+		// IMPORTANT: We must explicitly require tenantId to exist to prevent matching default configs
 		filter = bson.M{}
+
+		// Always require tenantId to exist and not be empty when tenant is specified
 		if buildingID != "" {
 			filter["tenantId"] = buildingID
+		} else {
+			// If buildingID is empty but tenantIDHeader is not, still require tenantId to exist
+			filter["$and"] = []bson.M{
+				{"tenantId": bson.M{"$exists": true}},
+				{"tenantId": bson.M{"$ne": ""}},
+				{"tenantId": bson.M{"$ne": nil}},
+			}
 		}
+
 		if sectionID != "" {
 			filter["sectionId"] = sectionID
+		} else {
+			// If no sectionId is specified, match documents where sectionId is empty or doesn't exist
+			// But still require tenantId to exist
+			filter["$or"] = []bson.M{
+				{"sectionId": bson.M{"$exists": false}},
+				{"sectionId": ""},
+				{"sectionId": nil},
+			}
 		}
 		log.Printf("[ConfigRepository] Querying with tenant filter: buildingId=%s, sectionId=%s, filter=%+v", buildingID, sectionID, filter)
 	} else {
@@ -87,12 +106,40 @@ func (r *MongoDBConfigRepository) GetSystemConfiguration(ctx context.Context) (*
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			log.Printf("[ConfigRepository] No system configuration document found in MongoDB for buildingId: %s, sectionId: %s", buildingID, sectionID)
+			log.Printf("[ConfigRepository] Filter used: %+v", filter)
+			// When tenant is specified but no config found, return nil (don't fall back to default)
+			if tenantIDHeader != "" {
+				log.Printf("[ConfigRepository] Tenant-specific config not found, returning nil (NOT falling back to default)")
+				return nil, nil
+			}
+			// Only when no tenant is specified, we can return nil
 			return nil, nil
 		}
 		log.Printf("[ConfigRepository] Error retrieving system configuration from MongoDB: %v", err)
 		return nil, err
 	}
-	log.Printf("[ConfigRepository] Retrieved system configuration from MongoDB - buildingId: %s, sectionId: %s, config ID: %s", buildingID, sectionID, config.ID)
+
+	// Verify that the retrieved config actually matches the tenant filter
+	// This prevents returning a config that doesn't match the tenant
+	if tenantIDHeader != "" {
+		// We requested a tenant-specific config, verify it matches
+		if buildingID != "" && config.TenantID != buildingID {
+			log.Printf("[ConfigRepository] WARNING: Retrieved config has tenantId '%s' but requested buildingId '%s' - returning nil", config.TenantID, buildingID)
+			return nil, nil
+		}
+		if sectionID != "" && config.SectionID != sectionID {
+			log.Printf("[ConfigRepository] WARNING: Retrieved config has sectionId '%s' but requested sectionId '%s' - returning nil", config.SectionID, sectionID)
+			return nil, nil
+		}
+	} else {
+		// We requested a default config (no tenant), verify it doesn't have a tenant
+		if config.TenantID != "" {
+			log.Printf("[ConfigRepository] WARNING: Retrieved config has tenantId '%s' but requested default config (no tenant) - returning nil", config.TenantID)
+			return nil, nil
+		}
+	}
+
+	log.Printf("[ConfigRepository] Retrieved system configuration from MongoDB - buildingId: %s, sectionId: %s, config ID: %s, config tenantId: %s, config sectionId: %s", buildingID, sectionID, config.ID, config.TenantID, config.SectionID)
 	return &config, nil
 }
 

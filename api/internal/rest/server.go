@@ -75,6 +75,12 @@ func NewServer(diContainer *dig.Container, cfg *config.Config) *http.Server {
 		})
 	})
 
+	// Apply tenant middleware to extract tenant ID from headers/query params
+	diContainer.Invoke(func(tenantMiddleware *middleware.TenantMiddleware) {
+		r.Use(tenantMiddleware.Middleware())
+		log.Println("Tenant middleware registered")
+	})
+
 	// Temporarily remove other middleware to isolate WebSocket issue
 	// diContainer.Invoke(func(loggingMiddleware *middleware.LoggingMiddleware) {
 	// 	r.Use(loggingMiddleware.LoggingMiddleware)
@@ -304,8 +310,8 @@ func (s *Server) handleQueueWebSocket(w http.ResponseWriter, r *http.Request) {
 				"qrToken":         entry.QRToken,
 				"status":          entry.Status,
 				"position":        entry.Position,
-				"createdAt":       entry.CreatedAt,
-				"updatedAt":       entry.UpdatedAt,
+				"createdAt":       entry.CreatedAt.Format(time.RFC3339),
+				"updatedAt":       entry.UpdatedAt.Format(time.RFC3339),
 				"cardData":        entry.CardData,
 				"servicePoint":    entry.ServicePoint,
 				"serviceName":     entry.ServiceName,
@@ -470,8 +476,8 @@ func (s *Server) broadcastQueueUpdate(roomId string, targetTenantID string) {
 			"qrToken":         entry.QRToken,
 			"status":          entry.Status,
 			"position":        entry.Position,
-			"createdAt":       entry.CreatedAt,
-			"updatedAt":       entry.UpdatedAt,
+			"createdAt":       entry.CreatedAt.Format(time.RFC3339),
+			"updatedAt":       entry.UpdatedAt.Format(time.RFC3339),
 			"cardData":        entry.CardData,
 			"servicePoint":    entry.ServicePoint,
 			"serviceName":     entry.ServiceName,

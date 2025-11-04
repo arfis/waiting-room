@@ -149,7 +149,8 @@ export class QueueManagementComponent implements OnInit, OnDestroy {
     if (!selectedServicePoint) {
       return null;
     }
-    return this.queueState.getCalledEntriesForServicePoint(selectedServicePoint.name)[0] || null;
+    // Get the current entry (CALLED or IN_SERVICE) for the selected service point
+    return this.queueState.getCurrentEntryForServicePoint(selectedServicePoint.name);
   }
 
   // Configuration methods

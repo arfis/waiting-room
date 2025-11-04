@@ -45,11 +45,11 @@ func (s *Service) GetSystemConfiguration(ctx context.Context) (*types.SystemConf
 			return nil, err
 		}
 		if config != nil {
-			log.Printf("[ConfigService] Found configuration for tenant %s - config ID: %s, config tenantId: %s", tenantID, config.ID, config.TenantID)
+			log.Printf("[ConfigService] Found configuration for tenant %s - config ID: %s, config tenantId: %s, config sectionId: %s", tenantID, config.ID, config.TenantID, config.SectionID)
 			return config, nil
 		}
-		// No tenant-specific config found, return nil
-		log.Printf("[ConfigService] No configuration found for tenant: %s", tenantID)
+		// No tenant-specific config found, return nil (do NOT fall back to default config)
+		log.Printf("[ConfigService] No configuration found for tenant: %s - returning nil (NOT falling back to default)", tenantID)
 		return nil, nil
 	}
 
@@ -99,29 +99,34 @@ func (s *Service) UpdateSystemConfiguration(ctx context.Context, updates map[str
 func (s *Service) GetExternalAPIConfig(ctx context.Context) (*types.ExternalAPIConfig, error) {
 	// Check if tenant ID is in context - if so, bypass cache and query repository directly
 	tenantID := service.GetTenantID(ctx)
+	log.Printf("[ConfigService] GetExternalAPIConfig called - tenantID from context: '%s' (length: %d)", tenantID, len(tenantID))
 	if tenantID != "" {
 		// Bypass cache for tenant-specific requests
-		log.Printf("Tenant-specific external API config requested for: %s, querying repository directly", tenantID)
+		log.Printf("[ConfigService] Tenant-specific external API config requested for: '%s', querying repository directly", tenantID)
 		systemConfig, err := s.repo.GetSystemConfiguration(ctx)
 		if err != nil {
+			log.Printf("[ConfigService] Error querying repository for tenant '%s': %v", tenantID, err)
 			return nil, err
 		}
 		if systemConfig != nil {
+			log.Printf("[ConfigService] Found external API config for tenant '%s' - config ID: %s, config tenantId: %s, config sectionId: %s", tenantID, systemConfig.ID, systemConfig.TenantID, systemConfig.SectionID)
 			return &systemConfig.ExternalAPI, nil
 		}
-		// No tenant-specific config found, return nil
+		// No tenant-specific config found, return nil (do NOT fall back to default)
+		log.Printf("[ConfigService] No external API config found for tenant '%s' - returning nil (NOT falling back to default)", tenantID)
 		return nil, nil
 	}
 
 	// For non-tenant requests, use cache (legacy/system configs)
+	log.Printf("[ConfigService] No tenant ID in context, using cached config (legacy/system)")
 	config := s.cache.GetExternalAPIConfig()
 	if config != nil {
-		log.Printf("Using cached config - Timeout: %d", config.TimeoutSeconds)
+		log.Printf("[ConfigService] Using cached config - Timeout: %d", config.TimeoutSeconds)
 		return config, nil
 	}
 
 	// Fallback to environment variables
-	log.Println("No cached config found, using environment variables")
+	log.Println("[ConfigService] No cached config found, using environment variables")
 	return s.getExternalAPIConfigFromEnv(), nil
 }
 

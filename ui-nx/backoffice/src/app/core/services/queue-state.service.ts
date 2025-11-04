@@ -62,7 +62,9 @@ export class QueueStateService {
   constructor() {
     // Update last updated timestamp when queue entries change
     effect(() => {
-      this.queueEntries();
+      const entries = this.queueEntries();
+      console.log('[QueueStateService] Queue entries updated:', entries.length, 'entries');
+      console.log('[QueueStateService] Entry statuses:', entries.map(e => `${e.ticketNumber}:${e.status}`).join(', '));
       this.lastUpdated.set(new Date());
     });
     
@@ -131,15 +133,20 @@ export class QueueStateService {
   }
 
   callSpecificEntry(roomId: string, servicePointId: string, entryId: string): void {
+    console.log('[QueueStateService] callSpecificEntry called:', { roomId, servicePointId, entryId });
     this.isLoading.set(true);
     
     this.queueApiService.callSpecificEntry(roomId, servicePointId, entryId).subscribe({
       next: (response) => {
+        console.log('[QueueStateService] callSpecificEntry success:', response);
         this.addActivity(response.ticketNumber, 'Called to service');
         this.isLoading.set(false);
+        // Note: WebSocket should update the queue entries automatically
+        // But we can also manually refresh if needed
+        console.log('[QueueStateService] Current queue entries after call:', this.queueEntries().length);
       },
       error: (error) => {
-        console.error('Failed to call specific entry:', error);
+        console.error('[QueueStateService] Failed to call specific entry:', error);
         this.isLoading.set(false);
       }
     });
@@ -224,6 +231,15 @@ export class QueueStateService {
 
   getCalledEntriesForServicePoint(servicePointId: string): WebSocketQueueEntry[] {
     return this.calledEntries().filter(entry => entry.servicePoint === servicePointId);
+  }
+
+  getCurrentEntryForServicePoint(servicePointId: string): WebSocketQueueEntry | null {
+    const entries = this.queueEntries();
+    // Find the current entry (CALLED or IN_SERVICE) for the specific service point
+    return entries.find(entry => 
+      entry.servicePoint === servicePointId && 
+      (entry.status === 'CALLED' || entry.status === 'IN_SERVICE')
+    ) || null;
   }
 
   private addActivity(ticketNumber: string, action: string): void {

@@ -140,7 +140,7 @@
         <!-- Currently Being Served -->
         <app-current-entry-card
           [entry]="getCalledEntryForSelectedServicePoint()"
-          [statusText]="getStatusText(currentEntry()?.status || '')"
+          [statusText]="getStatusText(getCalledEntryForSelectedServicePoint()?.status || '')"
         />
 
 

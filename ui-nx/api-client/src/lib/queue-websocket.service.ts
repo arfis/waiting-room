@@ -296,13 +296,20 @@ export class QueueWebSocketService {
 
       this.ws.onmessage = (event) => {
         try {
+          console.log('[QueueWebSocket] Raw WebSocket message received:', event.data);
           const data: QueueUpdate = JSON.parse(event.data);
+          console.log('[QueueWebSocket] Parsed WebSocket message:', data);
           if (data.type === 'queue_update') {
-            console.log('Queue update received:', data.entries);
+            console.log('[QueueWebSocket] Queue update received:', data.entries.length, 'entries');
+            console.log('[QueueWebSocket] Entries:', JSON.stringify(data.entries, null, 2));
             this.queueEntries.set(data.entries);
+            console.log('[QueueWebSocket] Queue entries updated. New count:', this.queueEntries().length);
+          } else {
+            console.warn('[QueueWebSocket] Unknown message type:', data.type);
           }
         } catch (error) {
-          console.error('Failed to parse WebSocket message:', error);
+          console.error('[QueueWebSocket] Failed to parse WebSocket message:', error);
+          console.error('[QueueWebSocket] Raw message:', event.data);
         }
       };
 
