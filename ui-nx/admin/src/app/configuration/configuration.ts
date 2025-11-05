@@ -51,6 +51,7 @@ interface ServicePoint {
   description?: string;
   managerId?: string;
   managerName?: string;
+  roomId?: string; // Track which room this service point belongs to
 }
 
 interface Room {
@@ -119,6 +120,28 @@ export class ConfigurationComponent implements OnInit {
   lastUpdated = signal('Just now');
   configurationCount = signal(5);
   
+  // Track which room each service point belongs to
+  private servicePointRoomMap = new Map<string, string>();
+  
+  // Flattened service points for direct management
+  protected readonly servicePoints = computed(() => {
+    // Collect all service points from all rooms (use signal for reactivity)
+    const allServicePoints: ServicePoint[] = [];
+    const rooms = this.roomsSignal();
+    rooms.forEach(room => {
+      if (room.servicePoints && room.servicePoints.length > 0) {
+        // Add room context to service points for tracking
+        room.servicePoints.forEach(sp => {
+          allServicePoints.push({
+            ...sp,
+            roomId: room.id // Add roomId for tracking
+          });
+        });
+      }
+    });
+    return allServicePoints;
+  });
+  
   // Language selection for multilingual API
   supportedLanguages = {
     en: true,
@@ -143,6 +166,9 @@ export class ConfigurationComponent implements OnInit {
     genericServices: []
   };
   
+  // Use signal for rooms to ensure reactivity
+  roomsSignal = signal<Room[]>([]);
+  
   systemConfig: SystemConfiguration = {
     externalAPI: {
       appointmentServicesUrl: 'http://localhost:3001/users/${identifier}/appointments',
@@ -164,47 +190,14 @@ export class ConfigurationComponent implements OnInit {
       genericServicesLanguageHandling: 'query_param',
       genericServicesLanguageHeader: 'Accept-Language'
     },
-    rooms: [
-      {
-        id: 'triage-1',
-        name: 'Triage Room 1',
-        description: 'Main triage room for patient assessment',
-        isDefault: true,
-        servicePoints: [
-          {
-            id: 'sp-1',
-            name: 'Service Point 1',
-            description: 'Main service point',
-            managerName: 'Dr. Smith'
-          },
-          {
-            id: 'sp-2',
-            name: 'Service Point 2',
-            description: 'Secondary service point'
-          }
-        ]
-      },
-      {
-        id: 'triage-2',
-        name: 'Triage Room 2',
-        description: 'Secondary triage room',
-        isDefault: false,
-        servicePoints: [
-          {
-            id: 'sp-3',
-            name: 'Service Point 3',
-            description: 'Emergency service point'
-          }
-        ]
-      }
-    ],
-    defaultRoom: 'triage-1',
+    rooms: [], // Start with empty rooms - will be loaded from backend
+    defaultRoom: '',
     webSocketPath: '/ws/queue',
     allowWildcard: true
   };
 
   get rooms() {
-    return this.systemConfig.rooms;
+    return this.roomsSignal();
   }
 
   get headers() {
@@ -387,19 +380,45 @@ export class ConfigurationComponent implements OnInit {
     this.http.get(this.configService.adminRoomsUrl)
       .subscribe({
         next: (response: any) => {
+          console.log('[ConfigurationComponent] Received rooms config response:', response);
           if (response && Array.isArray(response) && response.length > 0) {
-            this.systemConfig.rooms = response;
-            console.log('Loaded rooms configuration:', response);
+            // Ensure all rooms have servicePoints array (even if empty)
+            const roomsWithServicePoints = response.map((room: Room) => ({
+              ...room,
+              servicePoints: room.servicePoints || []
+            }));
+            // Update both the signal and the systemConfig for consistency
+            this.roomsSignal.set(roomsWithServicePoints);
+            this.systemConfig.rooms = roomsWithServicePoints;
+            console.log('[ConfigurationComponent] Loaded rooms configuration:', roomsWithServicePoints);
+            console.log('[ConfigurationComponent] Total service points:', this.servicePoints().length);
+            
+            // Rebuild service point room map
+            this.servicePointRoomMap.clear();
+            roomsWithServicePoints.forEach((room: Room) => {
+              if (room.servicePoints && room.servicePoints.length > 0) {
+                room.servicePoints.forEach((sp: ServicePoint) => {
+                  this.servicePointRoomMap.set(sp.id, room.id);
+                });
+              }
+            });
           } else {
             // Reset to empty array when no rooms config is found
-            console.log('[ConfigurationComponent] No rooms config found, resetting to empty array');
+            console.log('[ConfigurationComponent] No rooms config found or empty response, resetting to empty array');
+            console.log('[ConfigurationComponent] Response was:', response);
+            this.roomsSignal.set([]);
             this.systemConfig.rooms = [];
+            this.servicePointRoomMap.clear();
+            console.log('[ConfigurationComponent] Service points after reset:', this.servicePoints().length);
           }
         },
         error: (error) => {
-          console.error('Failed to load rooms configuration:', error);
+          console.error('[ConfigurationComponent] Failed to load rooms configuration:', error);
           // On error, also reset to empty array
+          this.roomsSignal.set([]);
           this.systemConfig.rooms = [];
+          this.servicePointRoomMap.clear();
+          console.log('[ConfigurationComponent] Service points after error reset:', this.servicePoints().length);
         }
       });
   }
@@ -501,22 +520,206 @@ export class ConfigurationComponent implements OnInit {
       servicePoints: []
     };
     
+    // If this is the first room, make it default
+    if (this.systemConfig.rooms.length === 0) {
+      newRoom.isDefault = true;
+      this.systemConfig.defaultRoom = newRoom.id;
+    }
+    
     this.systemConfig.rooms.push(newRoom);
   }
 
-  editRoom(room: Room): void {
-    // In a real implementation, this would open an edit dialog
-    console.log('Edit room:', room);
+  addServicePoint(): void {
+    console.log('[ConfigurationComponent] addServicePoint called');
+    const currentRooms = this.roomsSignal();
+    
+    // Ensure we have at least one room (default room) - created automatically behind the scenes
+    let rooms = currentRooms;
+    if (rooms.length === 0) {
+      const defaultRoom: Room = {
+        id: `room-${Date.now()}`,
+        name: 'Default Room',
+        description: 'Auto-created room for service points',
+        isDefault: true,
+        servicePoints: []
+      };
+      rooms = [defaultRoom];
+      this.systemConfig.defaultRoom = defaultRoom.id;
+      this.roomsSignal.set(rooms);
+      this.systemConfig.rooms = rooms;
+      console.log('[ConfigurationComponent] Auto-created default room:', defaultRoom.id);
+    }
+    
+    // Add service point to the default room (or first room if no default)
+    const defaultRoom = rooms.find(r => r.isDefault) || rooms[0];
+    if (!defaultRoom) {
+      console.error('[ConfigurationComponent] No default room found');
+      return;
+    }
+    
+    if (!defaultRoom.servicePoints) {
+      defaultRoom.servicePoints = [];
+    }
+    
+    const newServicePoint: ServicePoint = {
+      id: `sp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name: 'New Service Point',
+      description: '',
+      managerId: '',
+      managerName: '',
+      roomId: defaultRoom.id
+    };
+    
+    // Create a new array with the updated service points to ensure reactivity
+    const updatedRooms = rooms.map(room => {
+      if (room.id === defaultRoom.id) {
+        return {
+          ...room,
+          servicePoints: [...(room.servicePoints || []), newServicePoint]
+        };
+      }
+      return room;
+    });
+    
+    // Update both the signal and systemConfig
+    this.roomsSignal.set(updatedRooms);
+    this.systemConfig.rooms = updatedRooms;
+    this.servicePointRoomMap.set(newServicePoint.id, defaultRoom.id);
+    
+    console.log('[ConfigurationComponent] Service point added:', newServicePoint);
+    console.log('[ConfigurationComponent] Updated rooms:', updatedRooms);
+    console.log('[ConfigurationComponent] Total service points:', this.servicePoints().length);
+    console.log('[ConfigurationComponent] Service points signal value:', this.servicePoints());
+  }
+
+  deleteServicePointById(servicePointId: string): void {
+    if (confirm('Are you sure you want to delete this service point?')) {
+      // Find and remove from the room
+      const roomId = this.servicePointRoomMap.get(servicePointId);
+      if (roomId) {
+        const currentRooms = this.roomsSignal();
+        const updatedRooms = currentRooms.map(room => {
+          if (room.id === roomId && room.servicePoints) {
+            return {
+              ...room,
+              servicePoints: room.servicePoints.filter(sp => sp.id !== servicePointId)
+            };
+          }
+          return room;
+        });
+        
+        // Update both the signal and systemConfig
+        this.roomsSignal.set(updatedRooms);
+        this.systemConfig.rooms = updatedRooms;
+        this.servicePointRoomMap.delete(servicePointId);
+        
+        console.log('[ConfigurationComponent] Service point deleted:', servicePointId);
+        console.log('[ConfigurationComponent] Total service points:', this.servicePoints().length);
+      }
+    }
+  }
+  
+  trackByServicePointId(index: number, servicePoint: ServicePoint): string {
+    return servicePoint.id;
+  }
+  
+  saveServicePointsConfiguration(): void {
+    this.isSaving.set(true);
+    
+    const currentRooms = this.roomsSignal();
+    
+    // Ensure we have at least one room (default room) - auto-created if needed
+    let rooms = currentRooms;
+    if (rooms.length === 0) {
+      const defaultRoom: Room = {
+        id: `room-${Date.now()}`,
+        name: 'Default Room',
+        description: 'Auto-created room for service points',
+        isDefault: true,
+        servicePoints: []
+      };
+      rooms = [defaultRoom];
+      this.systemConfig.defaultRoom = defaultRoom.id;
+      this.roomsSignal.set(rooms);
+      this.systemConfig.rooms = rooms;
+      console.log('[ConfigurationComponent] Auto-created default room for saving:', defaultRoom.id);
+    }
+    
+    // Ensure all service points are properly assigned to rooms
+    // Service points are stored in the default room (or first room)
+    const defaultRoom = rooms.find(r => r.isDefault) || rooms[0];
+    if (!defaultRoom) {
+      alert('Failed to save: No room available');
+      this.isSaving.set(false);
+      return;
+    }
+    
+    // Collect all service points from the computed signal
+    const servicePoints = this.servicePoints();
+    console.log('[ConfigurationComponent] Collecting service points to save:', servicePoints);
+    
+    // Update the default room's service points (remove roomId before saving)
+    const servicePointsToSave = servicePoints.map(sp => {
+      const { roomId, ...servicePoint } = sp;
+      return servicePoint;
+    });
+    
+    const updatedDefaultRoom = {
+      ...defaultRoom,
+      servicePoints: servicePointsToSave
+    };
+    
+    // Update the rooms array with the updated default room
+    const updatedRooms = rooms.map(room => 
+      room.id === defaultRoom.id ? updatedDefaultRoom : { ...room, servicePoints: room.servicePoints || [] }
+    );
+    
+    // Ensure all rooms have servicePoints array (even if empty)
+    const roomsToSave = updatedRooms.map(room => ({
+      ...room,
+      servicePoints: room.servicePoints || []
+    }));
+    
+    // Save the rooms configuration (which includes service points)
+    console.log('[ConfigurationComponent] Saving service points:', servicePoints);
+    console.log('[ConfigurationComponent] Service points to save (without roomId):', servicePointsToSave);
+    console.log('[ConfigurationComponent] Default room service points:', updatedDefaultRoom.servicePoints);
+    console.log('[ConfigurationComponent] Rooms to save:', roomsToSave);
+    
+    this.http.put(this.configService.adminRoomsUrl, roomsToSave)
+      .subscribe({
+        next: (response) => {
+          this.isSaving.set(false);
+          this.lastUpdated.set(new Date().toLocaleString());
+          console.log('[ConfigurationComponent] Service points configuration saved successfully:', response);
+          // Update signal before reloading
+          this.roomsSignal.set(updatedRooms);
+          this.systemConfig.rooms = updatedRooms;
+          // Reload configuration to ensure sync
+          this.loadConfiguration();
+        },
+        error: (error) => {
+          this.isSaving.set(false);
+          console.error('[ConfigurationComponent] Failed to save service points configuration:', error);
+          console.error('[ConfigurationComponent] Error details:', JSON.stringify(error, null, 2));
+          const errorMessage = error.error?.message || error.message || 'Unknown error';
+          alert(`Failed to save service points configuration: ${errorMessage}`);
+        }
+      });
   }
 
   deleteRoom(roomId: string): void {
     if (confirm('Are you sure you want to delete this room?')) {
-      this.systemConfig.rooms = this.systemConfig.rooms.filter(room => room.id !== roomId);
+      const currentRooms = this.roomsSignal();
+      const updatedRooms = currentRooms.filter(room => room.id !== roomId);
       
       // If we deleted the default room, set a new default
-      if (this.systemConfig.defaultRoom === roomId && this.systemConfig.rooms.length > 0) {
-        this.systemConfig.defaultRoom = this.systemConfig.rooms[0].id;
+      if (this.systemConfig.defaultRoom === roomId && updatedRooms.length > 0) {
+        this.systemConfig.defaultRoom = updatedRooms[0].id;
       }
+      
+      this.roomsSignal.set(updatedRooms);
+      this.systemConfig.rooms = updatedRooms;
     }
   }
 
@@ -524,9 +727,14 @@ export class ConfigurationComponent implements OnInit {
     this.systemConfig.defaultRoom = roomId;
     
     // Update isDefault flags
-    this.systemConfig.rooms.forEach(room => {
-      room.isDefault = room.id === roomId;
-    });
+    const currentRooms = this.roomsSignal();
+    const updatedRooms = currentRooms.map(room => ({
+      ...room,
+      isDefault: room.id === roomId
+    }));
+    
+    this.roomsSignal.set(updatedRooms);
+    this.systemConfig.rooms = updatedRooms;
   }
 
   addHeader(): void {

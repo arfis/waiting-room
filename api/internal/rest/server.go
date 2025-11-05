@@ -45,28 +45,137 @@ func NewServer(diContainer *dig.Container, cfg *config.Config) *http.Server {
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Skip CORS for WebSocket routes
-			if r.URL.Path == cfg.WebSocket.Path+"/"+cfg.GetDefaultRoom() || r.URL.Path == "/health" {
+			if strings.HasPrefix(r.URL.Path, cfg.WebSocket.Path) || r.URL.Path == "/health" {
 				next.ServeHTTP(w, r)
 				return
 			}
 
 			// Apply CORS for other routes using configuration
+			// Get Origin header (Go's Header.Get is case-insensitive, but we'll try anyway)
 			origin := r.Header.Get("Origin")
+
+			// Log request details (less verbose)
+			log.Printf("[CORS] %s %s - Origin: '%s'", r.Method, r.URL.Path, origin)
+
 			allowedOrigins := cfg.GetAvailableCORSOrigins()
 
-			// Check if the origin is in the allowed list
-			if origin != "" && contains(allowedOrigins, origin) {
-				w.Header().Set("Access-Control-Allow-Origin", origin)
-			} else if len(allowedOrigins) > 0 {
-				// If no origin or origin not in list, use the first allowed origin as fallback
-				w.Header().Set("Access-Control-Allow-Origin", allowedOrigins[0])
+			// Normalize origin (trim whitespace, remove trailing slash)
+			normalizedOrigin := strings.TrimSpace(origin)
+			if normalizedOrigin != "" && strings.HasSuffix(normalizedOrigin, "/") {
+				normalizedOrigin = normalizedOrigin[:len(normalizedOrigin)-1]
 			}
 
-			w.Header().Set("Access-Control-Allow-Methods", cfg.GetCORSMethods())
-			w.Header().Set("Access-Control-Allow-Headers", cfg.GetCORSHeaders())
-			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			// Normalize allowed origins (trim whitespace, remove trailing slashes)
+			normalizedAllowedOrigins := make([]string, len(allowedOrigins))
+			for i, allowed := range allowedOrigins {
+				normalized := strings.TrimSpace(allowed)
+				if strings.HasSuffix(normalized, "/") {
+					normalized = normalized[:len(normalized)-1]
+				}
+				normalizedAllowedOrigins[i] = normalized
+			}
 
+			log.Printf("[CORS] Request origin: '%s' (normalized: '%s')", origin, normalizedOrigin)
+			log.Printf("[CORS] Allowed origins: %v (normalized: %v)", allowedOrigins, normalizedAllowedOrigins)
+
+			// Check if origin is localhost (for development - allow any localhost port)
+			isLocalhost := normalizedOrigin != "" && (strings.HasPrefix(normalizedOrigin, "http://localhost:") || strings.HasPrefix(normalizedOrigin, "http://127.0.0.1:"))
+
+			// Determine which origin to allow
+			var allowedOrigin string
+			if normalizedOrigin != "" && contains(normalizedAllowedOrigins, normalizedOrigin) {
+				// Origin is in the allowed list
+				allowedOrigin = normalizedOrigin
+				log.Printf("[CORS] Allowed origin (from config): %s", normalizedOrigin)
+			} else if isLocalhost {
+				// For development: allow any localhost origin even if not explicitly in config
+				allowedOrigin = normalizedOrigin
+				log.Printf("[CORS] Allowed localhost origin (development): %s", normalizedOrigin)
+			} else if len(normalizedAllowedOrigins) > 0 && normalizedOrigin != "" {
+				// Origin provided but not in allowed list and not localhost - reject
+				log.Printf("[CORS] Rejected origin: '%s' (normalized: '%s') not in allowed list: %v", origin, normalizedOrigin, normalizedAllowedOrigins)
+				// Set CORS headers even on rejection so browser can see the error
+				w.Header().Set("Access-Control-Allow-Origin", normalizedOrigin) // Echo back the origin for debugging
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
+				w.Header().Set("Access-Control-Allow-Methods", cfg.GetCORSMethods())
+				w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Tenant-ID, Authorization, Accept, Origin, X-Requested-With")
+				w.WriteHeader(http.StatusForbidden)
+				return
+			} else if len(normalizedAllowedOrigins) > 0 {
+				// No origin header (e.g., same-origin request or curl) - allow all for development
+				// For browser requests, we should check Referer header if available
+				referer := r.Header.Get("Referer")
+				if referer != "" {
+					// Extract origin from Referer URL (e.g., "http://localhost:4201/some/path" -> "http://localhost:4201")
+					refererOrigin := strings.TrimSpace(referer)
+					// Parse URL to extract just the origin (scheme + host + port)
+					if strings.HasPrefix(refererOrigin, "http://") || strings.HasPrefix(refererOrigin, "https://") {
+						// Find the third slash (after http://host:port/)
+						parts := strings.Split(refererOrigin, "/")
+						if len(parts) >= 3 {
+							refererOrigin = parts[0] + "//" + parts[2]
+						}
+						// Remove trailing slash if present
+						if strings.HasSuffix(refererOrigin, "/") {
+							refererOrigin = refererOrigin[:len(refererOrigin)-1]
+						}
+						// Check if referer is localhost
+						if strings.HasPrefix(refererOrigin, "http://localhost:") || strings.HasPrefix(refererOrigin, "http://127.0.0.1:") {
+							allowedOrigin = refererOrigin
+							log.Printf("[CORS] No origin header, using Referer origin: %s (extracted from: %s)", allowedOrigin, referer)
+						} else {
+							allowedOrigin = normalizedAllowedOrigins[0]
+							log.Printf("[CORS] No origin header, Referer not localhost, allowing first config origin: %s", allowedOrigin)
+						}
+					} else {
+						allowedOrigin = normalizedAllowedOrigins[0]
+						log.Printf("[CORS] No origin header, Referer format invalid, allowing first config origin: %s", allowedOrigin)
+					}
+				} else {
+					allowedOrigin = normalizedAllowedOrigins[0]
+					log.Printf("[CORS] No origin or Referer header, allowing first config origin: %s", allowedOrigin)
+				}
+			} else {
+				// No allowed origins configured - allow all (for development only)
+				allowedOrigin = "*"
+				log.Printf("[CORS] No allowed origins configured, allowing all origins (*)")
+			}
+
+			// Always set CORS headers for the determined origin
+			if allowedOrigin != "" {
+				if allowedOrigin == "*" {
+					// Can't use "*" with credentials
+					w.Header().Set("Access-Control-Allow-Origin", "*")
+				} else {
+					w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
+					w.Header().Set("Access-Control-Allow-Credentials", "true")
+				}
+				log.Printf("[CORS] Set Access-Control-Allow-Origin: %s", allowedOrigin)
+			}
+
+			// Set CORS headers (must be set for all requests, including preflight)
+			w.Header().Set("Access-Control-Allow-Methods", cfg.GetCORSMethods())
+
+			// Handle allowed headers - if "*" is in the list, use explicit headers
+			corsHeaders := cfg.GetCORSHeaders()
+			allowedHeadersList := cfg.CORS.AllowedHeaders
+
+			// Check if "*" is in the allowed headers list
+			if len(allowedHeadersList) > 0 && contains(allowedHeadersList, "*") {
+				// Use common headers explicitly since browsers don't accept "*" with credentials
+				// Include all headers that kiosk and other apps might use
+				w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Tenant-ID, Authorization, Accept, Origin, X-Requested-With, Cache-Control, Pragma, Expires")
+			} else {
+				w.Header().Set("Access-Control-Allow-Headers", corsHeaders)
+			}
+
+			w.Header().Set("Access-Control-Expose-Headers", "Content-Length, Content-Type")
+			w.Header().Set("Access-Control-Max-Age", "86400") // Cache preflight for 24 hours
+
+			// Handle preflight OPTIONS requests
+			// IMPORTANT: Must handle OPTIONS AFTER setting all CORS headers
 			if r.Method == "OPTIONS" {
+				log.Printf("[CORS] Handling preflight OPTIONS request for origin: %s", normalizedOrigin)
 				w.WriteHeader(http.StatusOK)
 				return
 			}
@@ -107,37 +216,10 @@ func NewServer(diContainer *dig.Container, cfg *config.Config) *http.Server {
 	})
 
 	// todo: has to be later updated to use configuration.ServerContext
+	// Register API routes - CORS middleware is already applied above
 	r.Route("/api", func(router chi.Router) {
 		register.Generated(router, diContainer)
 	})
-	// Register generated routes with /api prefix
-	// r.Route("/api", func(apiRouter chi.Router) {
-	// 	log.Println("Registering API routes...")
-	// 	register.Generated(apiRouter, diContainer)
-
-	// 	// Add admin routes as unprotected for development
-	// 	diContainer.Invoke(func(adminHandler *admin.Handler) {
-	// 		apiRouter.Get("/admin/configuration", adminHandler.GetSystemConfiguration)
-	// 		apiRouter.Put("/admin/configuration", adminHandler.UpdateSystemConfiguration)
-	// 		apiRouter.Get("/admin/configuration/external-api", adminHandler.GetExternalAPIConfiguration)
-	// 		apiRouter.Put("/admin/configuration/external-api", adminHandler.UpdateExternalAPIConfiguration)
-	// 		apiRouter.Get("/admin/configuration/rooms", adminHandler.GetRoomsConfiguration)
-	// 		apiRouter.Put("/admin/configuration/rooms", adminHandler.UpdateRoomsConfiguration)
-	// 		apiRouter.Get("/admin/card-readers", adminHandler.GetCardReaders)
-	// 		apiRouter.Post("/admin/card-readers/{id}/restart", adminHandler.RestartCardReader)
-	// 	})
-
-	// 	// Add kiosk routes as unprotected for development
-	// 	diContainer.Invoke(func(kioskHandler *kioskHandler.Handler) {
-	// 		apiRouter.Get("/generic-services", kioskHandler.GetGenericServices)
-	// 		apiRouter.Get("/appointment-services", kioskHandler.GetAppointmentServices)
-	// 		apiRouter.Get("/user-services", kioskHandler.GetUserServices)
-	// 		apiRouter.Get("/default-service-point", kioskHandler.GetDefaultServicePoint)
-	// 		apiRouter.Post("/swipe", kioskHandler.SwipeCard)
-	// 	})
-
-	// 	log.Println("API routes registered successfully")
-	// })
 
 	// Add WebSocket routes AFTER middleware (like the original working version)
 	if wsServer != nil && cfg.WebSocket.Enabled {

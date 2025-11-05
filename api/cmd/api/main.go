@@ -87,8 +87,10 @@ func DIContainer(cfg *config.Config) *dig.Container {
 		}},
 
 		// Core services
-		{Constructor: func(repo repository.QueueRepository, cfg *config.Config, servicePointSvc *servicepointService.Service) *queueService.WaitingQueue {
-			return queueService.NewWaitingQueue(repo, cfg, servicePointSvc)
+		{Constructor: func(repo repository.QueueRepository, cfg *config.Config, servicePointSvc *servicepointService.Service, configService *configService.Service) *queueService.WaitingQueue {
+			wq := queueService.NewWaitingQueue(repo, cfg, servicePointSvc)
+			wq.SetConfigService(configService)
+			return wq
 		}},
 		{Constructor: func(cfg *config.Config) *servicepointService.Service {
 			return servicepointService.NewService(cfg)
@@ -118,7 +120,11 @@ func DIContainer(cfg *config.Config) *dig.Container {
 		{Constructor: func(queueService *queueService.WaitingQueue, webhookService *webhookService.Service) *queueServiceGenerated.Service {
 			return queueServiceGenerated.New(queueService, nil, webhookService)
 		}},
-		{Constructor: configurationService.New},
+		{Constructor: func(cfg *config.Config, configService *configService.Service) *configurationService.Service {
+			svc := configurationService.New(cfg)
+			svc.SetConfigService(configService)
+			return svc
+		}},
 		{Constructor: func(repo repository.ConfigRepository) *configService.Service {
 			return configService.NewService(repo)
 		}},

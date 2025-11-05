@@ -48,7 +48,9 @@ func (h *ResponseErrorHandler) HandleAndWriteError(w http.ResponseWriter, r *htt
 		}
 	}
 
-	w.Header().Add("Content-Type", "application/json")
+	// Note: CORS headers should already be set by middleware before this handler is called
+	// Don't overwrite them - just add Content-Type
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(httpCode)
 	_, err = w.Write(body)
 	if err != nil {

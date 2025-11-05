@@ -25,6 +25,9 @@ cors:
     - "OPTIONS"
   allowed_headers:
     - "*"
+    - "X-Tenant-ID"
+    - "Content-Type"
+    - "Authorization"
 
 websocket:
   enabled: true
