@@ -12,6 +12,7 @@ type APP_CONTEXT string
 const (
 	TENANT_HEADER             = "X-Tenant-ID"
 	TENANT        APP_CONTEXT = "TENANT"
+	USER_INFO     string      = "USER_INFO"
 )
 
 type TenantMiddleware struct{}

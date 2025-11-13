@@ -19,8 +19,7 @@ func (t authorizationRoundTripper) RoundTrip(request *http.Request) (*http.Respo
 	authorization := request.Context().Value(context.ORIGINAL_TOKEN)
 	if authorization != nil {
 		if auth, ok := authorization.(string); ok {
-			// Set authorization header - USER_INFO constant doesn't exist, using Authorization header instead
-			request.Header.Set("Authorization", auth)
+			request.Header.Set(middleware.USER_INFO, auth)
 		}
 	}
 	switch tenantID := value.(type) {

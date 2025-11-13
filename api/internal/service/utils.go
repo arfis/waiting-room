@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	nghisContext "github.com/arfis/waiting-room/internal/context"
-	"github.com/arfis/waiting-room/internal/middleware"
 )
 
 const system = "system"
@@ -42,19 +41,6 @@ func GetTenant(ctx context.Context) int32 {
 	}
 	slog.Error("tenant in context is not int32", "tenant", tenant)
 	return 0
-}
-
-// GetTenantID returns tenant ID as string from context (used by middleware.TENANT)
-func GetTenantID(ctx context.Context) string {
-	tenant := ctx.Value(middleware.TENANT)
-	if tenant == nil {
-		return ""
-	}
-	if tenantID, ok := tenant.(string); ok {
-		return tenantID
-	}
-	slog.Error("tenant in context is not string", "tenant", tenant)
-	return ""
 }
 
 func SafeInt64ToInt32(v int64) int32 {
