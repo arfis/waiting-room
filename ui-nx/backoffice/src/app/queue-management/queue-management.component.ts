@@ -8,6 +8,7 @@ import { WaitingQueueListComponent } from './components/waiting-queue-list/waiti
 import { ActivityLogComponent } from './components/activity-log/activity-log.component';
 import { WebSocketQueueEntry, ConfigurationResponse, ServicePointConfiguration, QueueEntryStatus } from '@waiting-room/api-client';
 import { TenantSelectorComponent, TenantService } from '@lib/tenant';
+import { LanguageSelectorComponent, TranslatePipe } from '../../../../src/lib/i18n';
 import { environment } from '../../environments/environment';
 
 @Component({
@@ -20,6 +21,8 @@ import { environment } from '../../environments/environment';
     WaitingQueueListComponent,
     ActivityLogComponent,
     TenantSelectorComponent,
+    LanguageSelectorComponent,
+    TranslatePipe,
   ],
   templateUrl: './queue-management.component.html',
   styleUrl: './queue-management.component.scss',

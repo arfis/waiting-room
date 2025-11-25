@@ -86,6 +86,71 @@ export class QueueWebSocketService {
     }
   }
 
+  // Normalize entry data to handle snake_case from backend
+  private normalizeEntry(entry: any): WebSocketQueueEntry {
+    // Create a new entry object to avoid mutation issues
+    const normalizedEntry = { ...entry };
+
+    // Handle cardData transformation from snake_case to camelCase
+    if (normalizedEntry.cardData) {
+      console.log('[QueueWebSocket] Original cardData:', normalizedEntry.cardData, 'Type:', typeof normalizedEntry.cardData);
+
+      let cardDataObj = normalizedEntry.cardData;
+
+      // Check if cardData is a string (JSON) that needs parsing
+      if (typeof normalizedEntry.cardData === 'string') {
+        try {
+          cardDataObj = JSON.parse(normalizedEntry.cardData);
+          console.log('[QueueWebSocket] Parsed cardData:', cardDataObj);
+        } catch (e) {
+          console.error('[QueueWebSocket] Failed to parse cardData:', e, 'Raw:', normalizedEntry.cardData);
+          cardDataObj = null;
+        }
+      }
+
+      // Transform snake_case to camelCase if needed
+      if (cardDataObj && typeof cardDataObj === 'object') {
+        const hasSnakeCase = 'id_number' in cardDataObj || 'first_name' in cardDataObj || 'last_name' in cardDataObj;
+        const hasCamelCase = 'idNumber' in cardDataObj || 'firstName' in cardDataObj || 'lastName' in cardDataObj;
+
+        console.log('[QueueWebSocket] cardDataObj keys:', Object.keys(cardDataObj), 'hasSnakeCase:', hasSnakeCase, 'hasCamelCase:', hasCamelCase);
+
+        // Get values, handling potential double-stringification
+        let idNumber = cardDataObj.id_number || cardDataObj.idNumber || '';
+        let firstName = cardDataObj.first_name || cardDataObj.firstName || '';
+        let lastName = cardDataObj.last_name || cardDataObj.lastName || '';
+
+        // Check if idNumber is itself a stringified JSON (double-encoding issue)
+        if (typeof idNumber === 'string' && idNumber.startsWith('{')) {
+          try {
+            const innerData = JSON.parse(idNumber);
+            console.log('[QueueWebSocket] Detected double-encoded idNumber, parsed:', innerData);
+            idNumber = innerData.id_number || innerData.idNumber || '';
+            firstName = innerData.first_name || innerData.firstName || firstName;
+            lastName = innerData.last_name || innerData.lastName || lastName;
+          } catch (e) {
+            console.warn('[QueueWebSocket] Failed to parse double-encoded idNumber:', e);
+          }
+        }
+
+        // Always normalize to ensure consistency
+        normalizedEntry.cardData = {
+          idNumber: idNumber,
+          firstName: firstName,
+          lastName: lastName,
+          source: cardDataObj.source || ''
+        };
+
+        console.log('[QueueWebSocket] Normalized cardData:', normalizedEntry.cardData);
+      } else if (cardDataObj === null) {
+        // If parsing failed, set to null
+        normalizedEntry.cardData = null;
+      }
+    }
+
+    return normalizedEntry as WebSocketQueueEntry;
+  }
+
   constructor() {
     // Watch for tenant changes and reconnect if WebSocket is already connected
     effect(() => {
@@ -185,7 +250,9 @@ export class QueueWebSocketService {
       const entries = await this.http.get<WebSocketQueueEntry[]>(url, { params }).toPromise();
       if (entries) {
         console.log(`Initial queue data loaded: ${entries.length} entries for tenant ${tenantId || 'none'}`);
-        this.queueEntries.set(entries);
+        // Normalize entries to handle snake_case from backend
+        const normalizedEntries = entries.map(entry => this.normalizeEntry(entry));
+        this.queueEntries.set(normalizedEntries);
       }
     } catch (error) {
       console.error('Failed to load initial queue data:', error);
@@ -302,7 +369,9 @@ export class QueueWebSocketService {
           if (data.type === 'queue_update') {
             console.log('[QueueWebSocket] Queue update received:', data.entries.length, 'entries');
             console.log('[QueueWebSocket] Entries:', JSON.stringify(data.entries, null, 2));
-            this.queueEntries.set(data.entries);
+            // Normalize entries to handle snake_case from backend
+            const normalizedEntries = data.entries.map(entry => this.normalizeEntry(entry));
+            this.queueEntries.set(normalizedEntries);
             console.log('[QueueWebSocket] Queue entries updated. New count:', this.queueEntries().length);
           } else {
             console.warn('[QueueWebSocket] Unknown message type:', data.type);

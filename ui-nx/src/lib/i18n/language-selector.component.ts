@@ -1,7 +1,7 @@
 import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { TranslationService, LanguageConfig } from './translation.service';
+import { TranslationService } from './translation.service';
 import { TranslatePipe } from './translate.pipe';
 
 @Component({
@@ -21,7 +21,7 @@ import { TranslatePipe } from './translate.pipe';
       </button>
 
       @if (isDropdownOpen()) {
-        <div class="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+        <div class="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-[9999]">
           <div class="py-1">
             @for (language of availableLanguages; track language.code) {
               <button
@@ -50,10 +50,10 @@ import { TranslatePipe } from './translate.pipe';
 })
 export class LanguageSelectorComponent {
   private translationService = inject(TranslationService);
-  
+
   readonly isDropdownOpen = signal(false);
   readonly availableLanguages = this.translationService.getAvailableLanguages();
-  readonly currentLanguage = this.translationService.getCurrentLanguage;
+  readonly currentLanguage = computed(() => this.translationService.getCurrentLanguage());
   readonly currentLanguageConfig = this.translationService.currentLanguageConfig;
 
   toggleDropdown(): void {
