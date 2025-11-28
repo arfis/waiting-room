@@ -18,6 +18,7 @@ import (
 	"github.com/arfis/waiting-room/internal/config"
 	ngErrors "github.com/arfis/waiting-room/internal/errors"
 	"github.com/arfis/waiting-room/internal/middleware"
+	"github.com/arfis/waiting-room/internal/priority"
 	queueService "github.com/arfis/waiting-room/internal/queue"
 	"github.com/arfis/waiting-room/internal/repository"
 	"github.com/arfis/waiting-room/internal/rest"
@@ -30,6 +31,7 @@ import (
 	configService "github.com/arfis/waiting-room/internal/service/config"
 	configurationService "github.com/arfis/waiting-room/internal/service/configuration"
 	kioskService "github.com/arfis/waiting-room/internal/service/kiosk"
+	priorityService "github.com/arfis/waiting-room/internal/service/priority"
 	queueServiceGenerated "github.com/arfis/waiting-room/internal/service/queue"
 	servicepointService "github.com/arfis/waiting-room/internal/service/servicepoint"
 	tenantService "github.com/arfis/waiting-room/internal/service/tenant"
@@ -85,10 +87,23 @@ func DIContainer(cfg *config.Config) *dig.Container {
 			log.Println("Connected to MongoDB for config successfully")
 			return repo
 		}},
+		{Constructor: func(cfg *config.Config) *priority.Repository {
+			// Try to connect to MongoDB for priority config
+			client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(cfg.GetMongoURI()))
+			if err != nil {
+				log.Printf("Failed to connect to MongoDB for priority config: %v", err)
+				return nil
+			}
+
+			db := client.Database(cfg.GetMongoDatabase())
+			repo := priority.NewRepository(db)
+			log.Println("Connected to MongoDB for priority config successfully")
+			return repo
+		}},
 
 		// Core services
-		{Constructor: func(repo repository.QueueRepository, cfg *config.Config, servicePointSvc *servicepointService.Service, configService *configService.Service) *queueService.WaitingQueue {
-			wq := queueService.NewWaitingQueue(repo, cfg, servicePointSvc)
+		{Constructor: func(repo repository.QueueRepository, cfg *config.Config, servicePointSvc *servicepointService.Service, configService *configService.Service, priorityRepo *priority.Repository) *queueService.WaitingQueue {
+			wq := queueService.NewWaitingQueue(repo, cfg, servicePointSvc, priorityRepo)
 			wq.SetConfigService(configService)
 			return wq
 		}},
@@ -131,8 +146,9 @@ func DIContainer(cfg *config.Config) *dig.Container {
 		{Constructor: func(repo repository.ConfigRepository) *tenantService.Service {
 			return tenantService.NewService(repo)
 		}},
-		{Constructor: func(configService *configService.Service, translationService *translation.DeepLTranslationService, tenantService *tenantService.Service) *adminService.Service {
-			return adminService.NewService(configService, translationService, tenantService)
+		{Constructor: priorityService.New},
+		{Constructor: func(configService *configService.Service, translationService *translation.DeepLTranslationService, tenantService *tenantService.Service, priorityService *priorityService.Service) *adminService.Service {
+			return adminService.NewService(configService, translationService, tenantService, priorityService)
 		}},
 
 		// Generated handlers

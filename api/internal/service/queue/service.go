@@ -27,6 +27,37 @@ func New(queueService *queue.WaitingQueue, broadcastFunc func(string, string), w
 	}
 }
 
+// convertEntryToDTO converts an internal entry to a DTO with all fields including age and symbols
+func convertEntryToDTO(entry *queue.Entry) dto.QueueEntry {
+	queueEntry := dto.QueueEntry{
+		ID:            entry.ID,
+		WaitingRoomID: entry.WaitingRoomID,
+		TicketNumber:  entry.TicketNumber,
+		Status:        queueentrystatus.QueueEntryStatus(entry.Status),
+		Position:      entry.Position,
+	}
+
+	if entry.ServicePoint != "" {
+		queueEntry.ServicePoint = &entry.ServicePoint
+	}
+	if entry.ServiceName != "" {
+		queueEntry.ServiceName = &entry.ServiceName
+	}
+	if entry.ApproximateDurationSeconds > 0 {
+		durationMinutes := entry.ApproximateDurationSeconds / 60 // Convert seconds to minutes for API
+		queueEntry.ServiceDuration = &durationMinutes
+	}
+	if entry.Age != nil {
+		age := int64(*entry.Age)
+		queueEntry.Age = &age
+	}
+	if len(entry.Symbols) > 0 {
+		queueEntry.Symbols = entry.Symbols
+	}
+
+	return queueEntry
+}
+
 func (s *Service) SetBroadcastFunc(f func(string, string)) {
 	s.broadcastFunc = f
 }
@@ -57,18 +88,8 @@ func (s *Service) CallNext(ctx context.Context, roomId string, servicePointId st
 		return nil, ngErrors.New(ngErrors.InternalServerErrorCode, "failed to call next", 500, nil)
 	}
 
-	// Convert to QueueEntry
-	queueEntry := &dto.QueueEntry{
-		ID:            entry.ID,
-		WaitingRoomID: entry.WaitingRoomID,
-		TicketNumber:  entry.TicketNumber,
-		Status:        queueentrystatus.QueueEntryStatus(entry.Status),
-		Position:      int64(entry.Position),
-		ServicePoint:  &entry.ServicePoint,
-	}
-	if entry.ServicePoint != "" {
-		queueEntry.ServicePoint = &entry.ServicePoint
-	}
+	// Convert to QueueEntry using helper function
+	queueEntry := convertEntryToDTO(entry)
 
 	// Broadcast queue update - only to the tenant that changed
 	// Extract tenant ID from context (format: "buildingId:sectionId")
@@ -94,7 +115,7 @@ func (s *Service) CallNext(ctx context.Context, roomId string, servicePointId st
 		}()
 	}
 
-	return queueEntry, nil
+	return &queueEntry, nil
 }
 
 func (s *Service) FinishCurrent(ctx context.Context, roomId string) (*dto.QueueEntry, error) {
@@ -107,17 +128,8 @@ func (s *Service) FinishCurrent(ctx context.Context, roomId string) (*dto.QueueE
 		return nil, ngErrors.New(ngErrors.NotFoundErrorCode, "no one is currently being served", 404, nil)
 	}
 
-	// Convert to QueueEntry
-	queueEntry := &dto.QueueEntry{
-		ID:            entry.ID,
-		WaitingRoomID: entry.WaitingRoomID,
-		TicketNumber:  entry.TicketNumber,
-		Status:        queueentrystatus.QueueEntryStatus(entry.Status),
-		Position:      entry.Position,
-	}
-	if entry.ServicePoint != "" {
-		queueEntry.ServicePoint = &entry.ServicePoint
-	}
+	// Convert to QueueEntry using helper function
+	queueEntry := convertEntryToDTO(entry)
 
 	// Broadcast queue update - only to the tenant that changed
 	// Extract tenant ID from context (format: "buildingId:sectionId")
@@ -139,7 +151,7 @@ func (s *Service) FinishCurrent(ctx context.Context, roomId string) (*dto.QueueE
 		}()
 	}
 
-	return queueEntry, nil
+	return &queueEntry, nil
 }
 
 func (s *Service) CallSpecificEntry(ctx context.Context, entryId string, roomId string, servicePointId string) (*dto.QueueEntry, error) {
@@ -148,25 +160,8 @@ func (s *Service) CallSpecificEntry(ctx context.Context, entryId string, roomId 
 		return nil, ngErrors.New(ngErrors.InternalServerErrorCode, "failed to call specific entry", 500, nil)
 	}
 
-	// Convert to QueueEntry
-	queueEntry := &dto.QueueEntry{
-		ID:            entry.ID,
-		WaitingRoomID: entry.WaitingRoomID,
-		TicketNumber:  entry.TicketNumber,
-		Status:        queueentrystatus.QueueEntryStatus(entry.Status),
-		Position:      int64(entry.Position),
-		ServicePoint:  &entry.ServicePoint,
-	}
-	if entry.ServicePoint != "" {
-		queueEntry.ServicePoint = &entry.ServicePoint
-	}
-	if entry.ServiceName != "" {
-		queueEntry.ServiceName = &entry.ServiceName
-	}
-	if entry.ApproximateDurationSeconds > 0 {
-		durationMinutes := entry.ApproximateDurationSeconds / 60 // Convert seconds to minutes for API
-		queueEntry.ServiceDuration = &durationMinutes
-	}
+	// Convert to QueueEntry using helper function
+	queueEntry := convertEntryToDTO(entry)
 
 	// Broadcast queue update - only to the tenant that changed
 	if s.broadcastFunc != nil {
@@ -191,7 +186,7 @@ func (s *Service) CallSpecificEntry(ctx context.Context, entryId string, roomId 
 		}()
 	}
 
-	return queueEntry, nil
+	return &queueEntry, nil
 }
 
 func (s *Service) GetQueueEntries(ctx context.Context, roomId string, states []string) ([]dto.QueueEntry, error) {
@@ -211,27 +206,10 @@ func (s *Service) GetQueueEntries(ctx context.Context, roomId string, states []s
 	
 	log.Printf("[QueueService] GetQueueEntries returned %d entries for room %s", len(entries), roomId)
 
-	// Convert to DTOs
+	// Convert to DTOs using the helper function
 	var queueEntries []dto.QueueEntry
 	for _, entry := range entries {
-		queueEntry := dto.QueueEntry{
-			ID:            entry.ID,
-			WaitingRoomID: entry.WaitingRoomID,
-			TicketNumber:  entry.TicketNumber,
-			Status:        queueentrystatus.QueueEntryStatus(entry.Status),
-			Position:      entry.Position,
-		}
-		if entry.ServicePoint != "" {
-			queueEntry.ServicePoint = &entry.ServicePoint
-		}
-		if entry.ServiceName != "" {
-			queueEntry.ServiceName = &entry.ServiceName
-		}
-	if entry.ApproximateDurationSeconds > 0 {
-		durationMinutes := entry.ApproximateDurationSeconds / 60 // Convert seconds to minutes for API
-		queueEntry.ServiceDuration = &durationMinutes
-		}
-		queueEntries = append(queueEntries, queueEntry)
+		queueEntries = append(queueEntries, convertEntryToDTO(entry))
 	}
 
 	return queueEntries, nil

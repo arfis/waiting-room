@@ -58,6 +58,19 @@ import { TranslatePipe } from '../../../../../../src/lib/i18n';
                     {{ entry.serviceDuration }} {{ 'backoffice.minutes' | translate }}
                   </span>
                 }
+                @if (entry.age) {
+                  <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                    Age: {{ entry.age }}
+                  </span>
+                }
+                @if (entry.symbols && entry.symbols.length > 0) {
+                  @for (symbol of entry.symbols; track symbol) {
+                    <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-bold"
+                          [class]="getSymbolClass(symbol)">
+                      {{ symbol }}
+                    </span>
+                  }
+                }
               </div>
             </div>
 
@@ -102,6 +115,21 @@ export class CurrentEntryCardComponent {
     // Return the service point ID as-is since names come from configuration
     // If needed, we can inject the configuration service here to get the actual name
     return servicePointId;
+  }
+
+  // Get appropriate CSS class for priority symbols
+  getSymbolClass(symbol: string): string {
+    const upperSymbol = symbol.toUpperCase();
+    switch (upperSymbol) {
+      case 'STATIM':
+        return 'bg-red-600 text-white';
+      case 'VIP':
+        return 'bg-purple-600 text-white';
+      case 'IMMOBILE':
+        return 'bg-orange-600 text-white';
+      default:
+        return 'bg-gray-600 text-white';
+    }
   }
 
   // Safe method to get card data field

@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(cat:*)",
+      "Bash(make gen:*)",
+      "Bash(go build:*)",
+      "Bash(go test:*)",
+      "Bash(go tool cover:*)",
+      "Bash(ls:*)",
+      "Bash(service-generator:*)",
+      "Bash(npm run build:kiosk:*)",
+      "Bash(npm run build:backoffice:*)",
+      "Bash(make gen:all:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

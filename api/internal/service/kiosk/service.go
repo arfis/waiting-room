@@ -74,8 +74,39 @@ func (s *Service) SwipeCard(ctx context.Context, roomId string, req *dto.SwipeRe
 		}
 	}
 
-	// Create queue entry using the existing queue service (pass context for tenant info)
-	entry, err := s.queueService.CreateEntry(ctx, roomId, cardData, approximateDurationSeconds, serviceName)
+	// Extract priority metadata from patientInformation (optional debug mode)
+	var symbols []string
+	var appointmentTimePtr *time.Time
+	var agePtr *int
+	var manualOverridePtr *float64
+
+	// Check if patientInformation is provided (debug mode or external API)
+	if req.PatientInformation != nil {
+		patientInfo := req.PatientInformation
+
+		// Extract symbols
+		if patientInfo.Symbols != nil && len(patientInfo.Symbols) > 0 {
+			symbols = patientInfo.Symbols
+		}
+
+		// Extract appointment time using the helper method (handles FlexibleTime conversion)
+		appointmentTimePtr = patientInfo.GetAppointmentTimePtr()
+
+		// Extract age
+		if patientInfo.Age != nil {
+			ageInt := int(*patientInfo.Age)
+			agePtr = &ageInt
+		}
+
+		// Extract manual override
+		if patientInfo.ManualOverride != nil {
+			manualOverridePtr = patientInfo.ManualOverride
+		}
+	}
+
+	// Create queue entry using the existing queue service (pass context for tenant info + priority metadata)
+	entry, err := s.queueService.CreateEntry(ctx, roomId, cardData, approximateDurationSeconds, serviceName,
+		symbols, appointmentTimePtr, agePtr, manualOverridePtr)
 	if err != nil {
 		return nil, ngErrors.New(ngErrors.InternalServerErrorCode, "failed to create queue entry", 500, nil)
 	}

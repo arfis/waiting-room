@@ -8,11 +8,12 @@ import { UserService } from '../core/services/user-services.service';
 import { TranslationService, TranslatePipe } from '../../../../src/lib/i18n';
 import { LanguageSelectorComponent } from '@waiting-room/primeng-components';
 import { TenantSelectorComponent } from '@lib/tenant';
+import { DebugPanelComponent } from '../debug-panel/debug-panel.component';
 
 @Component({
   selector: 'app-user-verification',
   standalone: true,
-  imports: [CommonModule, FormsModule, CardComponent, ServiceSelectionComponent, TranslatePipe, LanguageSelectorComponent, TenantSelectorComponent],
+  imports: [CommonModule, FormsModule, CardComponent, ServiceSelectionComponent, TranslatePipe, LanguageSelectorComponent, TenantSelectorComponent, DebugPanelComponent],
   templateUrl: './user-verification.component.html',
   styleUrls: ['./user-verification.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush

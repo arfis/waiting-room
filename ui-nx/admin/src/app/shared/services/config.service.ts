@@ -42,6 +42,14 @@ export class ConfigService {
     return `${this._apiUrl}/admin/tenants`;
   }
 
+  get adminPriorityConfigUrl(): string {
+    return `${this._apiUrl}/admin/priority-config`;
+  }
+
+  get adminPriorityConfigDefaultUrl(): string {
+    return `${this._apiUrl}/admin/priority-config/default`;
+  }
+
   // Queue endpoints
   get queueUrl(): string {
     return `${this._apiUrl}/waiting-rooms`;

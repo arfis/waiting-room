@@ -1,7 +1,7 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { WebSocketService, CardReaderPayload } from '../../websocket.service';
-import { KioskApiService, CardData, TicketResponse } from './kiosk-api.service';
+import { KioskApiService, CardData, TicketResponse, PatientInformation } from './kiosk-api.service';
 import { UserServicesService, UserService, ServiceSection } from './user-services.service';
 import * as QRCode from 'qrcode';
 
@@ -52,7 +52,11 @@ export class CardReaderStateService {
   
   // Language state
   readonly currentLanguage = signal<string>('en');
-  
+
+  // Debug mode state
+  readonly debugMode = signal<boolean>(false);
+  readonly patientInformation = signal<PatientInformation | null>(null);
+
   // Ticket display state
   readonly ticketCountdown = signal<number>(30);
   readonly isTicketCountdownActive = signal<boolean>(false);
@@ -355,6 +359,16 @@ export class CardReaderStateService {
     }
   }
 
+  toggleDebugMode(): void {
+    this.debugMode.update(value => !value);
+    console.log('Debug mode toggled:', this.debugMode());
+  }
+
+  setPatientInformation(info: PatientInformation | null): void {
+    this.patientInformation.set(info);
+    console.log('Patient information set:', info);
+  }
+
   loadServices(): void {
     const cardData = this.cardData();
     if (cardData) {
@@ -442,7 +456,7 @@ export class CardReaderStateService {
 
   private generateTicket(cardData: CardData, serviceId?: string): void {
     console.log('Generating ticket for card data:', cardData);
-    
+
     // Create a mock ID card raw data for the API
     const idCardRaw = JSON.stringify({
       id_number: cardData.id_number,
@@ -454,9 +468,12 @@ export class CardReaderStateService {
     const selectedService = this.selectedService();
     const serviceDuration = selectedService?.duration;
 
-    console.log('Calling API with idCardRaw:', idCardRaw, 'serviceId:', serviceId, 'serviceDuration:', serviceDuration);
+    // Get patient information if debug mode is enabled
+    const patientInfo = this.debugMode() ? this.patientInformation() : null;
 
-    this.kioskApiService.generateTicket('triage-1', idCardRaw, serviceId, serviceDuration).subscribe({
+    console.log('Calling API with idCardRaw:', idCardRaw, 'serviceId:', serviceId, 'serviceDuration:', serviceDuration, 'patientInformation:', patientInfo);
+
+    this.kioskApiService.generateTicket('triage-1', idCardRaw, serviceId, serviceDuration, patientInfo || undefined).subscribe({
       next: (response) => {
         console.log('Ticket generated successfully:', response);
         this.generateQRCode(response.qrUrl).then(qrDataUrl => {

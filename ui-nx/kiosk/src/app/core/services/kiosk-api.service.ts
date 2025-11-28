@@ -32,6 +32,13 @@ export interface CardReaderStatus {
   status: string;
 }
 
+export interface PatientInformation {
+  symbols?: string[];
+  appointmentTime?: string;
+  age?: number;
+  manualOverride?: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -39,7 +46,7 @@ export class KioskApiService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = environment.apiUrl || 'http://localhost:8080/api';
 
-  generateTicket(roomId: string, idCardRaw: string, serviceId?: string, serviceDuration?: number): Observable<TicketResponse> {
+  generateTicket(roomId: string, idCardRaw: string, serviceId?: string, serviceDuration?: number, patientInformation?: PatientInformation): Observable<TicketResponse> {
     const body: any = { idCardRaw };
     if (serviceId) {
       body.serviceId = serviceId;
@@ -47,7 +54,10 @@ export class KioskApiService {
     if (serviceDuration) {
       body.serviceDuration = serviceDuration;
     }
-    
+    if (patientInformation) {
+      body.patientInformation = patientInformation;
+    }
+
     return this.http.post<TicketResponse>(
       `${this.apiUrl}/waiting-rooms/${roomId}/swipe`,
       body

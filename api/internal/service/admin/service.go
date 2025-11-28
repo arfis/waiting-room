@@ -6,7 +6,9 @@ import (
 	"strings"
 
 	"github.com/arfis/waiting-room/internal/data/dto"
+	"github.com/arfis/waiting-room/internal/priority"
 	"github.com/arfis/waiting-room/internal/service/config"
+	priorityService "github.com/arfis/waiting-room/internal/service/priority"
 	tenantService "github.com/arfis/waiting-room/internal/service/tenant"
 	"github.com/arfis/waiting-room/internal/service/translation"
 	"github.com/arfis/waiting-room/internal/types"
@@ -16,13 +18,15 @@ type Service struct {
 	configService      *config.Service
 	translationService *translation.DeepLTranslationService
 	tenantService      *tenantService.Service
+	priorityService    *priorityService.Service
 }
 
-func NewService(configService *config.Service, translationService *translation.DeepLTranslationService, tenantService *tenantService.Service) *Service {
+func NewService(configService *config.Service, translationService *translation.DeepLTranslationService, tenantService *tenantService.Service, priorityService *priorityService.Service) *Service {
 	return &Service{
 		configService:      configService,
 		translationService: translationService,
 		tenantService:      tenantService,
+		priorityService:    priorityService,
 	}
 }
 
@@ -602,4 +606,197 @@ func (s *Service) UpdateTenant(ctx context.Context, req *dto.CreateTenantRequest
 
 func (s *Service) DeleteTenant(ctx context.Context, id string) error {
 	return s.tenantService.DeleteTenant(ctx, id)
+}
+
+// Priority Configuration methods
+func (s *Service) GetPriorityConfiguration(ctx context.Context) (*dto.PriorityConfig, error) {
+	config, err := s.priorityService.GetPriorityConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return s.convertPriorityConfigToDTO(config), nil
+}
+
+func (s *Service) UpdatePriorityConfiguration(ctx context.Context, configDTO *dto.PriorityConfig) (*dto.PriorityConfig, error) {
+	// Convert DTO to priority config
+	config := s.convertDTOToPriorityConfig(configDTO)
+
+	// Save configuration
+	err := s.priorityService.SavePriorityConfig(ctx, config)
+	if err != nil {
+		return nil, err
+	}
+
+	return configDTO, nil
+}
+
+func (s *Service) GetDefaultPriorityConfiguration(ctx context.Context) (*dto.PriorityConfig, error) {
+	config, err := s.priorityService.GetDefaultConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return s.convertPriorityConfigToDTO(config), nil
+}
+
+// Priority Config conversion methods
+func (s *Service) convertPriorityConfigToDTO(config *priority.PriorityConfig) *dto.PriorityConfig {
+	if config == nil {
+		return nil
+	}
+
+	var tiersDTO []dto.Tier
+	for _, tier := range config.PriorityModel.Tiers {
+		tierDTO := dto.Tier{
+			Id:          int64(tier.ID),
+			Name:        tier.Name,
+			Description: &tier.Description,
+			Condition: &dto.TierCondition{
+				SymbolsAnyOf:    tier.Condition.SymbolsAnyOf,
+				SymbolsNotAnyOf: tier.Condition.SymbolsNotAnyOf,
+			},
+		}
+		tiersDTO = append(tiersDTO, tierDTO)
+	}
+
+	return &dto.PriorityConfig{
+		Version:     config.Version,
+		Description: &config.Description,
+		PriorityModel: &dto.PriorityModel{
+			Algorithm: &dto.Algorithm{
+				Explanation:    config.PriorityModel.Algorithm.Explanation,
+				OrderingFields: config.PriorityModel.Algorithm.OrderingFields,
+			},
+			Tiers: tiersDTO,
+			Fitness: &dto.FitnessConfig{
+				Explanation: &config.PriorityModel.Fitness.Explanation,
+				Contributions: &dto.Contributions{
+					SymbolWeights: &dto.SymbolWeights{
+						Description: &config.PriorityModel.Fitness.Contributions.SymbolWeights.Description,
+						Values:      config.PriorityModel.Fitness.Contributions.SymbolWeights.Values,
+					},
+					WaitingTime: &dto.WaitingTime{
+						Description:     &config.PriorityModel.Fitness.Contributions.WaitingTime.Description,
+						WeightPerMinute: config.PriorityModel.Fitness.Contributions.WaitingTime.WeightPerMinute,
+					},
+					AppointmentDeviation: &dto.AppointmentDeviation{
+						Description:           &config.PriorityModel.Fitness.Contributions.AppointmentDeviation.Description,
+						EarlyPenaltyPerMinute: config.PriorityModel.Fitness.Contributions.AppointmentDeviation.EarlyPenaltyPerMinute,
+						LateBonusPerMinute:    config.PriorityModel.Fitness.Contributions.AppointmentDeviation.LateBonusPerMinute,
+					},
+					Age: &dto.AgeConfig{
+						Description:          &config.PriorityModel.Fitness.Contributions.Age.Description,
+						Under6PerYearYounger: config.PriorityModel.Fitness.Contributions.Age.Under6PerYearYounger,
+						Over65PerYearOlder:   config.PriorityModel.Fitness.Contributions.Age.Over65PerYearOlder,
+						AgeThresholdSenior:   int64(config.PriorityModel.Fitness.Contributions.Age.AgeThresholdSenior),
+					},
+					ManualOverride: &dto.ManualOverride{
+						Description: &config.PriorityModel.Fitness.Contributions.ManualOverride.Description,
+						Enabled:     config.PriorityModel.Fitness.Contributions.ManualOverride.Enabled,
+						Weight:      config.PriorityModel.Fitness.Contributions.ManualOverride.Weight,
+					},
+				},
+			},
+		},
+	}
+}
+
+func (s *Service) convertDTOToPriorityConfig(configDTO *dto.PriorityConfig) *priority.PriorityConfig {
+	if configDTO == nil || configDTO.PriorityModel == nil {
+		return nil
+	}
+
+	var tiers []priority.Tier
+	for _, tierDTO := range configDTO.PriorityModel.Tiers {
+		tier := priority.Tier{
+			ID:   int(tierDTO.Id),
+			Name: tierDTO.Name,
+		}
+		if tierDTO.Description != nil {
+			tier.Description = *tierDTO.Description
+		}
+		if tierDTO.Condition != nil {
+			tier.Condition = priority.Condition{
+				SymbolsAnyOf:    tierDTO.Condition.SymbolsAnyOf,
+				SymbolsNotAnyOf: tierDTO.Condition.SymbolsNotAnyOf,
+			}
+		}
+		tiers = append(tiers, tier)
+	}
+
+	config := &priority.PriorityConfig{
+		Version: configDTO.Version,
+		PriorityModel: priority.PriorityModel{
+			Tiers:   tiers,
+			Fitness: priority.FitnessConfig{},
+		},
+	}
+
+	// Copy optional fields
+	if configDTO.Description != nil {
+		config.Description = *configDTO.Description
+	}
+
+	if configDTO.PriorityModel.Algorithm != nil {
+		config.PriorityModel.Algorithm = priority.Algorithm{
+			Explanation:    configDTO.PriorityModel.Algorithm.Explanation,
+			OrderingFields: configDTO.PriorityModel.Algorithm.OrderingFields,
+		}
+	}
+
+	// Handle fitness config with nil checks
+	if configDTO.PriorityModel.Fitness != nil {
+		if configDTO.PriorityModel.Fitness.Explanation != nil {
+			config.PriorityModel.Fitness.Explanation = *configDTO.PriorityModel.Fitness.Explanation
+		}
+
+		if configDTO.PriorityModel.Fitness.Contributions != nil {
+			contrib := configDTO.PriorityModel.Fitness.Contributions
+
+			// Symbol weights
+			if contrib.SymbolWeights != nil {
+				config.PriorityModel.Fitness.Contributions.SymbolWeights.Values = contrib.SymbolWeights.Values
+				if contrib.SymbolWeights.Description != nil {
+					config.PriorityModel.Fitness.Contributions.SymbolWeights.Description = *contrib.SymbolWeights.Description
+				}
+			}
+
+			// Waiting time
+			if contrib.WaitingTime != nil {
+				config.PriorityModel.Fitness.Contributions.WaitingTime.WeightPerMinute = contrib.WaitingTime.WeightPerMinute
+				if contrib.WaitingTime.Description != nil {
+					config.PriorityModel.Fitness.Contributions.WaitingTime.Description = *contrib.WaitingTime.Description
+				}
+			}
+
+			// Appointment deviation
+			if contrib.AppointmentDeviation != nil {
+				config.PriorityModel.Fitness.Contributions.AppointmentDeviation.EarlyPenaltyPerMinute = contrib.AppointmentDeviation.EarlyPenaltyPerMinute
+				config.PriorityModel.Fitness.Contributions.AppointmentDeviation.LateBonusPerMinute = contrib.AppointmentDeviation.LateBonusPerMinute
+				if contrib.AppointmentDeviation.Description != nil {
+					config.PriorityModel.Fitness.Contributions.AppointmentDeviation.Description = *contrib.AppointmentDeviation.Description
+				}
+			}
+
+			// Age
+			if contrib.Age != nil {
+				config.PriorityModel.Fitness.Contributions.Age.Under6PerYearYounger = contrib.Age.Under6PerYearYounger
+				config.PriorityModel.Fitness.Contributions.Age.Over65PerYearOlder = contrib.Age.Over65PerYearOlder
+				config.PriorityModel.Fitness.Contributions.Age.AgeThresholdSenior = int(contrib.Age.AgeThresholdSenior)
+				if contrib.Age.Description != nil {
+					config.PriorityModel.Fitness.Contributions.Age.Description = *contrib.Age.Description
+				}
+			}
+
+			// Manual override
+			if contrib.ManualOverride != nil {
+				config.PriorityModel.Fitness.Contributions.ManualOverride.Enabled = contrib.ManualOverride.Enabled
+				config.PriorityModel.Fitness.Contributions.ManualOverride.Weight = contrib.ManualOverride.Weight
+				if contrib.ManualOverride.Description != nil {
+					config.PriorityModel.Fitness.Contributions.ManualOverride.Description = *contrib.ManualOverride.Description
+				}
+			}
+		}
+	}
+
+	return config
 }

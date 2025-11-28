@@ -171,8 +171,15 @@ func (r *MongoDBQueueRepository) GetQueueEntries(ctx context.Context, roomId str
 	}
 	
 	log.Printf("[QueueRepository] GetQueueEntries for room %s, tenantIDHeader: '%s', buildingId: '%s', sectionId: '%s', filter: %+v", roomId, tenantIDHeader, buildingID, sectionID, filter)
-	
-	opts := options.Find().SetSort(bson.D{{Key: "position", Value: 1}})
+
+	// Sort by priority: tier (lowest first), fitness score (lowest first), arrival time (earliest first), ticket number (alphabetically)
+	// This ensures proper priority-based ordering as defined in the priority config algorithm
+	opts := options.Find().SetSort(bson.D{
+		{Key: "tier", Value: 1},
+		{Key: "fitnessScore", Value: 1},
+		{Key: "createdAt", Value: 1},
+		{Key: "ticketNumber", Value: 1},
+	})
 
 	cursor, err := r.collection.Find(ctx, filter, opts)
 	if err != nil {
@@ -334,8 +341,14 @@ func (r *MongoDBQueueRepository) GetNextWaitingEntry(ctx context.Context, roomId
 	if sectionID != "" {
 		filter["sectionId"] = sectionID
 	}
-	
-	opts := options.FindOne().SetSort(bson.D{{Key: "position", Value: 1}})
+
+	// Sort by priority: tier (lowest first), fitness score (lowest first), arrival time (earliest first), ticket number (alphabetically)
+	opts := options.FindOne().SetSort(bson.D{
+		{Key: "tier", Value: 1},
+		{Key: "fitnessScore", Value: 1},
+		{Key: "createdAt", Value: 1},
+		{Key: "ticketNumber", Value: 1},
+	})
 
 	log.Printf("[QueueRepository] GetNextWaitingEntry filter: %+v", filter)
 
@@ -396,17 +409,18 @@ func (r *MongoDBQueueRepository) GetCurrentServedEntry(ctx context.Context, room
 }
 
 // RecalculatePositions recalculates positions for all waiting entries in a room (filtered by tenant if provided)
+// Positions are calculated based on tier (ASC), fitness score (ASC), arrival time (ASC), and ticket number (ASC)
 func (r *MongoDBQueueRepository) RecalculatePositions(ctx context.Context, roomId string) error {
 	// Extract tenant ID from context (format: "buildingId:sectionId")
 	tenantIDHeader := getTenantIDFromContext(ctx)
 	buildingID, sectionID, _ := types.ParseTenantID(tenantIDHeader)
-	
-	// Get all waiting entries sorted by creation time
+
+	// Get all waiting entries sorted by priority: tier ASC, fitness score ASC, arrival time ASC, ticket number ASC
 	filter := bson.M{
 		"waitingRoomId": roomId,
 		"status":        "WAITING",
 	}
-	
+
 	// Add tenant filtering if tenant ID is provided
 	if buildingID != "" {
 		filter["tenantId"] = buildingID
@@ -414,7 +428,14 @@ func (r *MongoDBQueueRepository) RecalculatePositions(ctx context.Context, roomI
 	if sectionID != "" {
 		filter["sectionId"] = sectionID
 	}
-	opts := options.Find().SetSort(bson.D{{Key: "createdAt", Value: 1}})
+
+	// Sort by: tier (lowest first), fitness score (lowest first), arrival time (earliest first), ticket number (alphabetically)
+	opts := options.Find().SetSort(bson.D{
+		{Key: "tier", Value: 1},
+		{Key: "fitnessScore", Value: 1},
+		{Key: "createdAt", Value: 1},
+		{Key: "ticketNumber", Value: 1},
+	})
 
 	cursor, err := r.collection.Find(ctx, filter, opts)
 	if err != nil {
@@ -427,7 +448,7 @@ func (r *MongoDBQueueRepository) RecalculatePositions(ctx context.Context, roomI
 		return fmt.Errorf("failed to decode waiting entries: %w", err)
 	}
 
-	// Update positions
+	// Update positions based on the priority-sorted order
 	for i, entry := range entries {
 		newPosition := i + 1
 		if entry.Position != int64(newPosition) {
@@ -437,6 +458,8 @@ func (r *MongoDBQueueRepository) RecalculatePositions(ctx context.Context, roomI
 		}
 	}
 
+	log.Printf("[QueueRepository] Recalculated positions for %d entries in room %s (tenant: %s, section: %s)",
+		len(entries), roomId, buildingID, sectionID)
 	return nil
 }
 
@@ -484,7 +507,13 @@ func (r *MongoDBQueueRepository) GetNextWaitingEntryForServicePoint(ctx context.
 		filter["sectionId"] = sectionID
 	}
 
-	opts := options.FindOne().SetSort(bson.M{"position": 1})
+	// Sort by priority: tier (lowest first), fitness score (lowest first), arrival time (earliest first), ticket number (alphabetically)
+	opts := options.FindOne().SetSort(bson.D{
+		{Key: "tier", Value: 1},
+		{Key: "fitnessScore", Value: 1},
+		{Key: "createdAt", Value: 1},
+		{Key: "ticketNumber", Value: 1},
+	})
 
 	var entry types.Entry
 	err := collection.FindOne(ctx, filter, opts).Decode(&entry)

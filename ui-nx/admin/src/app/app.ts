@@ -70,6 +70,8 @@ export class AppComponent implements OnInit {
         return 'Dashboard';
       case '/configuration':
         return 'Configuration';
+      case '/priority-configuration':
+        return 'Priority Configuration';
       case '/card-readers':
         return 'Card Readers';
       default:

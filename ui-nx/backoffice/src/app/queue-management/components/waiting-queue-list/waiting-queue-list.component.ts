@@ -123,6 +123,41 @@ import { TranslatePipe } from '../../../../../../src/lib/i18n';
                       </div>
                     </div>
                   }
+
+                  @if (entry.age) {
+                    <div class="flex items-center gap-2 text-sm">
+                      <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                      </div>
+                      <div class="flex-1">
+                        <div class="text-xs text-gray-500 font-semibold uppercase tracking-wide">Age</div>
+                        <div class="font-bold text-gray-900">{{ entry.age }} years old</div>
+                      </div>
+                    </div>
+                  }
+
+                  @if (entry.symbols && entry.symbols.length > 0) {
+                    <div class="flex items-center gap-2 text-sm">
+                      <div class="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-1.959-1.333-2.73 0L3.732 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                      </div>
+                      <div class="flex-1">
+                        <div class="text-xs text-gray-500 font-semibold uppercase tracking-wide">Priority</div>
+                        <div class="flex flex-wrap gap-1 mt-1">
+                          @for (symbol of entry.symbols; track symbol) {
+                            <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-bold"
+                                  [class]="getSymbolClass(symbol)">
+                              {{ symbol }}
+                            </span>
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  }
                 </div>
 
                 <!-- Timestamp -->
@@ -194,5 +229,20 @@ export class WaitingQueueListComponent {
     }
 
     return '';
+  }
+
+  // Get appropriate CSS class for priority symbols
+  getSymbolClass(symbol: string): string {
+    const upperSymbol = symbol.toUpperCase();
+    switch (upperSymbol) {
+      case 'STATIM':
+        return 'bg-red-600 text-white';
+      case 'VIP':
+        return 'bg-purple-600 text-white';
+      case 'IMMOBILE':
+        return 'bg-orange-600 text-white';
+      default:
+        return 'bg-gray-600 text-white';
+    }
   }
 }

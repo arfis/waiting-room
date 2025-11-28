@@ -1,0 +1,358 @@
+<div class="priority-configuration-container">
+  <div class="header">
+    <h1>Priority Calculator Configuration</h1>
+    <div class="actions">
+      <button class="btn btn-secondary" (click)="loadDefaultConfiguration()" [disabled]="isLoading()">
+        Load Default Config
+      </button>
+      <button class="btn btn-primary" (click)="saveConfiguration()" [disabled]="isSaving() || isLoading()">
+        {{ isSaving() ? 'Saving...' : 'Save Configuration' }}
+      </button>
+    </div>
+  </div>
+
+  <div class="loading" *ngIf="isLoading()">
+    <p>Loading configuration...</p>
+  </div>
+
+  <div class="config-content" *ngIf="!isLoading()">
+    <!-- Basic Info Section -->
+    <section class="config-section">
+      <h2>Basic Information</h2>
+      <div class="form-group">
+        <label for="version">Version</label>
+        <input
+          type="text"
+          id="version"
+          [(ngModel)]="priorityConfig.version"
+          class="form-control"
+        />
+      </div>
+      <div class="form-group">
+        <label for="description">Description</label>
+        <textarea
+          id="description"
+          [(ngModel)]="priorityConfig.description"
+          class="form-control"
+          rows="3"
+        ></textarea>
+      </div>
+    </section>
+
+    <!-- Algorithm Section -->
+    <section class="config-section">
+      <h2>Algorithm</h2>
+      <div class="form-group">
+        <label>Explanation</label>
+        <textarea
+          [(ngModel)]="priorityConfig.priorityModel.algorithm.explanation"
+          class="form-control"
+          rows="3"
+          placeholder="Enter explanation lines (one per line)"
+        ></textarea>
+        <small class="form-text">Separate multiple explanation lines with newlines</small>
+      </div>
+      <div class="form-group">
+        <label>Ordering Fields</label>
+        <input
+          type="text"
+          [(ngModel)]="priorityConfig.priorityModel.algorithm.orderingFields"
+          class="form-control"
+          placeholder="tier, fitnessScore"
+        />
+        <small class="form-text">Comma-separated list of fields used for ordering</small>
+      </div>
+    </section>
+
+    <!-- Tiers Section -->
+    <section class="config-section">
+      <div class="section-header">
+        <h2>Priority Tiers</h2>
+        <button class="btn btn-sm btn-success" (click)="addTier()">Add Tier</button>
+      </div>
+
+      <div class="tiers-list">
+        <div
+          *ngFor="let tier of priorityConfig.priorityModel.tiers; let i = index; trackBy: trackByTierId"
+          class="tier-card"
+        >
+          <div class="tier-header">
+            <h3>Tier {{ tier.id }} ({{ i === 0 ? 'Highest' : i === priorityConfig.priorityModel.tiers.length - 1 ? 'Lowest' : 'Medium' }} Priority)</h3>
+            <div class="tier-actions">
+              <button
+                class="btn btn-icon"
+                (click)="moveTierUp(i)"
+                [disabled]="i === 0"
+                title="Move up"
+              >↑</button>
+              <button
+                class="btn btn-icon"
+                (click)="moveTierDown(i)"
+                [disabled]="i === priorityConfig.priorityModel.tiers.length - 1"
+                title="Move down"
+              >↓</button>
+              <button class="btn btn-icon btn-danger" (click)="removeTier(i)" title="Remove">×</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Name</label>
+            <input
+              type="text"
+              [(ngModel)]="tier.name"
+              class="form-control"
+            />
+          </div>
+
+          <div class="form-group">
+            <label>Description</label>
+            <textarea
+              [(ngModel)]="tier.description"
+              class="form-control"
+              rows="2"
+            ></textarea>
+          </div>
+
+          <div class="tier-conditions">
+            <div class="condition-group">
+              <div class="condition-header">
+                <label>Symbols (Any Of)</label>
+                <button class="btn btn-sm" (click)="addSymbolToTier(i, 'anyOf')">+ Add</button>
+              </div>
+              <small class="form-text">Entry must have at least one of these symbols</small>
+              <div class="symbols-list">
+                <span
+                  *ngFor="let symbol of tier.condition.symbolsAnyOf; let j = index"
+                  class="symbol-badge"
+                >
+                  {{ symbol }}
+                  <button class="remove-btn" (click)="removeSymbolFromTier(i, 'anyOf', j)">×</button>
+                </span>
+                <span *ngIf="!tier.condition.symbolsAnyOf || tier.condition.symbolsAnyOf.length === 0" class="empty-state">
+                  No symbols added
+                </span>
+              </div>
+            </div>
+
+            <div class="condition-group">
+              <div class="condition-header">
+                <label>Symbols (Not Any Of)</label>
+                <button class="btn btn-sm" (click)="addSymbolToTier(i, 'notAnyOf')">+ Add</button>
+              </div>
+              <small class="form-text">Entry must NOT have any of these symbols</small>
+              <div class="symbols-list">
+                <span
+                  *ngFor="let symbol of tier.condition.symbolsNotAnyOf; let j = index"
+                  class="symbol-badge symbol-badge-negative"
+                >
+                  {{ symbol }}
+                  <button class="remove-btn" (click)="removeSymbolFromTier(i, 'notAnyOf', j)">×</button>
+                </span>
+                <span *ngIf="!tier.condition.symbolsNotAnyOf || tier.condition.symbolsNotAnyOf.length === 0" class="empty-state">
+                  No symbols added
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="priorityConfig.priorityModel.tiers.length === 0" class="empty-state-large">
+          No tiers configured. Click "Add Tier" to create your first tier.
+        </div>
+      </div>
+    </section>
+
+    <!-- Fitness Configuration Section -->
+    <section class="config-section">
+      <h2>Fitness Score Configuration</h2>
+
+      <div class="form-group">
+        <label for="fitness-explanation">Explanation</label>
+        <textarea
+          id="fitness-explanation"
+          [(ngModel)]="priorityConfig.priorityModel.fitness.explanation"
+          class="form-control"
+          rows="3"
+        ></textarea>
+      </div>
+
+      <!-- Symbol Weights -->
+      <div class="subsection">
+        <div class="section-header">
+          <h3>Symbol Weights</h3>
+          <button class="btn btn-sm btn-success" (click)="addSymbolWeight()">Add Symbol Weight</button>
+        </div>
+
+        <div class="form-group">
+          <label>Description</label>
+          <input
+            type="text"
+            [(ngModel)]="priorityConfig.priorityModel.fitness.contributions.symbolWeights.description"
+            class="form-control"
+          />
+        </div>
+
+        <div class="symbol-weights-list">
+          <div
+            *ngFor="let entry of symbolWeightEntries; trackBy: trackByKey"
+            class="symbol-weight-entry"
+          >
+            <span class="symbol-name">{{ entry.key }}</span>
+            <input
+              type="number"
+              [(ngModel)]="entry.value"
+              (ngModelChange)="updateSymbolWeight(entry.key, $event)"
+              class="form-control weight-input"
+              step="0.1"
+            />
+            <button class="btn btn-icon btn-danger" (click)="removeSymbolWeight(entry.key)">×</button>
+          </div>
+          <div *ngIf="symbolWeightEntries.length === 0" class="empty-state">
+            No symbol weights configured
+          </div>
+        </div>
+      </div>
+
+      <!-- Waiting Time -->
+      <div class="subsection">
+        <h3>Waiting Time</h3>
+        <div class="form-group">
+          <label>Description</label>
+          <input
+            type="text"
+            [(ngModel)]="priorityConfig.priorityModel.fitness.contributions.waitingTime.description"
+            class="form-control"
+          />
+        </div>
+        <div class="form-group">
+          <label>Weight Per Minute</label>
+          <input
+            type="number"
+            [(ngModel)]="priorityConfig.priorityModel.fitness.contributions.waitingTime.weightPerMinute"
+            class="form-control"
+            step="0.01"
+          />
+          <small class="form-text">Higher values mean longer waiting time increases priority more</small>
+        </div>
+      </div>
+
+      <!-- Appointment Deviation -->
+      <div class="subsection">
+        <h3>Appointment Deviation</h3>
+        <div class="form-group">
+          <label>Description</label>
+          <input
+            type="text"
+            [(ngModel)]="priorityConfig.priorityModel.fitness.contributions.appointmentDeviation.description"
+            class="form-control"
+          />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Early Penalty Per Minute</label>
+            <input
+              type="number"
+              [(ngModel)]="priorityConfig.priorityModel.fitness.contributions.appointmentDeviation.earlyPenaltyPerMinute"
+              class="form-control"
+              step="0.01"
+            />
+            <small class="form-text">Penalty for arriving before appointment time</small>
+          </div>
+          <div class="form-group">
+            <label>Late Bonus Per Minute</label>
+            <input
+              type="number"
+              [(ngModel)]="priorityConfig.priorityModel.fitness.contributions.appointmentDeviation.lateBonusPerMinute"
+              class="form-control"
+              step="0.01"
+            />
+            <small class="form-text">Bonus (negative value) for arriving after appointment time</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Age Configuration -->
+      <div class="subsection">
+        <h3>Age-Based Priority</h3>
+        <div class="form-group">
+          <label>Description</label>
+          <input
+            type="text"
+            [(ngModel)]="priorityConfig.priorityModel.fitness.contributions.age.description"
+            class="form-control"
+          />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Under 6 - Per Year Younger</label>
+            <input
+              type="number"
+              [(ngModel)]="priorityConfig.priorityModel.fitness.contributions.age.under6PerYearYounger"
+              class="form-control"
+              step="0.1"
+            />
+            <small class="form-text">Priority boost for children under 6</small>
+          </div>
+          <div class="form-group">
+            <label>Age Threshold (Senior)</label>
+            <input
+              type="number"
+              [(ngModel)]="priorityConfig.priorityModel.fitness.contributions.age.ageThresholdSenior"
+              class="form-control"
+            />
+            <small class="form-text">Age at which senior priority kicks in</small>
+          </div>
+          <div class="form-group">
+            <label>Over 65 - Per Year Older</label>
+            <input
+              type="number"
+              [(ngModel)]="priorityConfig.priorityModel.fitness.contributions.age.over65PerYearOlder"
+              class="form-control"
+              step="0.1"
+            />
+            <small class="form-text">Priority boost for seniors</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Manual Override -->
+      <div class="subsection">
+        <h3>Manual Override</h3>
+        <div class="form-group">
+          <label>Description</label>
+          <input
+            type="text"
+            [(ngModel)]="priorityConfig.priorityModel.fitness.contributions.manualOverride.description"
+            class="form-control"
+          />
+        </div>
+        <div class="form-row">
+          <div class="form-group form-group-checkbox">
+            <label>
+              <input
+                type="checkbox"
+                [(ngModel)]="priorityConfig.priorityModel.fitness.contributions.manualOverride.enabled"
+              />
+              <span>Enable Manual Override</span>
+            </label>
+          </div>
+          <div class="form-group">
+            <label>Weight</label>
+            <input
+              type="number"
+              [(ngModel)]="priorityConfig.priorityModel.fitness.contributions.manualOverride.weight"
+              class="form-control"
+              step="0.1"
+              [disabled]="!priorityConfig.priorityModel.fitness.contributions.manualOverride.enabled"
+            />
+            <small class="form-text">Multiplier for manual override values</small>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="footer">
+    <p>Last updated: {{ lastUpdated() }}</p>
+  </div>
+</div>

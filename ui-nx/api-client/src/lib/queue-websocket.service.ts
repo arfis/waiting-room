@@ -18,6 +18,8 @@ export interface WebSocketQueueEntry extends BaseQueueEntry {
   };
   serviceName?: string;
   serviceDuration?: number;
+  age?: number;
+  symbols?: string[];
 }
 
 export interface QueueUpdate {
