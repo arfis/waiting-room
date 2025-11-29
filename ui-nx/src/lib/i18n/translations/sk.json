@@ -140,7 +140,12 @@
     "completed": "Dokončený",
     "skipped": "Preskočený",
     "cancelled": "Zrušený",
-    "noShow": "Neprišiel"
+    "noShow": "Neprišiel",
+    "age": "Vek",
+    "yearsOld": "rokov",
+    "priority": "Priorita",
+    "waitingTime": "Čas čakania",
+    "appointment": "Objednávka"
   },
   "tv": {
     "title": "TV displej",

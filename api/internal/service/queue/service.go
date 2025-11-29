@@ -27,7 +27,7 @@ func New(queueService *queue.WaitingQueue, broadcastFunc func(string, string), w
 	}
 }
 
-// convertEntryToDTO converts an internal entry to a DTO with all fields including age and symbols
+// convertEntryToDTO converts an internal entry to a DTO with all fields including age, symbols, appointmentTime, and createdAt
 func convertEntryToDTO(entry *queue.Entry) dto.QueueEntry {
 	queueEntry := dto.QueueEntry{
 		ID:            entry.ID,
@@ -53,6 +53,12 @@ func convertEntryToDTO(entry *queue.Entry) dto.QueueEntry {
 	}
 	if len(entry.Symbols) > 0 {
 		queueEntry.Symbols = entry.Symbols
+	}
+	if entry.AppointmentTime != nil {
+		queueEntry.AppointmentTime = entry.AppointmentTime
+	}
+	if !entry.CreatedAt.IsZero() {
+		queueEntry.CreatedAt = &entry.CreatedAt
 	}
 
 	return queueEntry

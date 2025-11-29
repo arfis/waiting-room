@@ -140,7 +140,12 @@
     "completed": "Completed",
     "skipped": "Skipped",
     "cancelled": "Cancelled",
-    "noShow": "No Show"
+    "noShow": "No Show",
+    "age": "Age",
+    "yearsOld": "years old",
+    "priority": "Priority",
+    "waitingTime": "Waiting Time",
+    "appointment": "Appointment"
   },
   "tv": {
     "title": "TV Display",

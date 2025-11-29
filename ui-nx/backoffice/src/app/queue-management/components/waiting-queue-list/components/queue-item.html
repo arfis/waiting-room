@@ -1,0 +1,217 @@
+<div
+  class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 hover:border-blue-300 group">
+  <!-- Header with Position Badge -->
+  <div class="bg-gradient-to-r from-slate-50 to-gray-50 px-5 py-3 border-b border-gray-200">
+    <div class="flex items-center justify-between">
+      <div class="text-3xl font-mono font-black text-blue-600 group-hover:text-blue-700 transition-colors">
+        {{ entry().ticketNumber }}
+      </div>
+      <div class="flex items-center gap-2">
+                    <span
+                      class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold bg-gradient-to-r from-amber-400 to-orange-400 text-white shadow-md">
+                      <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path
+                          d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z"/>
+                      </svg>
+                      {{ 'backoffice.position' | translate }} {{ entry().position }}
+                    </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Customer Information -->
+  <div class="p-5 space-y-4">
+    @if (entry().cardData) {
+      <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-100">
+        <div class="flex items-start gap-3">
+          <div class="flex-shrink-0">
+            <div
+              class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
+              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+              </svg>
+            </div>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-base font-bold text-gray-900 truncate">
+              {{ getCardDataField(entry(), 'firstName') }} {{ getCardDataField(entry(), 'lastName') }}
+            </div>
+            <div class="text-sm font-mono text-gray-600 mt-1">
+              ID: {{ getCardDataField(entry(), 'idNumber') }}
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Main Content: Two Column Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <!-- Left Column: Service Attributes -->
+      <div class="space-y-2">
+      @if (entry().servicePoint) {
+        <div class="flex items-center gap-2 text-sm">
+          <div class="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+            <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            </svg>
+          </div>
+          <div class="flex-1">
+            <div
+              class="text-xs text-gray-500 font-semibold uppercase tracking-wide">{{ 'common.servicePoint' | translate }}
+            </div>
+            <div class="font-bold text-gray-900">{{ entry().servicePoint }}</div>
+          </div>
+        </div>
+      }
+
+      @if (entry().serviceName) {
+        <div class="flex items-center gap-2 text-sm">
+          <div class="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
+            <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+          <div class="flex-1">
+            <div
+              class="text-xs text-gray-500 font-semibold uppercase tracking-wide">{{ 'backoffice.serviceType' | translate }}
+            </div>
+            <div class="font-bold text-gray-900">{{ entry().serviceName }}</div>
+          </div>
+        </div>
+      }
+
+      @if (entry().serviceDuration) {
+        <div class="flex items-center gap-2 text-sm">
+          <div class="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
+            <svg class="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+          <div class="flex-1">
+            <div
+              class="text-xs text-gray-500 font-semibold uppercase tracking-wide">{{ 'backoffice.estDuration' | translate }}
+            </div>
+            <div class="font-bold text-gray-900">{{ entry().serviceDuration }} {{ 'backoffice.minutes' | translate }}
+            </div>
+          </div>
+        </div>
+      }
+
+      @if (entry().age) {
+        <div class="flex items-center gap-2 text-sm">
+          <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+          </div>
+          <div class="flex-1">
+            <div class="text-xs text-gray-500 font-semibold uppercase tracking-wide">{{ 'backoffice.age' | translate }}</div>
+            <div class="font-bold text-gray-900">{{ entry().age }} {{ 'backoffice.yearsOld' | translate }}</div>
+          </div>
+        </div>
+      }
+
+        @if (entry()?.symbols?.length) {
+          <div class="flex items-center gap-2 text-sm">
+            <div class="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-1.959-1.333-2.73 0L3.732 16c-.77 1.333.192 3 1.732 3z"></path>
+              </svg>
+            </div>
+            <div class="flex-1">
+              <div class="text-xs text-gray-500 font-semibold uppercase tracking-wide">{{ 'backoffice.priority' | translate }}</div>
+              <div class="flex flex-wrap gap-1 mt-1">
+                @for (symbol of entry().symbols; track symbol) {
+                  <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-bold"
+                        [class]="getSymbolClass(symbol)">
+                                {{ symbol }}
+                              </span>
+                }
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Right Column: Time Information -->
+      <div class="space-y-3">
+        <!-- Waiting Time Card -->
+        <div class="rounded-lg p-3 border transition-all"
+             [class]="'bg-gradient-to-br ' + getWaitingTimeColorClass()">
+          <div class="flex items-center gap-2">
+            <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                 [class]="getWaitingTimeIconClass()">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+            <div class="flex-1">
+              <div class="text-xs font-semibold uppercase tracking-wide"
+                   [class]="getWaitingTimeLabelClass()">
+                {{ 'backoffice.waitingTime' | translate }}
+              </div>
+              <div class="text-lg font-bold"
+                   [class]="getWaitingTimeTextClass()">
+                {{ waitingTime() }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Appointment Time Card (if available) -->
+        @if (appointmentInfo(); as apptInfo) {
+          <div class="rounded-lg p-3 border transition-all"
+               [class]="'bg-gradient-to-br ' + (apptInfo.status === 'early' ? 'from-blue-50 to-cyan-50 border-blue-200' : apptInfo.status === 'on-time' ? 'from-green-50 to-emerald-50 border-green-200' : 'from-red-50 to-rose-50 border-red-200')">
+            <div class="flex items-center gap-2">
+              <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                   [class]="apptInfo.status === 'early' ? 'bg-blue-500' : apptInfo.status === 'on-time' ? 'bg-green-500' : 'bg-red-500'">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+              </div>
+              <div class="flex-1">
+                <div class="text-xs font-semibold uppercase tracking-wide"
+                     [class]="apptInfo.status === 'early' ? 'text-blue-600' : apptInfo.status === 'on-time' ? 'text-green-600' : 'text-red-600'">
+                  {{ 'backoffice.appointment' | translate }}
+                </div>
+                <div class="flex items-baseline gap-2 flex-wrap">
+                  <div class="text-lg font-bold"
+                       [class]="apptInfo.status === 'early' ? 'text-blue-900' : apptInfo.status === 'on-time' ? 'text-green-900' : 'text-red-900'">
+                    {{ apptInfo.formattedTime }}
+                  </div>
+                  <div class="text-xs font-semibold px-2 py-0.5 rounded-full"
+                       [class]="getAppointmentStatusClass(apptInfo.status)">
+                    {{ apptInfo.displayText }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Timestamp -->
+    <div class="flex items-center gap-2 text-xs text-gray-500 pt-2 border-t border-gray-100">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+      <span>{{ 'backoffice.joined' | translate }} {{ entry().createdAt | date:'short' }}</span>
+    </div>
+
+    <!-- Call Button -->
+    <ng-content></ng-content>
+  </div>
+</div>
+

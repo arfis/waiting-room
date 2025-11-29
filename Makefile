@@ -237,5 +237,9 @@ test-service-points:
 	@echo "$(YELLOW)3. Marking as in room...$(NC)"
 	@curl -X POST http://localhost:8080/api/waiting-rooms/triage-1/service-points/window-1/mark-in-room -H "Content-Type: application/json" -d '{"entryId": "test-id"}' | jq .
 
+
+.PHONY: create-component
+create-component:
+	npx nx g @nx/angular:component $(name)
 # Default target
 .DEFAULT_GOAL := help

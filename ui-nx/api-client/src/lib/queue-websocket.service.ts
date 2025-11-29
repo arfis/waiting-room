@@ -20,6 +20,7 @@ export interface WebSocketQueueEntry extends BaseQueueEntry {
   serviceDuration?: number;
   age?: number;
   symbols?: string[];
+  appointmentTime?: string; // ISO 8601 datetime string
 }
 
 export interface QueueUpdate {

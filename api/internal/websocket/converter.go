@@ -34,10 +34,16 @@ func convertEntriesToWebSocketFormat(entries []dto.QueueEntry) []map[string]inte
 		if len(entry.Symbols) > 0 {
 			wsEntry["symbols"] = entry.Symbols
 		}
+		if entry.AppointmentTime != nil {
+			wsEntry["appointmentTime"] = entry.AppointmentTime.Format(time.RFC3339)
+		}
 
-		// Add timestamps (these will be added by the service in the future if needed)
-		wsEntry["createdAt"] = time.Now().Format(time.RFC3339)
-		wsEntry["updatedAt"] = time.Now().Format(time.RFC3339)
+		// Add timestamps from the entry
+		if entry.CreatedAt != nil {
+			wsEntry["createdAt"] = entry.CreatedAt.Format(time.RFC3339)
+			wsEntry["updatedAt"] = entry.CreatedAt.Format(time.RFC3339) // Use createdAt as updatedAt for now
+		}
+		// Note: If createdAt is not set, we don't send it at all - frontend will handle gracefully
 
 		wsEntries = append(wsEntries, wsEntry)
 	}
