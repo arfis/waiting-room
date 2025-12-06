@@ -124,38 +124,16 @@
       </div>
     } @else if (showQueueManagement()) {
       <div class="space-y-6">
-
-        <!-- Call Next Button -->
-        <div class="mb-4">
-          <button
-            class="w-full px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-bold hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
-            (click)="onCallNext()"
-            [disabled]="isLoading() || waitingEntries().length === 0">
-            @if (isLoading()) {
-              <span class="flex items-center justify-center gap-2">
-                <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span>{{ 'backoffice.processing' | translate }}</span>
-              </span>
-            } @else {
-              <span class="flex items-center justify-center gap-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 9l3 3m0 0l-3 3m3-3H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                <span>{{ 'backoffice.callNextPerson' | translate }}</span>
-              </span>
-            }
-          </button>
-        </div>
-
-        <!-- Currently Being Served (with integrated finish button) -->
+        <!-- Currently Being Served (sticky with call next button) -->
         <app-current-entry-card
+          [class.opacity-80]="isScrolled()"
           [entry]="getCalledEntryForSelectedServicePoint()"
           [statusText]="getStatusText(getCalledEntryForSelectedServicePoint()?.status || '')"
           [isLoading]="isLoading()"
+          [isScrolled]="isScrolled()"
+          [hasWaitingEntries]="waitingEntries().length > 0"
           (finishClick)="onFinishCurrent()"
+          (callNextClick)="onCallNext()"
         />
 
 

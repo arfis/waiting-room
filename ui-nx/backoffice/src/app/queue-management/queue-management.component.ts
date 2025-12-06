@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, OnDestroy, ChangeDetectionStrategy, signal, computed, effect } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, ChangeDetectionStrategy, signal, computed, effect, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { QueueStateService } from '../core/services/queue-state.service';
@@ -52,6 +52,14 @@ export class QueueManagementComponent implements OnInit, OnDestroy {
   protected readonly isConnected = this.queueState.isConnected;
   protected readonly error = this.queueState.wsError;
 
+  // Scroll state
+  protected readonly isScrolled = signal(false);
+  // Listen to window scroll events
+  @HostListener('window:scroll', ['$event'])
+  onWindowScroll(event: Event) {
+    this.isScrolled.set(window.scrollY > 50);
+  }
+
   // Configuration-related computed properties
   protected readonly availableServicePoints = computed(() => {
     const config = this.configuration();
@@ -59,15 +67,15 @@ export class QueueManagementComponent implements OnInit, OnDestroy {
       // If no rooms configured, return empty array (no service points)
       return [];
     }
-    
+
     // Get service points from the default room or first room
     const defaultRoom = config.rooms.find((room: any) => room.id === config.defaultRoom) || config.rooms[0];
     const servicePoints = defaultRoom?.servicePoints || [];
-    
+
     // Return service points as-is (empty if none configured)
     return servicePoints;
   });
-  
+
   // Check if there are any configured service points (not default/auto-generated)
   protected readonly hasConfiguredServicePoints = computed(() => {
     const servicePoints = this.availableServicePoints();
@@ -105,13 +113,13 @@ export class QueueManagementComponent implements OnInit, OnDestroy {
       const tenantId = this.tenantService.selectedTenantId();
       const configLoaded = !this.isConfigLoading() && !this.configError();
       const servicePoints = this.availableServicePoints();
-      
+
       // Initialize queue state if:
       // 1. Tenant is selected
       // 2. Config is loaded
       // 3. Either service point is selected OR there are 0-1 service points (implicit/auto-selected)
       const hasServicePointContext = this.selectedServicePoint() || servicePoints.length <= 1;
-      
+
       if (tenantId && configLoaded && hasServicePointContext && this.lastTenantId === null) {
         const servicePointName = this.selectedServicePoint()?.name || 'implicit';
         console.log('Initializing queue state with tenant:', tenantId, 'service point:', servicePointName);
@@ -136,10 +144,10 @@ export class QueueManagementComponent implements OnInit, OnDestroy {
       console.warn('Cannot initialize queue management: No tenant selected');
       return;
     }
-    
+
     // Load configuration first, then initialize queue state
     await this.loadConfiguration();
-  
+
     // Initialize queue state if:
     // - Service point is selected (1+ service points), OR
     // - No service points configured (0 = implicit single service point)
@@ -173,7 +181,7 @@ export class QueueManagementComponent implements OnInit, OnDestroy {
     // Get service point name: use selected if available, otherwise use empty string (implicit single service point)
     // Use NAME not ID, consistent with onCallNext() - backend stores service point by name
     const servicePointName = this.selectedServicePoint()?.name || '';
-    
+
     // Call the specific entry by ID
     // If no service point selected and entry has a service point, use that (for consistency)
     // Otherwise use the selected service point name or empty string
@@ -195,17 +203,17 @@ export class QueueManagementComponent implements OnInit, OnDestroy {
   protected getCalledEntryForSelectedServicePoint(): WebSocketQueueEntry | null {
     const selectedServicePoint = this.selectedServicePoint();
     const servicePointName = selectedServicePoint?.name || '';
-    
+
     // If no service point selected (0 service points = implicit), try to get current entry without service point filter
     // Otherwise, get the current entry for the selected service point
     if (!selectedServicePoint) {
       // For implicit single service point (0 configured), get any current entry
       const entries = this.queueState.queueEntries();
-      return entries.find(entry => 
+      return entries.find(entry =>
         entry.status === 'CALLED' || entry.status === 'IN_SERVICE'
       ) || null;
     }
-    
+
     // Get the current entry (CALLED or IN_SERVICE) for the selected service point
     return this.queueState.getCurrentEntryForServicePoint(servicePointName);
   }
@@ -214,11 +222,11 @@ export class QueueManagementComponent implements OnInit, OnDestroy {
   private async loadConfiguration(): Promise<void> {
     this.isConfigLoading.set(true);
     this.configError.set(null);
-    
+
     try {
       const tenantId = this.tenantService.getSelectedTenantIdSync();
       console.log('[QueueManagement] Loading configuration for tenant:', tenantId);
-      
+
       // Use HttpClient directly so it goes through the tenant interceptor
       const config = await this.http.get<ConfigurationResponse>(`${this.apiUrl}/config`).toPromise();
       if (config) {
@@ -234,9 +242,9 @@ export class QueueManagementComponent implements OnInit, OnDestroy {
             });
           }
         }
-        
+
         this.configuration.set(config);
-        
+
         // Handle service points: 0 = implicit single, 1 = auto-select, 2+ = user selects
         const servicePoints = this.availableServicePoints();
         console.log('[QueueManagement] Available service points (after processing):', servicePoints.length);
@@ -277,14 +285,14 @@ export class QueueManagementComponent implements OnInit, OnDestroy {
 
   protected selectServicePoint(servicePoint: ServicePointConfiguration): void {
     this.selectedServicePoint.set(servicePoint);
-    
+
     // Check if tenant is selected before initializing
     const tenantId = this.tenantService.getSelectedTenantIdSync();
     if (!tenantId) {
       console.warn('Cannot initialize queue state: No tenant selected');
       return;
     }
-    
+
     // Initialize queue state after service point selection - load waiting and current entries
     console.log('[QueueManagement] Service point selected:', servicePoint.name, 'Initializing queue state');
     this.queueState.initialize(this.roomId, ['WAITING', 'IN_SERVICE']);
@@ -298,4 +306,6 @@ export class QueueManagementComponent implements OnInit, OnDestroy {
   protected retryConfiguration(): void {
     this.loadConfiguration();
   }
+
+  protected readonly screen = screen;
 }
