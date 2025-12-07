@@ -62,8 +62,7 @@ func (s *WaitingQueue) CallNext(ctx context.Context, roomId string) (*Entry, err
 }
 
 // FinishCurrent finishes the current person without calling the next
-func (s *WaitingQueue) FinishCurrent(roomId string) (*Entry, error) {
-	ctx := context.Background()
+func (s *WaitingQueue) FinishCurrent(ctx context.Context, roomId string) (*Entry, error) {
 
 	// Get the currently served person
 	currentEntry, err := s.repo.GetCurrentServedEntry(ctx, roomId)
@@ -86,5 +85,48 @@ func (s *WaitingQueue) FinishCurrent(roomId string) (*Entry, error) {
 	}
 
 	log.Printf("Finished current entry %s with ticket %s", currentEntry.ID, currentEntry.TicketNumber)
+	return currentEntry, nil
+}
+
+// PlaceBackCurrent places the current person back in the queue
+func (s *WaitingQueue) PlaceBackCurrent(ctx context.Context, roomId string) (*Entry, error) {
+
+	// Get the currently served person
+	currentEntry, err := s.repo.GetCurrentServedEntry(ctx, roomId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current served entry: %w", err)
+	}
+
+	if currentEntry == nil {
+		return nil, fmt.Errorf("no one is currently being served")
+	}
+
+	// Add "RETURNED" symbol to indicate this person was placed back
+	if currentEntry.Symbols == nil {
+		currentEntry.Symbols = []string{}
+	}
+	// Check if RETURNED symbol already exists to avoid duplicates
+	hasReturnedSymbol := false
+	for _, symbol := range currentEntry.Symbols {
+		if symbol == "RETURNED" {
+			hasReturnedSymbol = true
+			break
+		}
+	}
+	if !hasReturnedSymbol {
+		currentEntry.Symbols = append(currentEntry.Symbols, "RETURNED")
+	}
+
+	// Update the entry with new symbols and status WAITING
+	if err := s.repo.UpdateEntryStatusAndSymbols(ctx, currentEntry.ID, "WAITING", currentEntry.Symbols); err != nil {
+		return nil, fmt.Errorf("failed to place back entry: %w", err)
+	}
+
+	// Recalculate positions - this person will go to the end of the queue
+	if err := s.repo.RecalculatePositions(ctx, roomId); err != nil {
+		log.Printf("Warning: Failed to recalculate positions: %v", err)
+	}
+
+	log.Printf("Placed back entry %s with ticket %s to queue", currentEntry.ID, currentEntry.TicketNumber)
 	return currentEntry, nil
 }

@@ -57,7 +57,7 @@ func convertEntryToDTO(entry *queue.Entry) dto.QueueEntry {
 
 	if entry.AppointmentTime != nil {
 		flexTime := dto.FlexibleTime{Time: *entry.AppointmentTime}
-		queueEntry.AppointmentTime = &flexTime
+		queueEntry.AppointmentTime = &flexTime.Time
 	}
 	queueEntry.CreatedAt = entry.CreatedAt
 
@@ -125,7 +125,7 @@ func (s *Service) CallNext(ctx context.Context, roomId string, servicePointId st
 }
 
 func (s *Service) FinishCurrent(ctx context.Context, roomId string) (*dto.QueueEntry, error) {
-	entry, err := s.queueService.FinishCurrent(roomId)
+	entry, err := s.queueService.FinishCurrent(ctx, roomId)
 	if err != nil {
 		return nil, ngErrors.New(ngErrors.InternalServerErrorCode, "failed to finish current", 500, nil)
 	}
@@ -155,6 +155,32 @@ func (s *Service) FinishCurrent(ctx context.Context, roomId string) (*dto.QueueE
 				log.Printf("Failed to send webhook notification for ticket completed: %v", err)
 			}
 		}()
+	}
+
+	return &queueEntry, nil
+}
+
+func (s *Service) PlaceBack(ctx context.Context, roomId string) (*dto.QueueEntry, error) {
+	entry, err := s.queueService.PlaceBackCurrent(ctx, roomId)
+	if err != nil {
+		return nil, ngErrors.New(ngErrors.InternalServerErrorCode, "failed to place back current person", 500, nil)
+	}
+
+	if entry == nil {
+		return nil, ngErrors.New(ngErrors.NotFoundErrorCode, "no one is currently being served", 404, nil)
+	}
+
+	// Convert to QueueEntry using helper function
+	queueEntry := convertEntryToDTO(entry)
+
+	// Broadcast queue update - only to the tenant that changed
+	if s.broadcastFunc != nil {
+		tenantID := service.GetTenantID(ctx)
+		log.Printf("[QueueService] PlaceBack: Broadcasting queue update for room %s, tenantID: '%s'", roomId, tenantID)
+		if tenantID == "" {
+			log.Printf("[QueueService] PlaceBack: WARNING: tenantID is empty, broadcasting to all clients")
+		}
+		s.broadcastFunc(roomId, tenantID)
 	}
 
 	return &queueEntry, nil

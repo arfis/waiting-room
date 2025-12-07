@@ -1,19 +1,19 @@
 import { Component, signal, inject, OnInit, OnDestroy, ChangeDetectionStrategy, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { CardComponent } from '@waiting-room/primeng-components';
 import { QueueWebSocketService, WebSocketQueueEntry } from '@waiting-room/api-client';
 import { CalledTicketComponent } from './components/called-ticket/called-ticket.component';
 import { WaitingTicketComponent } from './components/waiting-ticket/waiting-ticket.component';
 import { CurrentEntryComponent } from './components/current-entry/current-entry.component';
 import { TenantSelectorComponent, TenantService } from '@lib/tenant';
+import { TranslatePipe, LanguageSelectorComponent } from '@lib/i18n';
 
 // Using WebSocketQueueEntry from api-client
 
 @Component({
   selector: 'app-queue-display',
   standalone: true,
-  imports: [CommonModule, CardComponent, CalledTicketComponent, WaitingTicketComponent, CurrentEntryComponent, TenantSelectorComponent],
+  imports: [CommonModule, CardComponent, CalledTicketComponent, WaitingTicketComponent, CurrentEntryComponent, TenantSelectorComponent, TranslatePipe, LanguageSelectorComponent],
   templateUrl: './queue-display.component.html',
   styleUrls: ['./queue-display.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -103,7 +103,7 @@ export class QueueDisplayComponent implements OnInit, OnDestroy {
 
   private updateComputedSignals(entries: WebSocketQueueEntry[]) {
     // Find currently being served (IN_SERVICE only for current)
-    const current = entries.find(entry => 
+    const current = entries.find(entry =>
       entry.status === 'IN_SERVICE'
     );
     this.currentEntry.set(current || null);
@@ -138,7 +138,7 @@ export class QueueDisplayComponent implements OnInit, OnDestroy {
   averageServiceTime(): number {
     const waiting = this.waitingEntries();
     if (waiting.length === 0) return 0;
-    
+
     // Calculate average service duration
     let totalMinutes = 0;
     let count = 0;
@@ -148,12 +148,12 @@ export class QueueDisplayComponent implements OnInit, OnDestroy {
         count++;
       }
     }
-    
+
     // If no durations specified, use default
     if (count === 0) {
       return 5; // Default 5 minutes
     }
-    
+
     return Math.round(totalMinutes / count);
   }
 

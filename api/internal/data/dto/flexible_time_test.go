@@ -90,7 +90,7 @@ func TestPatientInformation_UnmarshalJSON(t *testing.T) {
 	if patientInfo.AppointmentTime.Year() != expectedYear ||
 		patientInfo.AppointmentTime.Month() != expectedMonth ||
 		patientInfo.AppointmentTime.Day() != expectedDay {
-		t.Errorf("Expected date 2025-04-09, got %v", patientInfo.AppointmentTime.Time)
+		t.Errorf("Expected date 2025-04-09, got %v", patientInfo.AppointmentTime)
 	}
 
 	if len(patientInfo.Symbols) != 1 || patientInfo.Symbols[0] != "VIP" {
@@ -135,5 +135,5 @@ func TestSwipeRequest_UnmarshalJSON(t *testing.T) {
 	}
 
 	t.Logf("Successfully parsed SwipeRequest: %+v", swipeReq)
-	t.Logf("AppointmentTime: %v", patientInfo.AppointmentTime.Time)
+	t.Logf("AppointmentTime: %v", patientInfo.AppointmentTime)
 }

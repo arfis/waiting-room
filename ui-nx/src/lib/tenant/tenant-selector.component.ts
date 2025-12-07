@@ -174,6 +174,8 @@ export class TenantSelectorComponent implements OnInit {
   showCreateForm = signal<boolean>(false);
   showingSections = signal<boolean>(false);
   loadingSections = signal<boolean>(false);
+  sectionsCache = signal<Map<number, any[]>>(new Map());
+  private pendingTenantId = signal<number | null>(null);
 
   // Input to control whether to show create tenant button (for admin apps)
   showCreateButton = input<boolean>(false);
@@ -212,6 +214,31 @@ export class TenantSelectorComponent implements OnInit {
         this.selectedSectionId.set(serviceSectionId);
       }
     });
+
+    // Watch for sections loading completion
+    effect(() => {
+      const sections = this.tenantService.sections();
+      const loading = this.tenantService.loading();
+      const pendingId = this.pendingTenantId();
+
+      // If we were waiting for sections to load for a tenant
+      if (pendingId && !loading) {
+        console.log('[TenantSelector] Sections loaded for tenant', pendingId, sections.length);
+
+        // Cache the sections
+        const cache = this.sectionsCache();
+        cache.set(pendingId, [...sections]);
+        this.sectionsCache.set(new Map(cache));
+        this.loadingSections.set(false);
+        this.pendingTenantId.set(null);
+
+        // If no sections, automatically select the tenant
+        if (sections.length === 0) {
+          console.log('[TenantSelector] No sections for tenant, selecting tenant only');
+          this.selectTenantOnly(pendingId);
+        }
+      }
+    });
   }
 
   ngOnInit(): void {
@@ -234,36 +261,53 @@ export class TenantSelectorComponent implements OnInit {
 
   toggleDropdown(): void {
     this.isOpen.update(val => !val);
-    // If opening and we already have a tenant selected, show sections directly
-    if (this.isOpen() && this.selectedTenantId()) {
-      this.showingSections.set(true);
-      this.loadingSections.set(true);
-
-      // Reload sections to ensure they're up to date
-      this.tenantService.loadSections();
-
-      setTimeout(() => {
-        this.loadingSections.set(false);
-      }, 500);
-    } else if (this.isOpen()) {
-      // No tenant selected yet, show tenant list
+    // Always reset to tenant list when opening/closing dropdown
+    if (!this.isOpen()) {
       this.showingSections.set(false);
     }
   }
 
   onTenantSelect(tenantId: number): void {
-    // Set tenant and load its sections
+    // Set tenant and check if it has sections
     this.selectedTenantId.set(tenantId);
-    this.showingSections.set(true);
+
+    // Check if sections are already cached
+    const cache = this.sectionsCache();
+    if (cache.has(tenantId)) {
+      // Use cached sections
+      const cachedSections = cache.get(tenantId) || [];
+      console.log('[TenantSelector] Using cached sections for tenant', tenantId, cachedSections.length);
+
+      if (cachedSections.length === 0) {
+        // No sections available - select tenant directly
+        this.selectTenantOnly(tenantId);
+      } else {
+        // Has sections - show section selection
+        this.showingSections.set(true);
+      }
+    } else {
+      // Load sections for this tenant
+      this.loadSectionsForTenant(tenantId);
+    }
+  }
+
+  private loadSectionsForTenant(tenantId: number): void {
     this.loadingSections.set(true);
+    this.showingSections.set(true);
+    this.pendingTenantId.set(tenantId);
 
-    // Load sections for this tenant
+    // Load sections via service (async operation)
+    // The effect watching sections() and loading() will handle completion
     this.tenantService.setSelectedTenant(tenantId);
+  }
 
-    // Wait for sections to load
-    setTimeout(() => {
-      this.loadingSections.set(false);
-    }, 500);
+  private selectTenantOnly(tenantId: number): void {
+    // Select tenant without section (all sections)
+    this.selectedTenantId.set(tenantId);
+    this.selectedSectionId.set(0);
+    this.tenantService.setSelectedTenant(tenantId);
+    this.isOpen.set(false);
+    this.showingSections.set(false);
   }
 
   onSectionSelect(sectionId: number): void {

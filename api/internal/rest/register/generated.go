@@ -58,6 +58,7 @@ func Generated(r chi.Router, diContainer *dig.Container) {
 			protected.Get("/user-services", kioskHandler.GetUserServices)
 			protected.Post("/waiting-rooms/{roomId}/finish", queueHandler.FinishCurrent)
 			protected.Get("/waiting-rooms/{roomId}/managers/status", servicepointHandler.GetManagerStatusForRoom)
+			protected.Post("/waiting-rooms/{roomId}/place-back", queueHandler.PlaceBack)
 			protected.Get("/waiting-rooms/{roomId}/queue", queueHandler.GetQueueEntries)
 			protected.Get("/waiting-rooms/{roomId}/service-points", queueHandler.GetServicePoints)
 			protected.Post("/waiting-rooms/{roomId}/service-points/{servicePointId}/call/{entryId}", queueHandler.CallSpecificEntry)

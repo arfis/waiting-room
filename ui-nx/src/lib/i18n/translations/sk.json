@@ -147,14 +147,24 @@
     "waitingTime": "Čas čakania",
     "appointment": "Objednávka",
     "noCurrentEntry": "Nikto nie je obsluhovaný",
-    "noCurrentEntryDescription": "Momentálne nie je nikto spracovávaný. Zavolajte ďalšiu osobu z fronty."
+    "noCurrentEntryDescription": "Momentálne nie je nikto spracovávaný. Zavolajte ďalšiu osobu z fronty.",
+    "placeBackToQueue": "Vrátiť do fronty"
   },
   "tv": {
     "title": "TV displej",
     "currentTicket": "Aktuálny lístok",
     "nextTicket": "Ďalší lístok",
     "estimatedWait": "Odhadované čakanie",
-    "minutes": "minút"
+    "minutes": "minút",
+    "nowServing": "Teraz obsluhujeme",
+    "pleaseWait": "Prosím čakajte",
+    "ticketNumber": "Číslo lístka",
+    "servicePoint": "Servisný bod",
+    "waiting": "Čaká",
+    "yourTurnSoon": "Čoskoro budete na rade",
+    "peopleAhead": "ľudí pred vami",
+    "personAhead": "osoba pred vami",
+    "welcome": "Vitajte"
   },
   "mobile": {
     "title": "Mobilná aplikácia",

@@ -83,80 +83,130 @@ export class QueueManagementComponent implements OnInit, OnDestroy {
   });
 
   protected readonly showServicePointSelection = computed(() => {
-    // Only show selection if there are 2+ service points configured
-    // 0 service points = OK (single implicit service point, no selection needed)
-    // 1 service point = OK (auto-selected, no selection needed)
-    // 2+ service points = Show selection screen
+    // Only show service point selection if:
+    // 1. A section is selected (not "All Sections" which is 0), OR
+    // 2. The tenant has no sections at all (sections array is empty after loading)
+    // AND there are 2+ service points configured
+
+    // Must not be loading or have error first
+    if (this.isConfigLoading() || this.configError()) {
+      return false;
+    }
+
+    const selectedSectionId = this.tenantService.selectedSectionId();
+    const sections = this.tenantService.sections();
+    const tenantLoading = this.tenantService.loading();
+    const hasSectionSelected = selectedSectionId > 0;
+    const hasNoSections = sections.length === 0 && !tenantLoading;
+
+    // Don't show if "All Sections" (0) is selected and sections exist
+    if (selectedSectionId === 0 && sections.length > 0) {
+      return false;
+    }
+
+    // Only proceed if section selected OR no sections exist (and not loading)
+    if (!hasSectionSelected && !hasNoSections) {
+      return false;
+    }
+
     const servicePoints = this.availableServicePoints();
     if (servicePoints.length < 2) {
       return false; // Don't show selection if 0 or 1 service point
     }
-    return !this.isConfigLoading() && !this.configError() && !this.selectedServicePoint();
+
+    return !this.selectedServicePoint();
   });
 
   protected readonly showQueueManagement = computed(() => {
     // Show queue management if:
     // 1. Not loading config
     // 2. No config error
-    // 3. Service point is selected OR there's 0-1 service points (implicit/auto-selected)
+    // 3. Section is selected OR no sections exist
+    // 4. Service point is selected OR there's 0-1 service points (implicit/auto-selected)
+
+    // Must not be loading or have error first
+    if (this.isConfigLoading() || this.configError()) {
+      return false;
+    }
+
+    const selectedSectionId = this.tenantService.selectedSectionId();
+    const sections = this.tenantService.sections();
+    const tenantLoading = this.tenantService.loading();
+    const hasSectionSelected = selectedSectionId > 0;
+    const hasNoSections = sections.length === 0 && !tenantLoading;
+
+    // Don't show if "All Sections" (0) is selected and sections exist
+    // if (selectedSectionId === 0 && sections.length > 0) {
+    //   console.log('[QueueManagement] Not showing - All Sections selected but sections exist');
+    //   return false;
+    // }
+
+    console.log('THIS: ', hasSectionSelected, hasNoSections);
+    // Must have section selected OR no sections exist (and not loading)
+    // if (!hasSectionSelected && !hasNoSections) {
+    //   console.log('[QueueManagement] Not showing - No section selected and sections exist or still loading', {
+    //     hasSectionSelected,
+    //     hasNoSections,
+    //     sectionsLength: sections.length,
+    //     tenantLoading
+    //   });
+    //   return false;
+    // }
+
     const servicePoints = this.availableServicePoints();
     const hasImplicitOrAutoSelected = servicePoints.length <= 1; // 0 or 1 service point = no selection needed
     const hasSelectedServicePoint = !!this.selectedServicePoint();
-    return !this.isConfigLoading() && !this.configError() && (hasSelectedServicePoint || hasImplicitOrAutoSelected);
+
+    return true //hasSelectedServicePoint || hasImplicitOrAutoSelected;
   });
 
   private lastTenantId: number | null = null;
   private lastCompositeId: string | null = null;
 
   constructor() {
-    // Watch for tenant/section changes to reload configuration and reset service point selection
+    // Single effect to watch for tenant/section changes and reload everything
     effect(() => {
       const tenantId = this.tenantService.selectedTenantId();
-      const sectionId = this.tenantService.selectedSectionId();
       const compositeId = this.tenantService.getSelectedTenantIdSync();
 
-      // If tenant/section changed (and this is not the first load)
+      // Handle tenant/section changes
       if (compositeId && compositeId !== this.lastCompositeId && this.lastCompositeId !== null) {
-        console.log('[QueueManagement] Tenant/section changed from', this.lastCompositeId, 'to', compositeId, '- reloading configuration and resetting service point');
-        this.lastTenantId = tenantId;
-        this.lastCompositeId = compositeId;
-
-        // Disconnect from WebSocket and clear service point selection
-        this.queueState.disconnect();
-        this.selectedServicePoint.set(null);
-
-        // Clear loading state to show service point selection screen again
-        this.isConfigLoading.set(true);
-        this.configError.set(null);
-
-        // Reload configuration for new tenant/section
-        this.loadConfiguration();
+        console.log('[QueueManagement] Tenant/section changed from', this.lastCompositeId, 'to', compositeId);
+        this.handleTenantChange(tenantId, compositeId);
       } else if (compositeId && this.lastCompositeId === null) {
         // First initialization
         this.lastTenantId = tenantId;
         this.lastCompositeId = compositeId;
       }
     });
+  }
 
-    // Watch for config load completion to initialize queue state
-    effect(() => {
-      const tenantId = this.tenantService.selectedTenantId();
-      const configLoaded = !this.isConfigLoading() && !this.configError();
-      const servicePoints = this.availableServicePoints();
+  private async handleTenantChange(tenantId: number, compositeId: string): Promise<void> {
+    this.lastTenantId = tenantId;
+    this.lastCompositeId = compositeId;
 
-      // Initialize queue state if:
-      // 1. Tenant is selected
-      // 2. Config is loaded
-      // 3. Either service point is selected OR there are 0-1 service points (implicit/auto-selected)
-      const hasServicePointContext = this.selectedServicePoint() || servicePoints.length <= 1;
+    // Disconnect from WebSocket and reset state
+    this.queueState.disconnect();
+    this.selectedServicePoint.set(null);
+    this.isConfigLoading.set(true);
+    this.configError.set(null);
 
-      if (tenantId && configLoaded && hasServicePointContext) {
-        const servicePointName = this.selectedServicePoint()?.name || 'implicit';
-        console.log('[QueueManagement] Initializing queue state with tenant:', tenantId, 'service point:', servicePointName);
-        // Initialize queue state
-        this.queueState.initialize(this.roomId, ['WAITING', 'IN_SERVICE']);
-      }
-    });
+    // Reload configuration and initialize queue
+    await this.loadConfiguration();
+    await this.initializeQueueIfReady();
+  }
+
+  private async initializeQueueIfReady(): Promise<void> {
+    const tenantId = this.tenantService.selectedTenantId();
+    const configLoaded = !this.isConfigLoading() && !this.configError();
+    const servicePoints = this.availableServicePoints();
+    const hasServicePointContext = this.selectedServicePoint() || servicePoints.length <= 1;
+
+    if (tenantId && configLoaded && hasServicePointContext) {
+      const servicePointName = this.selectedServicePoint()?.name || 'implicit';
+      console.log('[QueueManagement] Initializing queue state with tenant:', tenantId, 'service point:', servicePointName);
+      await this.queueState.initialize(this.roomId, ['WAITING', 'IN_SERVICE']);
+    }
   }
 
   async ngOnInit(): Promise<void> {
@@ -173,16 +223,9 @@ export class QueueManagementComponent implements OnInit, OnDestroy {
     this.lastCompositeId = compositeId;
     console.log('[QueueManagement] ngOnInit - Initializing with tenant/section:', compositeId);
 
-    // Load configuration first, then initialize queue state
+    // Load configuration and initialize queue
     await this.loadConfiguration();
-
-    // Initialize queue state if:
-    // - Service point is selected (1+ service points), OR
-    // - No service points configured (0 = implicit single service point)
-    const servicePoints = this.availableServicePoints();
-    if (this.selectedServicePoint() || servicePoints.length === 0) {
-      await this.queueState.initialize(this.roomId, ['WAITING', 'IN_SERVICE']);
-    }
+    await this.initializeQueueIfReady();
   }
 
   ngOnDestroy(): void {
@@ -197,6 +240,10 @@ export class QueueManagementComponent implements OnInit, OnDestroy {
 
   protected onFinishCurrent(): void {
     this.queueState.finishCurrent(this.roomId);
+  }
+
+  protected onPlaceBack(): void {
+    this.queueState.placeBack(this.roomId);
   }
 
   protected onRefresh(): void {
@@ -312,19 +359,10 @@ export class QueueManagementComponent implements OnInit, OnDestroy {
     }
   }
 
-  protected selectServicePoint(servicePoint: ServicePointConfiguration): void {
+  protected async selectServicePoint(servicePoint: ServicePointConfiguration): Promise<void> {
     this.selectedServicePoint.set(servicePoint);
-
-    // Check if tenant is selected before initializing
-    const tenantId = this.tenantService.getSelectedTenantIdSync();
-    if (!tenantId) {
-      console.warn('Cannot initialize queue state: No tenant selected');
-      return;
-    }
-
-    // Initialize queue state after service point selection - load waiting and current entries
-    console.log('[QueueManagement] Service point selected:', servicePoint.name, 'Initializing queue state');
-    this.queueState.initialize(this.roomId, ['WAITING', 'IN_SERVICE']);
+    console.log('[QueueManagement] Service point selected:', servicePoint.name);
+    await this.initializeQueueIfReady();
   }
 
   protected clearServicePoint(): void {

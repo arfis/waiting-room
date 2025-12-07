@@ -55,6 +55,21 @@ func (h *Handler) FinishCurrent(w http.ResponseWriter, r *http.Request) {
 	handler.WriteJson(r.Context(), w, 200, resp)
 }
 
+func (h *Handler) PlaceBack(w http.ResponseWriter, r *http.Request) {
+	var applicationErr error
+	roomId := handler.PathParamToString(r, "roomId")
+	var resp *dto.QueueEntry
+	resp, applicationErr = h.svc.PlaceBack(
+		r.Context(),
+		roomId,
+	)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)
+		return
+	}
+	handler.WriteJson(r.Context(), w, 200, resp)
+}
+
 func (h *Handler) GetQueueEntries(w http.ResponseWriter, r *http.Request) {
 	var applicationErr error
 	roomId := handler.PathParamToString(r, "roomId")

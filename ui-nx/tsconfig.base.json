@@ -18,7 +18,9 @@
       "@waiting-room/api-client": ["api-client/src/index.ts"],
       "@waiting-room/primeng-components": ["primeng-components/src/index.ts"],
       "@lib/tenant": ["src/lib/tenant/index.ts"],
-      "@lib/tenant/*": ["src/lib/tenant/*"]
+      "@lib/tenant/*": ["src/lib/tenant/*"],
+      "@lib/i18n": ["src/lib/i18n/index.ts"],
+      "@lib/i18n/*": ["src/lib/i18n/*"]
     }
   },
   "exclude": ["node_modules", "tmp"]

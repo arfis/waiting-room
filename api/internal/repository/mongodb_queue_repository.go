@@ -252,6 +252,44 @@ func (r *MongoDBQueueRepository) UpdateEntryStatus(ctx context.Context, id strin
 	return nil
 }
 
+// UpdateEntryStatusAndSymbols updates the status and symbols of a queue entry
+func (r *MongoDBQueueRepository) UpdateEntryStatusAndSymbols(ctx context.Context, id string, status string, symbols []string) error {
+	tenantDB, err := r.getTenantDatabase(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get tenant database: %w", err)
+	}
+
+	collection := tenantDB.Collection("waiting_queue")
+
+	// Try to parse as ObjectID first, if that fails, use as string
+	var filter bson.M
+	if objectID, err := primitive.ObjectIDFromHex(id); err == nil {
+		filter = bson.M{"_id": objectID}
+	} else {
+		// Use string ID (for UUIDs)
+		filter = bson.M{"_id": id}
+	}
+
+	update := bson.M{
+		"$set": bson.M{
+			"status":    status,
+			"symbols":   symbols,
+			"updatedAt": time.Now(),
+		},
+	}
+
+	result, err := collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return fmt.Errorf("failed to update entry status and symbols: %w", err)
+	}
+
+	if result.MatchedCount == 0 {
+		return fmt.Errorf("queue entry not found")
+	}
+
+	return nil
+}
+
 // UpdateEntryPosition updates the position of a queue entry
 func (r *MongoDBQueueRepository) UpdateEntryPosition(ctx context.Context, id string, position int) error {
 	tenantDB, err := r.getTenantDatabase(ctx)

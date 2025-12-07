@@ -132,6 +132,21 @@ export class QueueStateService {
     });
   }
 
+  placeBack(roomId: string): void {
+    this.isLoading.set(true);
+
+    this.queueApiService.placeBack(roomId).subscribe({
+      next: (response) => {
+        this.addActivity(response.ticketNumber, 'Placed back in queue');
+        this.isLoading.set(false);
+      },
+      error: (error) => {
+        console.error('Failed to place back person:', error);
+        this.isLoading.set(false);
+      }
+    });
+  }
+
   callSpecificEntry(roomId: string, servicePointId: string, entryId: string): void {
     console.log('[QueueStateService] callSpecificEntry called:', { roomId, servicePointId, entryId });
     this.isLoading.set(true);

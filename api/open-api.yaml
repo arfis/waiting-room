@@ -373,6 +373,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApplicationError'
+  /waiting-rooms/{roomId}/place-back:
+    post:
+      x-generated:
+        package: queue
+      tags:
+        - Queue
+      operationId: PlaceBack
+      summary: Place current person back in queue
+      parameters:
+        - in: path
+          name: roomId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueEntry'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationError'
+        '404':
+          description: No one currently being served
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationError'
+        '500':
+          description: Internal errors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationError'
   /waiting-rooms/{roomId}/queue:
     get:
       x-generated:

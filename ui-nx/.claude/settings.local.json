@@ -14,7 +14,8 @@
       "Bash(make gen:all:*)",
       "Bash(npm run build:*)",
       "Bash(npm run:*)",
-      "Bash(make help:*)"
+      "Bash(make help:*)",
+      "Bash(make:*)"
     ],
     "deny": [],
     "ask": []

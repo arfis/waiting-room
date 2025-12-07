@@ -35,7 +35,7 @@ func convertEntriesToWebSocketFormat(entries []dto.QueueEntry) []map[string]inte
 			wsEntry["symbols"] = entry.Symbols
 		}
 		if entry.AppointmentTime != nil {
-			wsEntry["appointmentTime"] = entry.AppointmentTime.Time.Format(time.RFC3339)
+			wsEntry["appointmentTime"] = entry.AppointmentTime.Format(time.RFC3339)
 		}
 
 		// Add timestamps from the entry

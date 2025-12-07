@@ -23,6 +23,9 @@ type QueueRepository interface {
 	// UpdateEntryStatus updates the status of a queue entry
 	UpdateEntryStatus(ctx context.Context, id string, status string) error
 
+	// UpdateEntryStatusAndSymbols updates both the status and symbols of a queue entry
+	UpdateEntryStatusAndSymbols(ctx context.Context, id string, status string, symbols []string) error
+
 	// UpdateEntryPosition updates the position of a queue entry
 	UpdateEntryPosition(ctx context.Context, id string, position int) error
 

@@ -91,8 +91,8 @@ func (s *Service) SwipeCard(ctx context.Context, roomId string, req *dto.SwipeRe
 
 		// Extract appointment time - convert FlexibleTime to time.Time
 		if patientInfo.AppointmentTime != nil {
-			t := patientInfo.AppointmentTime.Time
-			appointmentTimePtr = &t
+			t := patientInfo.AppointmentTime
+			appointmentTimePtr = t
 		}
 
 		// Extract age

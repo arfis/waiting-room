@@ -126,6 +126,24 @@ func (r *MockQueueRepository) UpdateEntryStatus(ctx context.Context, id string, 
 	return nil
 }
 
+// UpdateEntryStatusAndSymbols updates both the status and symbols of a queue entry
+func (r *MockQueueRepository) UpdateEntryStatusAndSymbols(ctx context.Context, id string, status string, symbols []string) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	entry, exists := r.entries[id]
+	if !exists {
+		return fmt.Errorf("queue entry not found")
+	}
+
+	entry.Status = status
+	entry.Symbols = symbols
+	entry.UpdatedAt = time.Now()
+
+	log.Printf("Mock: Updated entry %s status to %s and symbols to %v", id, status, symbols)
+	return nil
+}
+
 // UpdateEntryPosition updates the position of a queue entry
 func (r *MockQueueRepository) UpdateEntryPosition(ctx context.Context, id string, position int) error {
 	r.mutex.Lock()
