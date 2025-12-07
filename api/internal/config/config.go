@@ -330,10 +330,7 @@ func (c *Config) GetServicePointsForRoom(roomID string) []ServicePointConfig {
 	}
 
 	// If no specific room config found, return default service points
-	return []ServicePointConfig{
-		{ID: "window-1", Name: "Window 1", Description: "Main service window"},
-		{ID: "window-2", Name: "Window 2", Description: "Secondary service window"},
-	}
+	return []ServicePointConfig{}
 }
 
 // GetDefaultServicePoint returns the first available service point for a room

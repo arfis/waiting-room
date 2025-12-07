@@ -307,6 +307,108 @@ func (h *Handler) GetTenant(w http.ResponseWriter, r *http.Request) {
 	handler.WriteJson(r.Context(), w, 200, resp)
 }
 
+func (h *Handler) GetAllSections(w http.ResponseWriter, r *http.Request) {
+	var applicationErr error
+	tenantId := handler.PathParamToString(r, "tenantId")
+	var resp []dto.Section
+	resp, applicationErr = h.svc.GetAllSections(
+		r.Context(),
+		tenantId,
+	)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)
+		return
+	}
+	handler.WriteJson(r.Context(), w, 200, resp)
+}
+
+func (h *Handler) CreateSection(w http.ResponseWriter, r *http.Request) {
+	var applicationErr error
+	tenantId := handler.PathParamToString(r, "tenantId")
+	req := dto.Section{}
+	applicationErr = json.NewDecoder(r.Body).Decode(&req)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, ngErrors.New(ngErrors.InternalServerErrorCode, "problem decoding request body", http.StatusInternalServerError, nil))
+		return
+	}
+	applicationErr = handler.GetValidator().Struct(req)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, ngErrors.RequestValidation(applicationErr))
+		return
+	}
+	var resp *dto.Section
+	resp, applicationErr = h.svc.CreateSection(
+		r.Context(),
+		tenantId, &req,
+	)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)
+		return
+	}
+	handler.WriteJson(r.Context(), w, 201, resp)
+}
+
+func (h *Handler) DeleteSection(w http.ResponseWriter, r *http.Request) {
+	var applicationErr error
+	sectionId := handler.PathParamToString(r, "sectionId")
+	tenantId := handler.PathParamToString(r, "tenantId")
+	applicationErr = h.svc.DeleteSection(
+		r.Context(),
+		sectionId,
+		tenantId,
+	)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)
+		return
+	}
+	w.WriteHeader(204)
+}
+
+func (h *Handler) GetSection(w http.ResponseWriter, r *http.Request) {
+	var applicationErr error
+	sectionId := handler.PathParamToString(r, "sectionId")
+	tenantId := handler.PathParamToString(r, "tenantId")
+	var resp *dto.Section
+	resp, applicationErr = h.svc.GetSection(
+		r.Context(),
+		sectionId,
+		tenantId,
+	)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)
+		return
+	}
+	handler.WriteJson(r.Context(), w, 200, resp)
+}
+
+func (h *Handler) UpdateSection(w http.ResponseWriter, r *http.Request) {
+	var applicationErr error
+	sectionId := handler.PathParamToString(r, "sectionId")
+	tenantId := handler.PathParamToString(r, "tenantId")
+	req := dto.Section{}
+	applicationErr = json.NewDecoder(r.Body).Decode(&req)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, ngErrors.New(ngErrors.InternalServerErrorCode, "problem decoding request body", http.StatusInternalServerError, nil))
+		return
+	}
+	applicationErr = handler.GetValidator().Struct(req)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, ngErrors.RequestValidation(applicationErr))
+		return
+	}
+	var resp *dto.Section
+	resp, applicationErr = h.svc.UpdateSection(
+		r.Context(),
+		sectionId,
+		tenantId, &req,
+	)
+	if applicationErr != nil {
+		h.responseErrorHandler.HandleAndWriteError(w, r, applicationErr)
+		return
+	}
+	handler.WriteJson(r.Context(), w, 200, resp)
+}
+
 func (h *Handler) ClearTranslationCache(w http.ResponseWriter, r *http.Request) {
 	var applicationErr error
 	var resp *dto.CacheClearResponse

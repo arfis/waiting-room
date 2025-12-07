@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/arfis/waiting-room/internal/middleware"
 	queueService "github.com/arfis/waiting-room/internal/service/queue"
+	"github.com/arfis/waiting-room/internal/types"
 )
 
 // ClientInfo stores information about a WebSocket client
@@ -123,8 +125,24 @@ func (h *Hub) sendInitialData(conn *websocket.Conn, roomId, normalizedTenantID, 
 	// Create context with normalized tenantID for filtering
 	ctx := context.Background()
 	if normalizedTenantID != "" && normalizedTenantID != "default" {
+		// Parse tenant ID and add to context as int64 (repository expects this)
+		tenantIDInt, sectionIDInt, err := types.ParseTenantAndSectionID(normalizedTenantID)
+		if err != nil {
+			log.Printf("[WebSocket] ERROR: Failed to parse tenantID '%s': %v", normalizedTenantID, err)
+			// Try parsing as simple integer
+			tenantIDInt, err = strconv.ParseInt(normalizedTenantID, 10, 64)
+			if err != nil {
+				log.Printf("[WebSocket] ERROR: Failed to parse tenantID as integer: %v", err)
+				return
+			}
+		}
+		ctx = context.WithValue(ctx, middleware.TENANT_ID, tenantIDInt)
+		if sectionIDInt != 0 {
+			ctx = context.WithValue(ctx, middleware.SECTION_ID, sectionIDInt)
+		}
+		// Keep legacy string for compatibility
 		ctx = context.WithValue(ctx, middleware.TENANT, normalizedTenantID)
-		log.Printf("[WebSocket] Using normalized tenantID '%s' for filtering initial data", normalizedTenantID)
+		log.Printf("[WebSocket] Using tenantID=%d, sectionID=%d for filtering initial data", tenantIDInt, sectionIDInt)
 	} else {
 		log.Printf("[WebSocket] WARNING: normalized tenantID is empty or 'default', will get all entries (no tenant filter)")
 	}
@@ -210,8 +228,24 @@ func (h *Hub) BroadcastQueueUpdate(roomId string, targetTenantID string) {
 	// Create context with normalized tenantID
 	ctx := context.Background()
 	if normalizedTargetTenantID != "" && normalizedTargetTenantID != "default" {
+		// Parse tenant ID and add to context as int64 (repository expects this)
+		tenantIDInt, sectionIDInt, err := types.ParseTenantAndSectionID(normalizedTargetTenantID)
+		if err != nil {
+			log.Printf("[WebSocket] ERROR: Failed to parse tenantID '%s': %v", normalizedTargetTenantID, err)
+			// Try parsing as simple integer
+			tenantIDInt, err = strconv.ParseInt(normalizedTargetTenantID, 10, 64)
+			if err != nil {
+				log.Printf("[WebSocket] ERROR: Failed to parse tenantID as integer: %v", err)
+				return
+			}
+		}
+		ctx = context.WithValue(ctx, middleware.TENANT_ID, tenantIDInt)
+		if sectionIDInt != 0 {
+			ctx = context.WithValue(ctx, middleware.SECTION_ID, sectionIDInt)
+		}
+		// Keep legacy string for compatibility
 		ctx = context.WithValue(ctx, middleware.TENANT, normalizedTargetTenantID)
-		log.Printf("[WebSocket] Creating context with normalized tenantID: '%s' for %d clients", normalizedTargetTenantID, len(tenantClients))
+		log.Printf("[WebSocket] Creating context with tenantID=%d, sectionID=%d for %d clients", tenantIDInt, sectionIDInt, len(tenantClients))
 	} else {
 		log.Printf("[WebSocket] WARNING: Using default context (no tenantID) for %d clients - this will return all entries!", len(tenantClients))
 	}

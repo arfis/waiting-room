@@ -1017,6 +1017,149 @@ paths:
           description: Tenant not found
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /admin/tenants/{tenantId}/sections:
+    get:
+      x-generated:
+        package: admin
+      tags:
+        - Admin
+      operationId: GetAllSections
+      summary: Get all sections for a tenant
+      parameters:
+        - in: path
+          name: tenantId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Section'
+        '404':
+          description: Tenant not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      x-generated:
+        package: admin
+      tags:
+        - Admin
+      operationId: CreateSection
+      summary: Create a new section within a tenant
+      parameters:
+        - in: path
+          name: tenantId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Section'
+      responses:
+        '201':
+          description: Section created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Section'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Tenant not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /admin/tenants/{tenantId}/sections/{sectionId}:
+    get:
+      x-generated:
+        package: admin
+      tags:
+        - Admin
+      operationId: GetSection
+      summary: Get a specific section by ID
+      parameters:
+        - in: path
+          name: tenantId
+          required: true
+          schema: { type: string }
+        - in: path
+          name: sectionId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Section'
+        '404':
+          description: Section not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      x-generated:
+        package: admin
+      tags:
+        - Admin
+      operationId: UpdateSection
+      summary: Update an existing section
+      parameters:
+        - in: path
+          name: tenantId
+          required: true
+          schema: { type: string }
+        - in: path
+          name: sectionId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Section'
+      responses:
+        '200':
+          description: Section updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Section'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Section not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      x-generated:
+        package: admin
+      tags:
+        - Admin
+      operationId: DeleteSection
+      summary: Delete a section
+      parameters:
+        - in: path
+          name: tenantId
+          required: true
+          schema: { type: string }
+        - in: path
+          name: sectionId
+          required: true
+          schema: { type: string }
+      responses:
+        '204':
+          description: Section deleted successfully
+        '404':
+          description: Section not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 components:
   securitySchemes:
     ApiKeyAuth: { type: apiKey, in: header, name: X-API-Key }
@@ -1176,6 +1319,7 @@ components:
         - entryID
         - ticketNumber
         - qrUrl
+        - createdAt
       properties:
         entryID:
           type: string
@@ -1196,6 +1340,10 @@ components:
         serviceName:
           type: string
           description: Name of the selected service
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the entry was created
     PublicEntry:
       x-group: queue
       title: PublicEntry
@@ -1240,6 +1388,7 @@ components:
         - ticketNumber
         - status
         - position
+        - createdAt
       properties:
         ID:
           type: string
@@ -1277,6 +1426,12 @@ components:
           items:
             type: string
           description: Priority symbols (e.g., STATIM, VIP, IMMOBILE)
+        createdAt:
+          type: string
+          format: date-time
+        appointmentTime:
+          type: string
+          format: date-time
     ManagerLoginRequest:
       x-group: servicepoint
       title: ManagerLoginRequest
@@ -1389,25 +1544,67 @@ components:
       title: Tenant
       type: object
       required:
-        - buildingId
-        - sectionId
+        - tenantId
         - name
       properties:
         id:
           type: string
-          description: Tenant ID in format "buildingId:sectionId"
-        buildingId:
-          type: string
-          description: Building identifier
-        sectionId:
-          type: string
-          description: Section identifier
+          description: MongoDB ObjectID
+        tenantId:
+          type: integer
+          format: int64
+          description: Numeric tenant identifier
         name:
           type: string
           description: Tenant name
         description:
           type: string
           description: Optional tenant description
+        databaseName:
+          type: string
+          description: Database name for this tenant
+        status:
+          type: string
+          enum: [active, inactive]
+          description: Tenant status
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+    Section:
+      x-group: admin
+      title: Section
+      type: object
+      required:
+        - sectionId
+        - tenantId
+        - name
+      properties:
+        id:
+          type: string
+          description: MongoDB ObjectID
+        sectionId:
+          type: integer
+          format: int64
+          description: Numeric section identifier
+        tenantId:
+          type: integer
+          format: int64
+          description: Parent tenant ID
+        name:
+          type: string
+          description: Section name
+        description:
+          type: string
+          description: Optional section description
+        status:
+          type: string
+          enum: [active, inactive]
+          description: Section status
         createdAt:
           type: string
           format: date-time
@@ -1421,16 +1618,8 @@ components:
       title: CreateTenantRequest
       type: object
       required:
-        - buildingId
-        - sectionId
         - name
       properties:
-        buildingId:
-          type: string
-          description: Building identifier
-        sectionId:
-          type: string
-          description: Section identifier
         name:
           type: string
           description: Tenant name

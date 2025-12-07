@@ -6,10 +6,10 @@ import (
 )
 
 // SystemConfiguration represents the complete system configuration stored in MongoDB
+// NOTE: Now stored in tenant-specific databases, so no tenantId field needed
 type SystemConfiguration struct {
 	ID            string            `bson:"_id,omitempty" json:"id"`
-	TenantID      string            `bson:"tenantId,omitempty" json:"tenantId,omitempty"` // Building/Hospital ID (e.g., "Nemocnica Spiska nova ves")
-	SectionID     string            `bson:"sectionId,omitempty" json:"sectionId,omitempty"` // Section/Department within tenant (e.g., "Kardiologia pavilon B", "Dentist")
+	SectionID     *int64            `bson:"sectionId,omitempty" json:"sectionId,omitempty"` // Section/Department within tenant (numeric ID). Null = tenant-level config
 	ExternalAPI   ExternalAPIConfig `bson:"externalAPI" json:"externalAPI"`
 	Rooms         []RoomConfig      `bson:"rooms" json:"rooms"`
 	DefaultRoom   string            `bson:"defaultRoom" json:"defaultRoom"`
@@ -74,9 +74,10 @@ type ServicePointConfig struct {
 }
 
 // CardReaderStatus represents the status of a card reader
+// NOTE: Now stored in tenant-specific databases, so no tenantId field needed
 type CardReaderStatus struct {
 	ID        string    `bson:"id" json:"id"`
-	TenantID  string    `bson:"tenantId,omitempty" json:"tenantId,omitempty"`
+	SectionID *int64    `bson:"sectionId,omitempty" json:"sectionId,omitempty"` // Optional: which section this reader belongs to
 	Name      string    `bson:"name" json:"name"`
 	Status    string    `bson:"status" json:"status"` // "online", "offline", "error"
 	LastSeen  time.Time `bson:"lastSeen" json:"lastSeen"`
@@ -87,50 +88,70 @@ type CardReaderStatus struct {
 	UpdatedAt time.Time `bson:"updatedAt" json:"updatedAt"`
 }
 
-// Tenant represents a tenant in the system
+// Tenant represents a tenant in the system (stored in master database)
 type Tenant struct {
-	ID          string    `bson:"id" json:"id"`
-	BuildingID  string    `bson:"buildingId" json:"buildingId"`
-	SectionID   string    `bson:"sectionId" json:"sectionId"`
-	Name        string    `bson:"name" json:"name"`
+	ID           string    `bson:"_id,omitempty" json:"id"`
+	TenantID     int64     `bson:"tenantId" json:"tenantId"`           // Numeric tenant ID (auto-increment)
+	Name         string    `bson:"name" json:"name"`                   // Tenant name (e.g., "Hospital A")
+	Description  string    `bson:"description,omitempty" json:"description,omitempty"`
+	DatabaseName string    `bson:"databaseName" json:"databaseName"`   // Name of tenant's dedicated database
+	Status       string    `bson:"status" json:"status"`               // "active" or "inactive"
+	CreatedAt    time.Time `bson:"createdAt" json:"createdAt"`
+	UpdatedAt    time.Time `bson:"updatedAt" json:"updatedAt"`
+}
+
+// Section represents a sub-tenant (e.g., department) within a tenant's database
+type Section struct {
+	ID          string    `bson:"_id,omitempty" json:"id"`
+	SectionID   int64     `bson:"sectionId" json:"sectionId"`         // Numeric section ID (unique within tenant)
+	Name        string    `bson:"name" json:"name"`                   // Section name (e.g., "Cardiology")
 	Description string    `bson:"description,omitempty" json:"description,omitempty"`
+	Status      string    `bson:"status" json:"status"`               // "active" or "inactive"
 	CreatedAt   time.Time `bson:"createdAt" json:"createdAt"`
 	UpdatedAt   time.Time `bson:"updatedAt" json:"updatedAt"`
 }
 
-// GetTenantID returns the tenant ID (just the buildingId - the hospital/building)
-// Note: This is now just the buildingId, not buildingId:sectionId
-// The sectionId is a separate field that identifies departments within the tenant
-func (t *Tenant) GetTenantID() string {
-	return t.BuildingID
-}
-
-// GetFullTenantID returns the full identifier in format "buildingId:sectionId" for backwards compatibility
-// This is used when sending the tenant ID in headers
-func (t *Tenant) GetFullTenantID() string {
-	return t.BuildingID + ":" + t.SectionID
-}
-
-// ParseTenantID parses a tenant ID string in the format "buildingId:sectionId"
-// Returns buildingId (tenant), sectionId (section/department), and an error if the format is invalid
-// For backwards compatibility, if no colon is present, treats the entire string as buildingId
-func ParseTenantID(tenantID string) (buildingID, sectionID string, err error) {
-	if tenantID == "" {
-		return "", "", fmt.Errorf("invalid tenant ID format: tenant ID must not be empty")
+// ParseTenantAndSectionID parses a composite ID string in format "tenantId:sectionId"
+// Returns tenantID (numeric), sectionID (numeric, 0 if not present), and error if invalid
+func ParseTenantAndSectionID(compositeID string) (tenantID int64, sectionID int64, err error) {
+	if compositeID == "" {
+		return 0, 0, fmt.Errorf("composite ID must not be empty")
 	}
-	
-	// Check if it contains a colon (format: "buildingId:sectionId")
-	for i, char := range tenantID {
+
+	var tenantIDStr, sectionIDStr string
+
+	// Find the colon separator
+	colonIdx := -1
+	for i, char := range compositeID {
 		if char == ':' {
-			buildingID = tenantID[:i]
-			sectionID = tenantID[i+1:]
-			if buildingID == "" {
-				return "", "", fmt.Errorf("invalid tenant ID format: building ID must not be empty")
-			}
-			// sectionID can be empty (for tenant-level configs)
-			return buildingID, sectionID, nil
+			colonIdx = i
+			break
 		}
 	}
-	// If no colon, treat the entire string as buildingId (tenant only, no section)
-	return tenantID, "", nil
+
+	if colonIdx == -1 {
+		// No colon, just tenant ID
+		tenantIDStr = compositeID
+	} else {
+		tenantIDStr = compositeID[:colonIdx]
+		sectionIDStr = compositeID[colonIdx+1:]
+	}
+
+	// Parse tenant ID
+	var parsedTenantID int64
+	_, err = fmt.Sscanf(tenantIDStr, "%d", &parsedTenantID)
+	if err != nil {
+		return 0, 0, fmt.Errorf("invalid tenant ID format: %w", err)
+	}
+
+	// Parse section ID if present
+	var parsedSectionID int64
+	if sectionIDStr != "" {
+		_, err = fmt.Sscanf(sectionIDStr, "%d", &parsedSectionID)
+		if err != nil {
+			return 0, 0, fmt.Errorf("invalid section ID format: %w", err)
+		}
+	}
+
+	return parsedTenantID, parsedSectionID, nil
 }

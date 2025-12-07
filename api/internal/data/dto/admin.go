@@ -198,14 +198,8 @@ func (contributions Contributions) GetWaitingTime() WaitingTime {
 }
 
 type CreateTenantRequest struct {
-	BuildingId  string  `json:"buildingId" validate:"required"`
 	Description *string `json:"description,omitempty"`
 	Name        string  `json:"name" validate:"required"`
-	SectionId   string  `json:"sectionId" validate:"required"`
-}
-
-func (createTenantRequest CreateTenantRequest) GetBuildingId() string {
-	return createTenantRequest.BuildingId
 }
 
 func (createTenantRequest CreateTenantRequest) GetDescription() string {
@@ -218,10 +212,6 @@ func (createTenantRequest CreateTenantRequest) GetDescription() string {
 
 func (createTenantRequest CreateTenantRequest) GetName() string {
 	return createTenantRequest.Name
-}
-
-func (createTenantRequest CreateTenantRequest) GetSectionId() string {
-	return createTenantRequest.SectionId
 }
 
 type ExternalAPIConfig struct {
@@ -554,6 +544,69 @@ func (roomConfig RoomConfig) GetServicePoints() []ServicePointConfig {
 	return roomConfig.ServicePoints
 }
 
+type Section struct {
+	CreatedAt   *time.Time `json:"createdAt,omitempty"`
+	Description *string    `json:"description,omitempty"`
+	Id          *string    `json:"id,omitempty"`
+	Name        string     `json:"name" validate:"required"`
+	SectionId   int64      `json:"sectionId"`
+	Status      *string    `json:"status,omitempty"`
+	TenantId    int64      `json:"tenantId"`
+	UpdatedAt   *time.Time `json:"updatedAt,omitempty"`
+}
+
+func (section Section) GetCreatedAt() time.Time {
+	var v time.Time
+	if section.CreatedAt != nil {
+		return *section.CreatedAt
+	}
+	return v
+}
+
+func (section Section) GetDescription() string {
+	var v string
+	if section.Description != nil {
+		return *section.Description
+	}
+	return v
+}
+
+func (section Section) GetId() string {
+	var v string
+	if section.Id != nil {
+		return *section.Id
+	}
+	return v
+}
+
+func (section Section) GetName() string {
+	return section.Name
+}
+
+func (section Section) GetSectionId() int64 {
+	return section.SectionId
+}
+
+func (section Section) GetStatus() string {
+	var v string
+	if section.Status != nil {
+		return *section.Status
+	}
+	return v
+}
+
+func (section Section) GetTenantId() int64 {
+	return section.TenantId
+}
+
+func (section Section) GetUpdatedAt() time.Time {
+	var v time.Time
+	if section.UpdatedAt != nil {
+		return *section.UpdatedAt
+	}
+	return v
+}
+
 type ServicePointConfig struct {
 	Description *string `json:"description,omitempty"`
 	Id          string  `json:"id" validate:"required"`
@@ -671,23 +724,28 @@ func (systemConfiguration SystemConfiguration) GetWebSocketPath() string {
 }
 
 type Tenant struct {
-	BuildingId  string     `json:"buildingId" validate:"required"`
-	CreatedAt   *time.Time `json:"createdAt,omitempty"`
-	Description *string    `json:"description,omitempty"`
-	Id          *string    `json:"id,omitempty"`
-	Name        string     `json:"name" validate:"required"`
-	SectionId   string     `json:"sectionId" validate:"required"`
-	UpdatedAt   *time.Time `json:"updatedAt,omitempty"`
-}
-
-func (tenant Tenant) GetBuildingId() string {
-	return tenant.BuildingId
+	CreatedAt    *time.Time `json:"createdAt,omitempty"`
+	DatabaseName *string    `json:"databaseName,omitempty"`
+	Description  *string    `json:"description,omitempty"`
+	Id           *string    `json:"id,omitempty"`
+	Name         string     `json:"name" validate:"required"`
+	Status       *string    `json:"status,omitempty"`
+	TenantId     int64      `json:"tenantId"`
+	UpdatedAt    *time.Time `json:"updatedAt,omitempty"`
 }
 
 func (tenant Tenant) GetCreatedAt() time.Time {
 	var v time.Time
 	if tenant.CreatedAt != nil {
 		return *tenant.CreatedAt
+	}
+	return v
+}
+
+func (tenant Tenant) GetDatabaseName() string {
+	var v string
+	if tenant.DatabaseName != nil {
+		return *tenant.DatabaseName
 	}
 	return v
 }
@@ -712,8 +770,16 @@ func (tenant Tenant) GetName() string {
 	return tenant.Name
 }
 
-func (tenant Tenant) GetSectionId() string {
-	return tenant.SectionId
+func (tenant Tenant) GetStatus() string {
+	var v string
+	if tenant.Status != nil {
+		return *tenant.Status
+	}
+	return v
+}
+
+func (tenant Tenant) GetTenantId() int64 {
+	return tenant.TenantId
 }
 
 func (tenant Tenant) GetUpdatedAt() time.Time {

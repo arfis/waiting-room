@@ -82,8 +82,8 @@ interface SystemConfiguration {
 })
 export class ConfigurationComponent implements OnInit {
   private tenantService = inject(TenantService);
-  private currentTenantId = signal<string>('');
-  
+  private currentTenantId = signal<number>(0);
+
   constructor(
     private http: HttpClient,
     private configService: ConfigService,
@@ -93,7 +93,7 @@ export class ConfigurationComponent implements OnInit {
     effect(() => {
       const tenantId = this.tenantService.selectedTenantId();
       const previousTenantId = this.currentTenantId();
-      
+
       // Load configuration if:
       // 1. Tenant is selected AND
       // 2. (We haven't loaded yet OR tenant has changed)
@@ -102,7 +102,7 @@ export class ConfigurationComponent implements OnInit {
         this.loadConfiguration();
       } else if (!tenantId) {
         // Clear current tenant if none selected
-        this.currentTenantId.set('');
+        this.currentTenantId.set(0);
       }
     });
   }

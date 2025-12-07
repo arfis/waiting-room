@@ -65,13 +65,13 @@ import { TenantService } from './tenant.service';
               @for (tenant of tenants(); track tenant.id) {
                 <button
                   type="button"
-                  (click)="onTenantChange(tenant.id)"
+                  (click)="onTenantChange(tenant.tenantId)"
                   class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition-colors"
-                  [class.bg-blue-50]="selectedTenantId() === tenant.id"
-                  [class.text-blue-700]="selectedTenantId() === tenant.id"
-                  [class.font-medium]="selectedTenantId() === tenant.id">
-                  <div class="font-medium text-gray-900 dark:text-gray-100">{{tenant.buildingId}}:{{ tenant.name }}</div>
-                  <div class="text-xs text-gray-600 dark:text-gray-400">{{ tenant.sectionId }}</div>
+                  [class.bg-blue-50]="selectedTenantId() === tenant.tenantId"
+                  [class.text-blue-700]="selectedTenantId() === tenant.tenantId"
+                  [class.font-medium]="selectedTenantId() === tenant.tenantId">
+                  <div class="font-medium text-gray-900 dark:text-gray-100">{{ tenant.name }}</div>
+                  <div class="text-xs text-gray-600 dark:text-gray-400">ID: {{ tenant.tenantId }}</div>
                 </button>
               }
               @if (showCreateButton()) {
@@ -101,8 +101,8 @@ import { TenantService } from './tenant.service';
 })
 export class TenantSelectorComponent implements OnInit {
   private tenantService = inject(TenantService);
-  
-  selectedTenantId = signal<string>('');
+
+  selectedTenantId = signal<number>(0);
   isOpen = signal<boolean>(false);
   showCreateForm = signal<boolean>(false);
   
@@ -126,25 +126,23 @@ export class TenantSelectorComponent implements OnInit {
   }
 
   constructor() {
-    // Sync with service's selected tenant (convert full ID to database ID for comparison)
+    // Sync with service's selected tenant
     effect(() => {
-      const serviceFullTenantId = this.tenantService.selectedTenantId();
-      const selectedTenant = this.tenantService.getSelectedTenant();
-      const serviceTenantDatabaseId = selectedTenant?.id || '';
-      
-      if (serviceTenantDatabaseId && serviceTenantDatabaseId !== this.selectedTenantId()) {
-        this.selectedTenantId.set(serviceTenantDatabaseId);
+      const serviceTenantId = this.tenantService.selectedTenantId();
+
+      if (serviceTenantId && serviceTenantId !== this.selectedTenantId()) {
+        this.selectedTenantId.set(serviceTenantId);
       }
     });
   }
 
   ngOnInit(): void {
-    // Initialize selected tenant from service (convert full ID to database ID for display)
+    // Initialize selected tenant from service
     const selectedTenant = this.tenantService.getSelectedTenant();
     if (selectedTenant) {
-      this.selectedTenantId.set(selectedTenant.id);
+      this.selectedTenantId.set(selectedTenant.tenantId);
     }
-    
+
     // Load tenants if not already loaded
     if (this.tenantService.tenants().length === 0) {
       this.tenantService.loadTenants();
@@ -155,7 +153,7 @@ export class TenantSelectorComponent implements OnInit {
     this.isOpen.update(val => !val);
   }
 
-  onTenantChange(tenantId: string): void {
+  onTenantChange(tenantId: number): void {
     this.tenantService.setSelectedTenant(tenantId);
     this.isOpen.set(false);
   }

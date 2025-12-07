@@ -57,7 +57,7 @@ export class QueueStateService {
 
   private currentRoomId: string | null = null;
   private currentStates: QueueEntryStatus[] | undefined = undefined;
-  private lastTenantId: string | null = null;
+  private lastTenantId: number | null = null;
 
   constructor() {
     // Update last updated timestamp when queue entries change
@@ -93,7 +93,7 @@ export class QueueStateService {
     this.currentRoomId = roomId;
     this.currentStates = states;
     // Store current tenant ID to track changes
-    const currentTenantId = this.tenantService.getSelectedTenantIdSync();
+    const currentTenantId = this.tenantService.selectedTenantId();
     this.lastTenantId = currentTenantId;
     await this.queueWebSocket.initialize(roomId, states);
   }

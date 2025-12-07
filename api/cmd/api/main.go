@@ -16,6 +16,7 @@ import (
 
 	"github.com/arfis/waiting-room/internal/cardreader"
 	"github.com/arfis/waiting-room/internal/config"
+	"github.com/arfis/waiting-room/internal/db"
 	ngErrors "github.com/arfis/waiting-room/internal/errors"
 	"github.com/arfis/waiting-room/internal/middleware"
 	"github.com/arfis/waiting-room/internal/priority"
@@ -75,16 +76,15 @@ func DIContainer(cfg *config.Config) *dig.Container {
 			return repo
 		}},
 		{Constructor: func() repository.ConfigRepository {
-			// Try to connect to MongoDB using configuration
-			client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(cfg.GetMongoURI()))
+			// Create tenant database manager
+			tenantManager, err := db.NewTenantDatabaseManager(cfg.GetMongoURI(), cfg.GetMongoDatabase())
 			if err != nil {
-				log.Printf("Failed to connect to MongoDB for config: %v", err)
+				log.Fatalf("Failed to create tenant database manager: %v", err)
 				return nil
 			}
 
-			db := client.Database(cfg.GetMongoDatabase())
-			repo := repository.NewMongoDBConfigRepository(db)
-			log.Println("Connected to MongoDB for config successfully")
+			repo := repository.NewMongoDBConfigRepository(tenantManager)
+			log.Println("Connected to MongoDB for config with tenant manager successfully")
 			return repo
 		}},
 		{Constructor: func(cfg *config.Config) *priority.Repository {

@@ -45,7 +45,7 @@ func (s *Service) GetSystemConfiguration(ctx context.Context) (*types.SystemConf
 			return nil, err
 		}
 		if config != nil {
-			log.Printf("[ConfigService] Found configuration for tenant %s - config ID: %s, config tenantId: %s, config sectionId: %s", tenantID, config.ID, config.TenantID, config.SectionID)
+			log.Printf("[ConfigService] Found configuration for tenant %s - config ID: %s, config tenantId: %s, config sectionId: %s", tenantID, config.ID, config.SectionID)
 			return config, nil
 		}
 		// No tenant-specific config found, return nil (do NOT fall back to default config)
@@ -109,7 +109,7 @@ func (s *Service) GetExternalAPIConfig(ctx context.Context) (*types.ExternalAPIC
 			return nil, err
 		}
 		if systemConfig != nil {
-			log.Printf("[ConfigService] Found external API config for tenant '%s' - config ID: %s, config tenantId: %s, config sectionId: %s", tenantID, systemConfig.ID, systemConfig.TenantID, systemConfig.SectionID)
+			log.Printf("[ConfigService] Found external API config for tenant '%s' - config ID: %s, config sectionId: %v", tenantID, systemConfig.ID, systemConfig.SectionID)
 			return &systemConfig.ExternalAPI, nil
 		}
 		// No tenant-specific config found, return nil (do NOT fall back to default)

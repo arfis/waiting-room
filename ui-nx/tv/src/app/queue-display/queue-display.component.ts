@@ -22,7 +22,7 @@ export class QueueDisplayComponent implements OnInit, OnDestroy {
   private queueWebSocket = inject(QueueWebSocketService);
   private tenantService = inject(TenantService);
   private readonly roomId = 'triage-1';
-  private lastTenantId: string | null = null;
+  private lastTenantId: number | null = null;
   lastUpdated = signal<Date>(new Date());
 
   // Use WebSocket service signals directly
@@ -69,7 +69,7 @@ export class QueueDisplayComponent implements OnInit, OnDestroy {
 
   async ngOnInit() {
     // Check if tenant is selected before initializing
-    const tenantId = this.tenantService.getSelectedTenantIdSync();
+    const tenantId = this.tenantService.selectedTenantId();
     if (tenantId) {
       this.lastTenantId = tenantId;
       // Initialize with HTTP API first, then connect WebSocket

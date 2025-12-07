@@ -105,7 +105,7 @@ export class QueueManagementComponent implements OnInit, OnDestroy {
     return !this.isConfigLoading() && !this.configError() && (hasSelectedServicePoint || hasImplicitOrAutoSelected);
   });
 
-  private lastTenantId: string | null = null;
+  private lastTenantId: number | null = null;
 
   constructor() {
     // Watch for tenant and config to initialize queue state
