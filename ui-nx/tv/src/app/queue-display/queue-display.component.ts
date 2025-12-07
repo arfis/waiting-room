@@ -23,6 +23,7 @@ export class QueueDisplayComponent implements OnInit, OnDestroy {
   private tenantService = inject(TenantService);
   private readonly roomId = 'triage-1';
   private lastTenantId: number | null = null;
+  private lastCompositeId: string | null = null;
   lastUpdated = signal<Date>(new Date());
 
   // Use WebSocket service signals directly
@@ -44,23 +45,37 @@ export class QueueDisplayComponent implements OnInit, OnDestroy {
       this.updateComputedSignals(entries);
     });
 
-    // Watch for tenant changes and reload queue data
+    // Watch for tenant/section changes and reload queue data
     effect(() => {
       const tenantId = this.tenantService.selectedTenantId();
-      
+      const sectionId = this.tenantService.selectedSectionId();
+      const compositeId = this.tenantService.getSelectedTenantIdSync();
+
       // Initialize on first tenant selection
-      if (tenantId && this.lastTenantId === null) {
-        console.log('[TV] Initializing with tenant:', tenantId);
+      if (compositeId && this.lastCompositeId === null) {
+        console.log('[TV] Initializing with tenant:', tenantId, 'section:', sectionId || 'none', 'compositeId:', compositeId);
         this.lastTenantId = tenantId;
+        this.lastCompositeId = compositeId;
         this.queueWebSocket.initialize(this.roomId, ['CALLED', 'IN_SERVICE', 'WAITING']);
       }
-      // Reload if tenant changed
-      else if (tenantId && tenantId !== this.lastTenantId && this.lastTenantId !== null) {
-        console.log('[TV] Tenant changed from', this.lastTenantId, 'to', tenantId, '- reloading queue data');
+      // Reload if tenant OR section changed
+      else if (compositeId && compositeId !== this.lastCompositeId && this.lastCompositeId !== null) {
+        console.log('[TV] Tenant/section changed from', this.lastCompositeId, 'to', compositeId, '- reloading queue display');
         this.lastTenantId = tenantId;
-        // Clear old entries and reload
+        this.lastCompositeId = compositeId;
+
+        // Disconnect from WebSocket and clear entries
+        console.log('[TV] Disconnecting from WebSocket...');
         this.queueWebSocket.disconnect();
+
+        // Clear displayed entries immediately for visual feedback
+        this.currentEntry.set(null);
+        this.waitingEntries.set([]);
+        this.calledEntries.set([]);
+
+        // Wait a moment for WebSocket to fully close, then reconnect with new tenant/section
         setTimeout(() => {
+          console.log('[TV] Reconnecting to WebSocket for new tenant/section:', compositeId);
           this.queueWebSocket.initialize(this.roomId, ['CALLED', 'IN_SERVICE', 'WAITING']);
         }, 100);
       }
@@ -70,8 +85,11 @@ export class QueueDisplayComponent implements OnInit, OnDestroy {
   async ngOnInit() {
     // Check if tenant is selected before initializing
     const tenantId = this.tenantService.selectedTenantId();
-    if (tenantId) {
+    const compositeId = this.tenantService.getSelectedTenantIdSync();
+    if (tenantId && compositeId) {
       this.lastTenantId = tenantId;
+      this.lastCompositeId = compositeId;
+      console.log('[TV] ngOnInit - Initializing with tenant/section:', compositeId);
       // Initialize with HTTP API first, then connect WebSocket
       // Fetch CALLED entries to show which tickets are called and where
       await this.queueWebSocket.initialize(this.roomId, ['CALLED', 'IN_SERVICE', 'WAITING']);

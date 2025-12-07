@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/arfis/waiting-room/internal/middleware"
 	"github.com/arfis/waiting-room/internal/repository"
 	"github.com/arfis/waiting-room/internal/service"
 	"github.com/arfis/waiting-room/internal/types"
@@ -31,7 +32,11 @@ func (s *Service) Stop() {
 	}
 }
 
-// GetSystemConfiguration gets the complete system configuration from cache
+// GetSystemConfiguration gets the complete system configuration with fallback support
+// Order of precedence:
+// 1. Section-specific config (if sectionId in context)
+// 2. Tenant-level config (base config for tenant)
+// 3. Environment variables (for non-tenant requests)
 func (s *Service) GetSystemConfiguration(ctx context.Context) (*types.SystemConfiguration, error) {
 	// Check if tenant ID is in context - if so, bypass cache and query repository directly
 	// This ensures tenant-specific configurations are always fresh
@@ -39,17 +44,38 @@ func (s *Service) GetSystemConfiguration(ctx context.Context) (*types.SystemConf
 	if tenantID != "" {
 		// Bypass cache for tenant-specific requests
 		log.Printf("[ConfigService] Tenant-specific config requested for: %s, querying repository directly (bypassing cache)", tenantID)
+
+		// Try to get section-specific config first (if sectionId in context)
 		config, err := s.repo.GetSystemConfiguration(ctx)
 		if err != nil {
 			log.Printf("[ConfigService] Error querying repository for tenant %s: %v", tenantID, err)
 			return nil, err
 		}
+
 		if config != nil {
-			log.Printf("[ConfigService] Found configuration for tenant %s - config ID: %s, config tenantId: %s, config sectionId: %s", tenantID, config.ID, config.SectionID)
+			log.Printf("[ConfigService] Found configuration for tenant %s - config ID: %s, sectionId: %v", tenantID, config.ID, config.SectionID)
 			return config, nil
 		}
-		// No tenant-specific config found, return nil (do NOT fall back to default config)
-		log.Printf("[ConfigService] No configuration found for tenant: %s - returning nil (NOT falling back to default)", tenantID)
+
+		// If section-specific config not found, try tenant-level (base) config
+		sectionID, hasSectionID := ctx.Value(middleware.SECTION_ID).(int64)
+		if hasSectionID && sectionID != 0 {
+			log.Printf("[ConfigService] No section-specific config found, falling back to tenant-level config")
+			// Create new context without section ID to get tenant-level config
+			baseCtx := context.WithValue(ctx, middleware.SECTION_ID, int64(0))
+			baseConfig, err := s.repo.GetSystemConfiguration(baseCtx)
+			if err != nil {
+				log.Printf("[ConfigService] Error querying tenant-level config: %v", err)
+				return nil, err
+			}
+			if baseConfig != nil {
+				log.Printf("[ConfigService] Using tenant-level base config (inherited)")
+				return baseConfig, nil
+			}
+		}
+
+		// No config found at any level
+		log.Printf("[ConfigService] No configuration found for tenant: %s at any level", tenantID)
 		return nil, nil
 	}
 
@@ -95,7 +121,7 @@ func (s *Service) UpdateSystemConfiguration(ctx context.Context, updates map[str
 	return nil
 }
 
-// GetExternalAPIConfig gets external API configuration from cache
+// GetExternalAPIConfig gets external API configuration with fallback support
 func (s *Service) GetExternalAPIConfig(ctx context.Context) (*types.ExternalAPIConfig, error) {
 	// Check if tenant ID is in context - if so, bypass cache and query repository directly
 	tenantID := service.GetTenantID(ctx)
@@ -103,17 +129,35 @@ func (s *Service) GetExternalAPIConfig(ctx context.Context) (*types.ExternalAPIC
 	if tenantID != "" {
 		// Bypass cache for tenant-specific requests
 		log.Printf("[ConfigService] Tenant-specific external API config requested for: '%s', querying repository directly", tenantID)
+
+		// Try section-specific first
 		systemConfig, err := s.repo.GetSystemConfiguration(ctx)
 		if err != nil {
 			log.Printf("[ConfigService] Error querying repository for tenant '%s': %v", tenantID, err)
 			return nil, err
 		}
 		if systemConfig != nil {
-			log.Printf("[ConfigService] Found external API config for tenant '%s' - config ID: %s, config sectionId: %v", tenantID, systemConfig.ID, systemConfig.SectionID)
+			log.Printf("[ConfigService] Found external API config for tenant '%s' - config ID: %s, sectionId: %v", tenantID, systemConfig.ID, systemConfig.SectionID)
 			return &systemConfig.ExternalAPI, nil
 		}
-		// No tenant-specific config found, return nil (do NOT fall back to default)
-		log.Printf("[ConfigService] No external API config found for tenant '%s' - returning nil (NOT falling back to default)", tenantID)
+
+		// Fallback to tenant-level config
+		sectionID, hasSectionID := ctx.Value(middleware.SECTION_ID).(int64)
+		if hasSectionID && sectionID != 0 {
+			log.Printf("[ConfigService] No section-specific external API config, falling back to tenant-level")
+			baseCtx := context.WithValue(ctx, middleware.SECTION_ID, int64(0))
+			baseConfig, err := s.repo.GetSystemConfiguration(baseCtx)
+			if err != nil {
+				log.Printf("[ConfigService] Error querying tenant-level external API config: %v", err)
+				return nil, err
+			}
+			if baseConfig != nil {
+				log.Printf("[ConfigService] Using tenant-level external API config (inherited)")
+				return &baseConfig.ExternalAPI, nil
+			}
+		}
+
+		log.Printf("[ConfigService] No external API config found for tenant '%s' at any level", tenantID)
 		return nil, nil
 	}
 
@@ -139,21 +183,41 @@ func (s *Service) SetExternalAPIConfig(ctx context.Context, apiConfig *types.Ext
 	return s.cache.UpdateExternalAPIConfiguration(ctx, apiConfig)
 }
 
-// GetRoomsConfig gets rooms configuration from cache
+// GetRoomsConfig gets rooms configuration with fallback support
 func (s *Service) GetRoomsConfig(ctx context.Context) ([]types.RoomConfig, error) {
 	// Check if tenant ID is in context - if so, bypass cache and query repository directly
 	tenantID := service.GetTenantID(ctx)
 	if tenantID != "" {
 		// Bypass cache for tenant-specific requests
 		log.Printf("Tenant-specific rooms config requested for: %s, querying repository directly", tenantID)
+
+		// Try section-specific first
 		systemConfig, err := s.repo.GetSystemConfiguration(ctx)
 		if err != nil {
 			return nil, err
 		}
 		if systemConfig != nil && len(systemConfig.Rooms) > 0 {
+			log.Printf("[ConfigService] Using section-specific rooms config")
 			return systemConfig.Rooms, nil
 		}
-		// No tenant-specific config found, return empty
+
+		// Fallback to tenant-level config
+		sectionID, hasSectionID := ctx.Value(middleware.SECTION_ID).(int64)
+		if hasSectionID && sectionID != 0 {
+			log.Printf("[ConfigService] No section-specific rooms config, falling back to tenant-level")
+			baseCtx := context.WithValue(ctx, middleware.SECTION_ID, int64(0))
+			baseConfig, err := s.repo.GetSystemConfiguration(baseCtx)
+			if err != nil {
+				return nil, err
+			}
+			if baseConfig != nil && len(baseConfig.Rooms) > 0 {
+				log.Printf("[ConfigService] Using tenant-level rooms config (inherited)")
+				return baseConfig.Rooms, nil
+			}
+		}
+
+		// No config found, return empty
+		log.Printf("[ConfigService] No rooms config found at any level")
 		return []types.RoomConfig{}, nil
 	}
 

@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/arfis/waiting-room/internal/data/dto"
+	"github.com/arfis/waiting-room/internal/middleware"
 	"github.com/arfis/waiting-room/internal/repository"
 	"github.com/arfis/waiting-room/internal/types"
 )
@@ -127,7 +128,53 @@ func (s *Service) CreateSection(ctx context.Context, sectionDTO *dto.Section) (*
 		return nil, fmt.Errorf("failed to create section: %w", err)
 	}
 
+	// After creating section, copy parent tenant's configuration to the new section
+	// This ensures the section inherits the tenant's configuration
+	if err := s.copyParentConfigToSection(ctx, section.SectionID); err != nil {
+		// Log error but don't fail section creation
+		fmt.Printf("Warning: failed to copy parent config to section %d: %v\n", section.SectionID, err)
+	}
+
 	return s.convertSectionToDTO(section, sectionDTO.TenantId), nil
+}
+
+// copyParentConfigToSection copies the parent tenant's configuration to a newly created section
+func (s *Service) copyParentConfigToSection(ctx context.Context, sectionID int64) error {
+	// Get parent tenant's configuration (without section context)
+	parentConfig, err := s.repo.GetSystemConfiguration(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get parent configuration: %w", err)
+	}
+
+	// If no parent config exists, skip copying
+	if parentConfig == nil {
+		return nil
+	}
+
+	// Create a copy of parent config with the new section ID
+	// Note: Do a deep copy of slices/maps to avoid sharing references
+	roomsCopy := make([]types.RoomConfig, len(parentConfig.Rooms))
+	copy(roomsCopy, parentConfig.Rooms)
+
+	sectionConfig := &types.SystemConfiguration{
+		SectionID:     &sectionID,
+		ExternalAPI:   parentConfig.ExternalAPI,
+		Rooms:         roomsCopy,
+		DefaultRoom:   parentConfig.DefaultRoom,
+		WebSocketPath: parentConfig.WebSocketPath,
+		AllowWildcard: parentConfig.AllowWildcard,
+	}
+
+	// Create a new context with section ID to save section-specific config
+	// We need to inject the section ID into context using the same key the middleware uses
+	sectionCtx := context.WithValue(ctx, middleware.SECTION_ID, sectionID)
+
+	// Save the section-specific configuration
+	if err := s.repo.SetSystemConfiguration(sectionCtx, sectionConfig); err != nil {
+		return fmt.Errorf("failed to save section configuration: %w", err)
+	}
+
+	return nil
 }
 
 // GetSection retrieves a section by ID
