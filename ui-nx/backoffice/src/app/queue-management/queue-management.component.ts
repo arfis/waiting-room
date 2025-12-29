@@ -114,7 +114,7 @@ export class QueueManagementComponent implements OnInit, OnDestroy {
       return false; // Don't show selection if 0 or 1 service point
     }
 
-    return !this.selectedServicePoint();
+    return !this.selectedServicePoint() && selectedSectionId > 0;
   });
 
   protected readonly showQueueManagement = computed(() => {

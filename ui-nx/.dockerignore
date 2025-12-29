@@ -1,0 +1,44 @@
+# Dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Build output
+dist
+.angular
+.nx
+tmp
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Testing
+coverage
+*.spec.ts
+**/*-e2e
+
+# Documentation
+*.md
+README*
+
+# CI/CD
+.github
+.gitlab-ci.yml
+
+# Other
+.verdaccio
+.prettierrc
+.prettierignore
+.editorconfig
