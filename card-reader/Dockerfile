@@ -1,6 +1,5 @@
 # Build stage
-FROM golang:1.22-alpine AS builder
-# (use whatever Go version you actually target, 1.25-alpine doesn't exist yet)
+FROM golang:1.25-alpine AS builder
 
 # Install build dependencies including PC/SC development libraries
 RUN apk add --no-cache \
