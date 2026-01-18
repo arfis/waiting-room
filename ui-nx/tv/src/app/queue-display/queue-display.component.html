@@ -1,7 +1,10 @@
 <div class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 text-white">
       <!-- Header -->
       <div class="text-center py-12 px-8 bg-gradient-to-r from-blue-800/50 to-indigo-800/50 backdrop-blur-sm border-b border-blue-700/30 shadow-2xl">
-        <div class="flex justify-end items-center mb-6 px-4">
+        <div class="flex justify-end items-center gap-4 mb-6 px-4">
+          <div class="bg-white/10 backdrop-blur-md rounded-lg p-2 border border-white/20 shadow-lg">
+            <app-language-selector></app-language-selector>
+          </div>
           <div class="bg-white/10 backdrop-blur-md rounded-lg p-2 border border-white/20 shadow-lg">
             <app-tenant-selector></app-tenant-selector>
           </div>
@@ -10,9 +13,9 @@
           <svg class="w-12 h-12 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
-          <h1 class="text-7xl font-extrabold bg-gradient-to-r from-blue-200 to-indigo-200 bg-clip-text text-transparent mb-2">Waiting Room Queue</h1>
+          <h1 class="text-7xl font-extrabold bg-gradient-to-r from-blue-200 to-indigo-200 bg-clip-text text-transparent mb-2">{{ 'tv.title' | translate }}</h1>
         </div>
-        <p class="text-3xl text-blue-200 font-semibold mb-2">Triage Room 1</p>
+        <p class="text-3xl text-blue-200 font-semibold mb-2">{{ 'common.servicePoint' | translate }} 1</p>
         <div class="mt-4 text-lg text-blue-300/80 flex items-center justify-center gap-2">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -28,7 +31,7 @@
           <div class="mb-16">
             <div class="flex items-center justify-center gap-3 mb-10">
               <div class="h-1 w-20 bg-gradient-to-r from-transparent to-yellow-400"></div>
-              <h2 class="text-5xl font-bold text-center text-yellow-400 drop-shadow-lg">Currently Being Served</h2>
+              <h2 class="text-5xl font-bold text-center text-yellow-400 drop-shadow-lg">{{ 'tv.nowServing' | translate }}</h2>
               <div class="h-1 w-20 bg-gradient-to-l from-transparent to-yellow-400"></div>
             </div>
             <div class="flex justify-center">
@@ -42,7 +45,7 @@
           <div class="mb-16">
             <div class="flex items-center justify-center gap-3 mb-10">
               <div class="h-1 w-20 bg-gradient-to-r from-transparent to-orange-400"></div>
-              <h2 class="text-5xl font-bold text-center text-orange-400 drop-shadow-lg">Called Tickets</h2>
+              <h2 class="text-5xl font-bold text-center text-orange-400 drop-shadow-lg">{{ 'backoffice.called' | translate }}</h2>
               <div class="h-1 w-20 bg-gradient-to-l from-transparent to-orange-400"></div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
@@ -57,17 +60,17 @@
         <div class="mb-12">
           <div class="flex items-center justify-center gap-3 mb-10">
             <div class="h-1 w-20 bg-gradient-to-r from-transparent to-blue-200"></div>
-            <h2 class="text-5xl font-bold text-center text-blue-200 drop-shadow-lg">Waiting Queue</h2>
+            <h2 class="text-5xl font-bold text-center text-blue-200 drop-shadow-lg">{{ 'backoffice.waitingQueue' | translate }}</h2>
             <div class="h-1 w-20 bg-gradient-to-l from-transparent to-blue-200"></div>
           </div>
-          
+
           @if (waitingEntries().length === 0) {
-            <ui-card title="No one waiting" variant="default" class="bg-blue-900/30 backdrop-blur-sm border-blue-700/50">
+            <ui-card [title]="'tv.pleaseWait' | translate" variant="default" class="bg-blue-900/30 backdrop-blur-sm border-blue-700/50">
               <div class="text-center py-16">
                 <svg class="w-32 h-32 text-blue-400/50 mx-auto mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
-                <p class="text-3xl text-blue-200 font-semibold">No one is currently waiting</p>
+                <p class="text-3xl text-blue-200 font-semibold">{{ 'backoffice.noOneWaiting' | translate }}</p>
               </div>
             </ui-card>
           } @else {
@@ -81,31 +84,31 @@
 
         <!-- Statistics -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
-          <ui-card title="Total Waiting" variant="default" class="bg-gradient-to-br from-blue-800/40 to-blue-900/40 backdrop-blur-sm border-blue-700/50 hover:scale-105 transition-transform">
+          <ui-card [title]="'tv.waiting' | translate" variant="default" class="bg-gradient-to-br from-blue-800/40 to-blue-900/40 backdrop-blur-sm border-blue-700/50 hover:scale-105 transition-transform">
             <div class="text-center py-6">
               <div class="text-6xl font-extrabold text-blue-300 mb-2 drop-shadow-lg">{{ waitingEntries().length }}</div>
-              <p class="text-blue-200 mt-2 text-lg font-semibold">People in queue</p>
+              <p class="text-blue-200 mt-2 text-lg font-semibold">{{ waitingEntries().length === 1 ? ('tv.personAhead' | translate) : ('tv.peopleAhead' | translate) }}</p>
             </div>
           </ui-card>
-          
-          <ui-card title="Called Tickets" variant="default" class="bg-gradient-to-br from-orange-800/40 to-orange-900/40 backdrop-blur-sm border-orange-700/50 hover:scale-105 transition-transform">
+
+          <ui-card [title]="'backoffice.called' | translate" variant="default" class="bg-gradient-to-br from-orange-800/40 to-orange-900/40 backdrop-blur-sm border-orange-700/50 hover:scale-105 transition-transform">
             <div class="text-center py-6">
               <div class="text-6xl font-extrabold text-orange-300 mb-2 drop-shadow-lg">{{ calledEntries().length }}</div>
-              <p class="text-orange-200 mt-2 text-lg font-semibold">Tickets called</p>
+              <p class="text-orange-200 mt-2 text-lg font-semibold">{{ 'backoffice.ticketNumber' | translate }}</p>
             </div>
           </ui-card>
-          
-          <ui-card title="Estimated Wait" variant="default" class="bg-gradient-to-br from-green-800/40 to-green-900/40 backdrop-blur-sm border-green-700/50 hover:scale-105 transition-transform">
+
+          <ui-card [title]="'tv.estimatedWait' | translate" variant="default" class="bg-gradient-to-br from-green-800/40 to-green-900/40 backdrop-blur-sm border-green-700/50 hover:scale-105 transition-transform">
             <div class="text-center py-6">
               <div class="text-6xl font-extrabold text-green-300 mb-2 drop-shadow-lg">{{ estimatedWaitTime() }}</div>
-              <p class="text-green-200 mt-2 text-lg font-semibold">Minutes</p>
+              <p class="text-green-200 mt-2 text-lg font-semibold">{{ 'tv.minutes' | translate }}</p>
             </div>
           </ui-card>
-          
-          <ui-card title="Average Service Time" variant="default" class="bg-gradient-to-br from-purple-800/40 to-purple-900/40 backdrop-blur-sm border-purple-700/50 hover:scale-105 transition-transform">
+
+          <ui-card [title]="'backoffice.estDuration' | translate" variant="default" class="bg-gradient-to-br from-purple-800/40 to-purple-900/40 backdrop-blur-sm border-purple-700/50 hover:scale-105 transition-transform">
             <div class="text-center py-6">
               <div class="text-6xl font-extrabold text-purple-300 mb-2 drop-shadow-lg">{{ averageServiceTime() }}</div>
-              <p class="text-purple-200 mt-2 text-lg font-semibold">Minutes per person</p>
+              <p class="text-purple-200 mt-2 text-lg font-semibold">{{ 'tv.minutes' | translate }}</p>
             </div>
           </ui-card>
         </div>
@@ -113,6 +116,6 @@
 
       <!-- Footer -->
       <div class="text-center py-8 bg-gradient-to-r from-blue-800/30 to-indigo-800/30 backdrop-blur-sm border-t border-blue-700/30">
-        <p class="text-xl text-blue-200 font-semibold">Waiting Room Management System</p>
+        <p class="text-xl text-blue-200 font-semibold">{{ 'tv.welcome' | translate }}</p>
       </div>
     </div>

@@ -82,36 +82,44 @@ interface SystemConfiguration {
 })
 export class ConfigurationComponent implements OnInit {
   private tenantService = inject(TenantService);
-  private currentTenantId = signal<string>('');
-  
+  private currentTenantId = signal<number>(0);
+  private currentSectionId = signal<number>(0);
+
   constructor(
     private http: HttpClient,
     private configService: ConfigService,
     private translationService: TranslationService
   ) {
-    // Watch for tenant selection and load configuration when tenant is selected or changes
+    // Watch for tenant/section selection and load configuration when they change
     effect(() => {
       const tenantId = this.tenantService.selectedTenantId();
+      const sectionId = this.tenantService.selectedSectionId();
       const previousTenantId = this.currentTenantId();
-      
+      const previousSectionId = this.currentSectionId();
+
       // Load configuration if:
       // 1. Tenant is selected AND
-      // 2. (We haven't loaded yet OR tenant has changed)
-      if (tenantId && (tenantId !== previousTenantId)) {
+      // 2. (We haven't loaded yet OR tenant/section has changed)
+      if (tenantId && (tenantId !== previousTenantId || sectionId !== previousSectionId)) {
+        console.log(`[ConfigurationComponent] Tenant or section changed: tenantId=${tenantId}, sectionId=${sectionId}, prev: tenantId=${previousTenantId}, sectionId=${previousSectionId}`);
         this.currentTenantId.set(tenantId);
+        this.currentSectionId.set(sectionId);
         this.loadConfiguration();
       } else if (!tenantId) {
-        // Clear current tenant if none selected
-        this.currentTenantId.set('');
+        // Clear current tenant/section if none selected
+        this.currentTenantId.set(0);
+        this.currentSectionId.set(0);
       }
     });
   }
-  
+
   ngOnInit(): void {
     // Check if tenant is already selected on init
     const tenantId = this.tenantService.selectedTenantId();
-    if (tenantId && tenantId !== this.currentTenantId()) {
+    const sectionId = this.tenantService.selectedSectionId();
+    if (tenantId && (tenantId !== this.currentTenantId() || sectionId !== this.currentSectionId())) {
       this.currentTenantId.set(tenantId);
+      this.currentSectionId.set(sectionId);
       this.loadConfiguration();
     }
   }
@@ -119,7 +127,33 @@ export class ConfigurationComponent implements OnInit {
   isSaving = signal(false);
   lastUpdated = signal('Just now');
   configurationCount = signal(5);
-  
+
+  // Computed configuration scope information
+  protected readonly configurationScope = computed(() => {
+    const tenantId = this.currentTenantId();
+    const sectionId = this.currentSectionId();
+    const tenant = this.tenantService.getSelectedTenant();
+    const section = this.tenantService.getSelectedSection();
+
+    if (!tenantId) {
+      return null;
+    }
+
+    if (sectionId && section) {
+      return {
+        isSection: true,
+        label: `Section: ${section.name}`,
+        description: `Configuring section-specific settings for ${tenant?.name || 'Unknown Tenant'} → ${section.name}. Changes only affect this section.`
+      };
+    }
+
+    return {
+      isSection: false,
+      label: `Tenant: ${tenant?.name || 'Tenant-Level'}`,
+      description: `Configuring tenant-level settings for ${tenant?.name || 'Unknown Tenant'}. New sections will inherit this configuration.`
+    };
+  });
+
   // Track which room each service point belongs to
   private servicePointRoomMap = new Map<string, string>();
   
@@ -236,8 +270,10 @@ export class ConfigurationComponent implements OnInit {
 
   loadConfiguration(): void {
     const tenantId = this.tenantService.selectedTenantId();
-    console.log(`[ConfigurationComponent] Loading configuration for tenant: ${tenantId || 'none'}`);
-    
+    const sectionId = this.tenantService.selectedSectionId();
+    const compositeId = this.tenantService.getSelectedTenantIdSync();
+    console.log(`[ConfigurationComponent] Loading configuration for tenant: ${tenantId || 'none'}, section: ${sectionId || 'none (tenant-level)'}, compositeId: ${compositeId}`);
+
     // Load external API configuration
     this.http.get(this.configService.adminExternalApiUrl)
       .subscribe({

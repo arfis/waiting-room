@@ -89,8 +89,11 @@ func (s *Service) SwipeCard(ctx context.Context, roomId string, req *dto.SwipeRe
 			symbols = patientInfo.Symbols
 		}
 
-		// Extract appointment time using the helper method (handles FlexibleTime conversion)
-		appointmentTimePtr = patientInfo.GetAppointmentTimePtr()
+		// Extract appointment time - convert FlexibleTime to time.Time
+		if patientInfo.AppointmentTime != nil {
+			t := patientInfo.AppointmentTime
+			appointmentTimePtr = t
+		}
 
 		// Extract age
 		if patientInfo.Age != nil {
@@ -139,6 +142,7 @@ func (s *Service) SwipeCard(ctx context.Context, roomId string, req *dto.SwipeRe
 		EntryID:      entry.ID,
 		TicketNumber: entry.TicketNumber,
 		QrUrl:        qrUrl,
+		CreatedAt:    entry.CreatedAt,
 	}
 
 	// Add service duration if provided (convert back to minutes for API response)

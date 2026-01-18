@@ -2,6 +2,7 @@ import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { RouterModule } from '@angular/router';
+import { environment } from '../environments/environment';
 
 @Component({
   selector: 'app-root',
@@ -28,7 +29,7 @@ export class App {
   loadQueueData() {
     const token = this.getTokenFromPath();
     if (token) {
-      this.http.get(`http://localhost:8080/queue-entries/token/${token}`)
+      this.http.get(`${environment.apiUrl}/queue-entries/token/${token}`)
         .subscribe({
           next: (data) => {
             this.queueData = data;

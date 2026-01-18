@@ -1,19 +1,19 @@
 import { Component, signal, inject, OnInit, OnDestroy, ChangeDetectionStrategy, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { CardComponent } from '@waiting-room/primeng-components';
 import { QueueWebSocketService, WebSocketQueueEntry } from '@waiting-room/api-client';
 import { CalledTicketComponent } from './components/called-ticket/called-ticket.component';
 import { WaitingTicketComponent } from './components/waiting-ticket/waiting-ticket.component';
 import { CurrentEntryComponent } from './components/current-entry/current-entry.component';
 import { TenantSelectorComponent, TenantService } from '@lib/tenant';
+import { TranslatePipe, LanguageSelectorComponent } from '@lib/i18n';
 
 // Using WebSocketQueueEntry from api-client
 
 @Component({
   selector: 'app-queue-display',
   standalone: true,
-  imports: [CommonModule, CardComponent, CalledTicketComponent, WaitingTicketComponent, CurrentEntryComponent, TenantSelectorComponent],
+  imports: [CommonModule, CardComponent, CalledTicketComponent, WaitingTicketComponent, CurrentEntryComponent, TenantSelectorComponent, TranslatePipe, LanguageSelectorComponent],
   templateUrl: './queue-display.component.html',
   styleUrls: ['./queue-display.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -22,7 +22,8 @@ export class QueueDisplayComponent implements OnInit, OnDestroy {
   private queueWebSocket = inject(QueueWebSocketService);
   private tenantService = inject(TenantService);
   private readonly roomId = 'triage-1';
-  private lastTenantId: string | null = null;
+  private lastTenantId: number | null = null;
+  private lastCompositeId: string | null = null;
   lastUpdated = signal<Date>(new Date());
 
   // Use WebSocket service signals directly
@@ -44,23 +45,37 @@ export class QueueDisplayComponent implements OnInit, OnDestroy {
       this.updateComputedSignals(entries);
     });
 
-    // Watch for tenant changes and reload queue data
+    // Watch for tenant/section changes and reload queue data
     effect(() => {
       const tenantId = this.tenantService.selectedTenantId();
-      
+      const sectionId = this.tenantService.selectedSectionId();
+      const compositeId = this.tenantService.getSelectedTenantIdSync();
+
       // Initialize on first tenant selection
-      if (tenantId && this.lastTenantId === null) {
-        console.log('[TV] Initializing with tenant:', tenantId);
+      if (compositeId && this.lastCompositeId === null) {
+        console.log('[TV] Initializing with tenant:', tenantId, 'section:', sectionId || 'none', 'compositeId:', compositeId);
         this.lastTenantId = tenantId;
+        this.lastCompositeId = compositeId;
         this.queueWebSocket.initialize(this.roomId, ['CALLED', 'IN_SERVICE', 'WAITING']);
       }
-      // Reload if tenant changed
-      else if (tenantId && tenantId !== this.lastTenantId && this.lastTenantId !== null) {
-        console.log('[TV] Tenant changed from', this.lastTenantId, 'to', tenantId, '- reloading queue data');
+      // Reload if tenant OR section changed
+      else if (compositeId && compositeId !== this.lastCompositeId && this.lastCompositeId !== null) {
+        console.log('[TV] Tenant/section changed from', this.lastCompositeId, 'to', compositeId, '- reloading queue display');
         this.lastTenantId = tenantId;
-        // Clear old entries and reload
+        this.lastCompositeId = compositeId;
+
+        // Disconnect from WebSocket and clear entries
+        console.log('[TV] Disconnecting from WebSocket...');
         this.queueWebSocket.disconnect();
+
+        // Clear displayed entries immediately for visual feedback
+        this.currentEntry.set(null);
+        this.waitingEntries.set([]);
+        this.calledEntries.set([]);
+
+        // Wait a moment for WebSocket to fully close, then reconnect with new tenant/section
         setTimeout(() => {
+          console.log('[TV] Reconnecting to WebSocket for new tenant/section:', compositeId);
           this.queueWebSocket.initialize(this.roomId, ['CALLED', 'IN_SERVICE', 'WAITING']);
         }, 100);
       }
@@ -69,9 +84,12 @@ export class QueueDisplayComponent implements OnInit, OnDestroy {
 
   async ngOnInit() {
     // Check if tenant is selected before initializing
-    const tenantId = this.tenantService.getSelectedTenantIdSync();
-    if (tenantId) {
+    const tenantId = this.tenantService.selectedTenantId();
+    const compositeId = this.tenantService.getSelectedTenantIdSync();
+    if (tenantId && compositeId) {
       this.lastTenantId = tenantId;
+      this.lastCompositeId = compositeId;
+      console.log('[TV] ngOnInit - Initializing with tenant/section:', compositeId);
       // Initialize with HTTP API first, then connect WebSocket
       // Fetch CALLED entries to show which tickets are called and where
       await this.queueWebSocket.initialize(this.roomId, ['CALLED', 'IN_SERVICE', 'WAITING']);
@@ -85,7 +103,7 @@ export class QueueDisplayComponent implements OnInit, OnDestroy {
 
   private updateComputedSignals(entries: WebSocketQueueEntry[]) {
     // Find currently being served (IN_SERVICE only for current)
-    const current = entries.find(entry => 
+    const current = entries.find(entry =>
       entry.status === 'IN_SERVICE'
     );
     this.currentEntry.set(current || null);
@@ -120,7 +138,7 @@ export class QueueDisplayComponent implements OnInit, OnDestroy {
   averageServiceTime(): number {
     const waiting = this.waitingEntries();
     if (waiting.length === 0) return 0;
-    
+
     // Calculate average service duration
     let totalMinutes = 0;
     let count = 0;
@@ -130,12 +148,12 @@ export class QueueDisplayComponent implements OnInit, OnDestroy {
         count++;
       }
     }
-    
+
     // If no durations specified, use default
     if (count === 0) {
       return 5; // Default 5 minutes
     }
-    
+
     return Math.round(totalMinutes / count);
   }
 

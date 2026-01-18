@@ -34,34 +34,6 @@ import { TenantService, CreateTenantRequest, Tenant } from '@lib/tenant';
               
               <form (ngSubmit)="createTenant($event)" class="space-y-4">
                 <div>
-                  <label for="modal-buildingId" class="block text-sm font-medium text-gray-700 mb-2">
-                    Building ID *
-                  </label>
-                  <input
-                    type="text"
-                    id="modal-buildingId"
-                    name="buildingId"
-                    [(ngModel)]="newTenant.buildingId"
-                    required
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="e.g., Building-A">
-                </div>
-                
-                <div>
-                  <label for="modal-sectionId" class="block text-sm font-medium text-gray-700 mb-2">
-                    Section ID *
-                  </label>
-                  <input
-                    type="text"
-                    id="modal-sectionId"
-                    name="sectionId"
-                    [(ngModel)]="newTenant.sectionId"
-                    required
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="e.g., Section-1">
-                </div>
-                
-                <div>
                   <label for="modal-name" class="block text-sm font-medium text-gray-700 mb-2">
                     Tenant Name *
                   </label>
@@ -128,10 +100,8 @@ import { TenantService, CreateTenantRequest, Tenant } from '@lib/tenant';
 })
 export class CreateTenantModalComponent {
   tenantService = inject(TenantService);
-  
+
   newTenant: CreateTenantRequest = {
-    buildingId: '',
-    sectionId: '',
     name: '',
     description: ''
   };
@@ -149,8 +119,6 @@ export class CreateTenantModalComponent {
       if (this.tenantService.showCreateModal()) {
         // Reset form when opening
         this.newTenant = {
-          buildingId: '',
-          sectionId: '',
           name: '',
           description: ''
         };
@@ -180,16 +148,16 @@ export class CreateTenantModalComponent {
   createTenant(event: Event): void {
     event.preventDefault();
     event.stopPropagation();
-    
-    if (!this.newTenant.buildingId || !this.newTenant.sectionId || !this.newTenant.name) {
-      this.tenantService.setError('All required fields must be filled');
+
+    if (!this.newTenant.name) {
+      this.tenantService.setError('Tenant name is required');
       return;
     }
-    
+
     this.tenantService.createTenant(this.newTenant).subscribe({
       next: (tenant: Tenant) => {
         // Auto-select the newly created tenant
-        this.tenantService.setSelectedTenant(tenant.id);
+        this.tenantService.setSelectedTenant(tenant.tenantId);
         // Close modal
         this.close();
         // Emit event

@@ -4,7 +4,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { environment } from '../environments/environment';
 import { tenantInterceptor, TENANT_API_URL, TenantService } from '@lib/tenant';
-import { TENANT_SERVICE_TOKEN, API_URL_TOKEN } from '@waiting-room/api-client';
+import { TENANT_SERVICE_TOKEN, API_URL_TOKEN, WS_URL_TOKEN } from '@waiting-room/api-client';
 
 import { routes } from './app.routes';
 
@@ -20,6 +20,8 @@ export const appConfig: ApplicationConfig = {
     { provide: TENANT_API_URL, useValue: environment.apiUrl },
     // Provide API URL for api-client WebSocket
     { provide: API_URL_TOKEN, useValue: environment.apiUrl },
+    // Provide WebSocket URL for api-client
+    { provide: WS_URL_TOKEN, useValue: environment.wsUrl },
     // Provide TenantService to the injection token for api-client
     { provide: TENANT_SERVICE_TOKEN, useExisting: TenantService }
   ]

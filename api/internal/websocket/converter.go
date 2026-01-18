@@ -39,11 +39,10 @@ func convertEntriesToWebSocketFormat(entries []dto.QueueEntry) []map[string]inte
 		}
 
 		// Add timestamps from the entry
-		if entry.CreatedAt != nil {
+		if !entry.CreatedAt.IsZero() {
 			wsEntry["createdAt"] = entry.CreatedAt.Format(time.RFC3339)
 			wsEntry["updatedAt"] = entry.CreatedAt.Format(time.RFC3339) // Use createdAt as updatedAt for now
 		}
-		// Note: If createdAt is not set, we don't send it at all - frontend will handle gracefully
 
 		wsEntries = append(wsEntries, wsEntry)
 	}

@@ -1,0 +1,263 @@
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="bg-white rounded-lg shadow-sm border p-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900 mb-2">Sections / Departments</h1>
+        <p class="text-gray-600">
+          @if (selectedTenant()) {
+            Manage sections for <span class="font-semibold">{{ selectedTenant()?.name }}</span>
+          } @else {
+            Please select a tenant to manage sections
+          }
+        </p>
+      </div>
+      @if (selectedTenant()) {
+        <button
+          (click)="openCreateForm()"
+          class="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium">
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+          </svg>
+          Create Section
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Error Message -->
+  @if (error()) {
+    <div class="bg-red-50 border border-red-200 rounded-md p-4">
+      <div class="flex items-center">
+        <svg class="w-5 h-5 text-red-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <p class="text-sm text-red-800">{{ error() }}</p>
+      </div>
+    </div>
+  }
+
+  <!-- Create Section Form -->
+  @if (showCreateForm()) {
+    <div class="bg-white rounded-lg shadow-sm border p-6">
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">Create New Section</h2>
+
+      <form (ngSubmit)="createSection()" class="space-y-4">
+        <div>
+          <label for="name" class="block text-sm font-medium text-gray-700 mb-2">
+            Section Name *
+          </label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            [(ngModel)]="newSection.name"
+            required
+            placeholder="e.g., Cardiology, Dentistry, Emergency"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        </div>
+
+        <div>
+          <label for="description" class="block text-sm font-medium text-gray-700 mb-2">
+            Description (Optional)
+          </label>
+          <textarea
+            id="description"
+            name="description"
+            [(ngModel)]="newSection.description"
+            rows="2"
+            placeholder="Brief description of this section"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+        </div>
+
+        <div class="flex space-x-3">
+          <button
+            type="button"
+            (click)="closeCreateForm()"
+            class="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">
+            Cancel
+          </button>
+          <button
+            type="submit"
+            [disabled]="loading()"
+            class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+            @if (loading()) {
+              <span class="flex items-center justify-center">
+                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Creating...
+              </span>
+            } @else {
+              Create Section
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+
+  <!-- Sections List -->
+  @if (loading() && sections().length === 0) {
+    <div class="text-center py-12">
+      <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <p class="mt-2 text-sm text-gray-600">Loading sections...</p>
+    </div>
+  } @else if (sections().length === 0) {
+    <div class="bg-white rounded-lg shadow-sm border p-12 text-center">
+      <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+      </svg>
+      <h3 class="mt-2 text-sm font-medium text-gray-900">No sections</h3>
+      <p class="mt-1 text-sm text-gray-500">Get started by creating a new section.</p>
+      <div class="mt-6">
+        <button
+          (click)="openCreateForm()"
+          class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+          </svg>
+          Create First Section
+        </button>
+      </div>
+    </div>
+  } @else {
+    <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+      @for (section of sections(); track section.id) {
+        <div class="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow">
+          <!-- Edit Form for This Section -->
+          @if (editingSection()?.sectionId === section.sectionId) {
+            <form (ngSubmit)="saveSection()" class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Section Name *</label>
+                <input
+                  type="text"
+                  [(ngModel)]="editSection.name"
+                  name="editName"
+                  required
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                <textarea
+                  [(ngModel)]="editSection.description"
+                  name="editDescription"
+                  rows="2"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+              </div>
+
+              <div class="flex space-x-2">
+                <button
+                  type="button"
+                  (click)="closeEditForm()"
+                  class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  class="flex-1 px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700">
+                  Save
+                </button>
+              </div>
+            </form>
+          } @else {
+            <!-- Section Card View -->
+            <div class="flex items-start justify-between mb-4">
+              <div class="flex-1">
+                <h3 class="text-lg font-semibold text-gray-900">{{ section.name }}</h3>
+                @if (section.description) {
+                  <p class="text-sm text-gray-600 mt-1">{{ section.description }}</p>
+                }
+              </div>
+              <span class="ml-3 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                    [ngClass]="getStatusBadgeClass(section.status)">
+                {{ section.status }}
+              </span>
+            </div>
+
+            <div class="space-y-2 mb-4">
+              <div class="flex items-center text-sm text-gray-600">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                </svg>
+                Section ID: {{ section.sectionId }}
+              </div>
+
+              <!-- WebSocket Status -->
+              <div class="flex items-center text-sm">
+                @if (getWebSocketStatus(section.sectionId) === 'testing') {
+                  <div class="flex items-center text-blue-600">
+                    <svg class="animate-spin w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Testing WebSocket...
+                  </div>
+                } @else if (getWebSocketStatus(section.sectionId) === 'connected') {
+                  <div class="flex items-center text-green-600">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    WebSocket Connected
+                  </div>
+                } @else if (getWebSocketStatus(section.sectionId) === 'disconnected') {
+                  <div class="flex items-center text-red-600">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                    WebSocket Failed
+                  </div>
+                }
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="grid grid-cols-2 gap-2">
+              <button
+                (click)="configureSection(section)"
+                class="flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+                Configure
+              </button>
+
+              <button
+                (click)="testWebSocket(section)"
+                [disabled]="testingWebSocket() === section.sectionId"
+                class="flex items-center justify-center px-3 py-2 border border-gray-300 text-gray-700 rounded-md text-sm hover:bg-gray-50 transition-colors disabled:opacity-50">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"></path>
+                </svg>
+                Test WS
+              </button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 mt-2">
+              <button
+                (click)="openEditForm(section)"
+                class="flex items-center justify-center px-3 py-2 border border-gray-300 text-gray-700 rounded-md text-sm hover:bg-gray-50 transition-colors">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+                Edit
+              </button>
+
+              <button
+                (click)="deleteSection(section)"
+                class="flex items-center justify-center px-3 py-2 border border-red-300 text-red-700 rounded-md text-sm hover:bg-red-50 transition-colors">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+                Delete
+              </button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>

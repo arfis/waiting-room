@@ -45,6 +45,10 @@ export class QueueApiService {
     return this.http.post<CallNextResponse>(`${this.apiUrl}/waiting-rooms/${roomId}/finish`, {});
   }
 
+  placeBack(roomId: string): Observable<CallNextResponse> {
+    return this.http.post<CallNextResponse>(`${this.apiUrl}/waiting-rooms/${roomId}/place-back`, {});
+  }
+
   callSpecificEntry(roomId: string, servicePointId: string, entryId: string): Observable<CallNextResponse> {
     return this.http.post<CallNextResponse>(`${this.apiUrl}/waiting-rooms/${roomId}/service-points/${servicePointId}/call/${entryId}`, {});
   }

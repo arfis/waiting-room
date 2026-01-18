@@ -54,12 +54,12 @@ func convertEntryToDTO(entry *queue.Entry) dto.QueueEntry {
 	if len(entry.Symbols) > 0 {
 		queueEntry.Symbols = entry.Symbols
 	}
+
 	if entry.AppointmentTime != nil {
-		queueEntry.AppointmentTime = entry.AppointmentTime
+		flexTime := dto.FlexibleTime{Time: *entry.AppointmentTime}
+		queueEntry.AppointmentTime = &flexTime.Time
 	}
-	if !entry.CreatedAt.IsZero() {
-		queueEntry.CreatedAt = &entry.CreatedAt
-	}
+	queueEntry.CreatedAt = entry.CreatedAt
 
 	return queueEntry
 }
@@ -69,7 +69,7 @@ func (s *Service) SetBroadcastFunc(f func(string, string)) {
 }
 
 func (s *Service) GetQueueEntryByToken(ctx context.Context, qrToken string) (*dto.PublicEntry, error) {
-	entry, err := s.queueService.GetEntryByQRToken(qrToken)
+	entry, err := s.queueService.GetEntryByQRToken(ctx, qrToken)
 	if err != nil {
 		return nil, ngErrors.New(ngErrors.NotFoundErrorCode, "queue entry not found", 404, nil)
 	}
@@ -125,7 +125,7 @@ func (s *Service) CallNext(ctx context.Context, roomId string, servicePointId st
 }
 
 func (s *Service) FinishCurrent(ctx context.Context, roomId string) (*dto.QueueEntry, error) {
-	entry, err := s.queueService.FinishCurrent(roomId)
+	entry, err := s.queueService.FinishCurrent(ctx, roomId)
 	if err != nil {
 		return nil, ngErrors.New(ngErrors.InternalServerErrorCode, "failed to finish current", 500, nil)
 	}
@@ -155,6 +155,32 @@ func (s *Service) FinishCurrent(ctx context.Context, roomId string) (*dto.QueueE
 				log.Printf("Failed to send webhook notification for ticket completed: %v", err)
 			}
 		}()
+	}
+
+	return &queueEntry, nil
+}
+
+func (s *Service) PlaceBack(ctx context.Context, roomId string) (*dto.QueueEntry, error) {
+	entry, err := s.queueService.PlaceBackCurrent(ctx, roomId)
+	if err != nil {
+		return nil, ngErrors.New(ngErrors.InternalServerErrorCode, "failed to place back current person", 500, nil)
+	}
+
+	if entry == nil {
+		return nil, ngErrors.New(ngErrors.NotFoundErrorCode, "no one is currently being served", 404, nil)
+	}
+
+	// Convert to QueueEntry using helper function
+	queueEntry := convertEntryToDTO(entry)
+
+	// Broadcast queue update - only to the tenant that changed
+	if s.broadcastFunc != nil {
+		tenantID := service.GetTenantID(ctx)
+		log.Printf("[QueueService] PlaceBack: Broadcasting queue update for room %s, tenantID: '%s'", roomId, tenantID)
+		if tenantID == "" {
+			log.Printf("[QueueService] PlaceBack: WARNING: tenantID is empty, broadcasting to all clients")
+		}
+		s.broadcastFunc(roomId, tenantID)
 	}
 
 	return &queueEntry, nil
@@ -203,13 +229,13 @@ func (s *Service) GetQueueEntries(ctx context.Context, roomId string, states []s
 	} else {
 		log.Printf("[QueueService] GetQueueEntries for room %s without tenant ID", roomId)
 	}
-	
+
 	// Use GetQueueEntriesWithContext to preserve tenant ID from context
 	entries, err := s.queueService.GetQueueEntriesWithContext(ctx, roomId, states)
 	if err != nil {
 		return nil, ngErrors.New(ngErrors.InternalServerErrorCode, "failed to get queue entries", 500, nil)
 	}
-	
+
 	log.Printf("[QueueService] GetQueueEntries returned %d entries for room %s", len(entries), roomId)
 
 	// Convert to DTOs using the helper function

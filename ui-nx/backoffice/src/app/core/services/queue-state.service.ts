@@ -57,7 +57,7 @@ export class QueueStateService {
 
   private currentRoomId: string | null = null;
   private currentStates: QueueEntryStatus[] | undefined = undefined;
-  private lastTenantId: string | null = null;
+  private lastTenantId: number | null = null;
 
   constructor() {
     // Update last updated timestamp when queue entries change
@@ -93,7 +93,7 @@ export class QueueStateService {
     this.currentRoomId = roomId;
     this.currentStates = states;
     // Store current tenant ID to track changes
-    const currentTenantId = this.tenantService.getSelectedTenantIdSync();
+    const currentTenantId = this.tenantService.selectedTenantId();
     this.lastTenantId = currentTenantId;
     await this.queueWebSocket.initialize(roomId, states);
   }
@@ -127,6 +127,21 @@ export class QueueStateService {
       },
       error: (error) => {
         console.error('Failed to finish current person:', error);
+        this.isLoading.set(false);
+      }
+    });
+  }
+
+  placeBack(roomId: string): void {
+    this.isLoading.set(true);
+
+    this.queueApiService.placeBack(roomId).subscribe({
+      next: (response) => {
+        this.addActivity(response.ticketNumber, 'Placed back in queue');
+        this.isLoading.set(false);
+      },
+      error: (error) => {
+        console.error('Failed to place back person:', error);
         this.isLoading.set(false);
       }
     });

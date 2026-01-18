@@ -2,7 +2,10 @@
 FROM golang:1.25-alpine AS builder
 
 # Install build dependencies including PC/SC development libraries
-RUN apk add --no-cache git pcsc-lite-dev
+RUN apk add --no-cache \
+    git \
+    pcsc-lite-dev \
+    build-base        # <--- this brings in gcc, musl-dev, make, etc.
 
 # Set working directory
 WORKDIR /app
@@ -16,13 +19,14 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the application
+# Build the application with CGO enabled
+# GOOS=linux is already default in this image, but you can leave it if you like.
 RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o main .
 
 # Final stage
 FROM alpine:latest
 
-# Install runtime dependencies
+# Install runtime dependencies (no compiler needed here)
 RUN apk --no-cache add \
     ca-certificates \
     pcsc-lite \
@@ -43,8 +47,6 @@ RUN chown -R appuser:appuser /app
 # Switch to non-root user
 USER appuser
 
-# Expose port (if needed for health checks)
 EXPOSE 8081
 
-# Run the application
 CMD ["./main"]

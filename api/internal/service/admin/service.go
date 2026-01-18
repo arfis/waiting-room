@@ -3,9 +3,11 @@ package admin
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/arfis/waiting-room/internal/data/dto"
+	"github.com/arfis/waiting-room/internal/middleware"
 	"github.com/arfis/waiting-room/internal/priority"
 	"github.com/arfis/waiting-room/internal/service/config"
 	priorityService "github.com/arfis/waiting-room/internal/service/priority"
@@ -585,8 +587,6 @@ func (s *Service) GetTenant(ctx context.Context, id string) (*dto.Tenant, error)
 func (s *Service) CreateTenant(ctx context.Context, req *dto.CreateTenantRequest) (*dto.Tenant, error) {
 	// Convert CreateTenantRequest to Tenant DTO
 	tenantDTO := &dto.Tenant{
-		BuildingId:  req.BuildingId,
-		SectionId:   req.SectionId,
 		Name:        req.Name,
 		Description: req.Description,
 	}
@@ -596,8 +596,6 @@ func (s *Service) CreateTenant(ctx context.Context, req *dto.CreateTenantRequest
 func (s *Service) UpdateTenant(ctx context.Context, req *dto.CreateTenantRequest) (*dto.Tenant, error) {
 	// Convert CreateTenantRequest to Tenant DTO
 	tenantDTO := &dto.Tenant{
-		BuildingId:  req.BuildingId,
-		SectionId:   req.SectionId,
 		Name:        req.Name,
 		Description: req.Description,
 	}
@@ -606,6 +604,61 @@ func (s *Service) UpdateTenant(ctx context.Context, req *dto.CreateTenantRequest
 
 func (s *Service) DeleteTenant(ctx context.Context, id string) error {
 	return s.tenantService.DeleteTenant(ctx, id)
+}
+
+// Section methods - delegate to tenant service
+func (s *Service) GetAllSections(ctx context.Context, tenantID string) ([]dto.Section, error) {
+	// Parse tenantID and add to context using the correct constant
+	tenantIDInt, err := strconv.ParseInt(tenantID, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid tenant ID: %w", err)
+	}
+	ctx = context.WithValue(ctx, middleware.TENANT_ID, tenantIDInt)
+	return s.tenantService.GetAllSections(ctx)
+}
+
+func (s *Service) GetSection(ctx context.Context, sectionID string, tenantID string) (*dto.Section, error) {
+	// Parse tenantID and add to context using the correct constant
+	tenantIDInt, err := strconv.ParseInt(tenantID, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid tenant ID: %w", err)
+	}
+	ctx = context.WithValue(ctx, middleware.TENANT_ID, tenantIDInt)
+	return s.tenantService.GetSection(ctx, sectionID)
+}
+
+func (s *Service) CreateSection(ctx context.Context, tenantID string, sectionDTO *dto.Section) (*dto.Section, error) {
+	// Parse tenantID and add to context using the correct constant
+	tenantIDInt, err := strconv.ParseInt(tenantID, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid tenant ID: %w", err)
+	}
+	ctx = context.WithValue(ctx, middleware.TENANT_ID, tenantIDInt)
+	// Set tenantId in the DTO as well
+	sectionDTO.TenantId = tenantIDInt
+	return s.tenantService.CreateSection(ctx, sectionDTO)
+}
+
+func (s *Service) UpdateSection(ctx context.Context, sectionID string, tenantID string, sectionDTO *dto.Section) (*dto.Section, error) {
+	// Parse tenantID and add to context using the correct constant
+	tenantIDInt, err := strconv.ParseInt(tenantID, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid tenant ID: %w", err)
+	}
+	ctx = context.WithValue(ctx, middleware.TENANT_ID, tenantIDInt)
+	// Set tenantId in the DTO as well
+	sectionDTO.TenantId = tenantIDInt
+	return s.tenantService.UpdateSection(ctx, sectionDTO)
+}
+
+func (s *Service) DeleteSection(ctx context.Context, sectionID string, tenantID string) error {
+	// Parse tenantID and add to context using the correct constant
+	tenantIDInt, err := strconv.ParseInt(tenantID, 10, 64)
+	if err != nil {
+		return fmt.Errorf("invalid tenant ID: %w", err)
+	}
+	ctx = context.WithValue(ctx, middleware.TENANT_ID, tenantIDInt)
+	return s.tenantService.DeleteSection(ctx, sectionID)
 }
 
 // Priority Configuration methods

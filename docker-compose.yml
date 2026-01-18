@@ -36,12 +36,12 @@ services:
   # Kiosk Application
   kiosk:
     build:
-      context: ./ui
+      context: ./ui-nx
       dockerfile: Dockerfile.kiosk
     container_name: waiting-room-kiosk
     restart: unless-stopped
     ports:
-      - "4201:4201"
+      - "4201:80"
     depends_on:
       - api
     networks:
@@ -50,12 +50,12 @@ services:
   # Mobile Application
   mobile:
     build:
-      context: ./ui
+      context: ./ui-nx
       dockerfile: Dockerfile.mobile
     container_name: waiting-room-mobile
     restart: unless-stopped
     ports:
-      - "4202:4202"
+      - "4202:80"
     depends_on:
       - api
     networks:
@@ -64,12 +64,12 @@ services:
   # TV Display
   tv:
     build:
-      context: ./ui
+      context: ./ui-nx
       dockerfile: Dockerfile.tv
     container_name: waiting-room-tv
     restart: unless-stopped
     ports:
-      - "4203:4203"
+      - "4203:80"
     depends_on:
       - api
     networks:
@@ -78,12 +78,12 @@ services:
   # Backoffice
   backoffice:
     build:
-      context: ./ui
+      context: ./ui-nx
       dockerfile: Dockerfile.backoffice
     container_name: waiting-room-backoffice
     restart: unless-stopped
     ports:
-      - "4200:4200"
+      - "4200:80"
     depends_on:
       - api
     networks:

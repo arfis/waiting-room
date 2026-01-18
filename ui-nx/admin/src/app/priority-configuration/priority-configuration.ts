@@ -87,7 +87,7 @@ interface ManualOverride {
 })
 export class PriorityConfigurationComponent implements OnInit {
   private tenantService = inject(TenantService);
-  private currentTenantId = '';
+  private currentTenantId = 0;
 
   constructor(
     private http: HttpClient,
@@ -101,7 +101,7 @@ export class PriorityConfigurationComponent implements OnInit {
         this.currentTenantId = tenantId;
         this.loadConfiguration();
       } else if (!tenantId) {
-        this.currentTenantId = '';
+        this.currentTenantId = 0;
       }
     });
   }

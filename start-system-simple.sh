@@ -41,9 +41,9 @@ echo "🏗️  Building and serving frontend apps..."
 
 cd ui-nx
 
-# Build all apps
+# Build all apps in development mode (uses localhost:8080 for API)
 echo "📦 Building all applications..."
-npx nx run-many --target=build --projects=kiosk,admin,backoffice,tv,mobile,ui,api-client,primeng-components --prod
+npx nx run-many --target=build --projects=kiosk,admin,backoffice,tv,mobile,ui,api-client,primeng-components --configuration=development
 
 echo "✅ All applications built successfully!"
 

@@ -68,6 +68,8 @@ export class AppComponent implements OnInit {
     switch (route) {
       case '/dashboard':
         return 'Dashboard';
+      case '/sections':
+        return 'Sections';
       case '/configuration':
         return 'Configuration';
       case '/priority-configuration':

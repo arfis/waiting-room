@@ -11,7 +11,11 @@
       "Bash(service-generator:*)",
       "Bash(npm run build:kiosk:*)",
       "Bash(npm run build:backoffice:*)",
-      "Bash(make gen:all:*)"
+      "Bash(make gen:all:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run:*)",
+      "Bash(make help:*)",
+      "Bash(make:*)"
     ],
     "deny": [],
     "ask": []

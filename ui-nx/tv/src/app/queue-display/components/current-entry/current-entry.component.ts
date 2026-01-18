@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { CardComponent } from '@waiting-room/primeng-components';
 import { WebSocketQueueEntry } from '@waiting-room/api-client';
 import { ServicePointService } from '../../services/service-point.service';
-import { TranslatePipe } from '../../../../../../src/lib/i18n';
+import { TranslatePipe } from '@lib/i18n';
 
 @Component({
   selector: 'app-current-entry',

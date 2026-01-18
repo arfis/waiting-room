@@ -17,19 +17,26 @@ func (s *WaitingQueue) CreateEntry(ctx context.Context, roomId string, cardData 
 	approximateDurationSeconds int64, serviceName string, symbols []string,
 	appointmentTime *time.Time, age *int, manualOverride *float64) (*Entry, error) {
 
-	// Extract tenant ID from context (format: "buildingId:sectionId")
+	// Extract tenant ID from context (format: "tenantId:sectionId")
 	tenantIDHeader := service.GetTenantID(ctx)
 
-	// Parse tenant ID to extract buildingId and sectionID
-	buildingID, sectionID, _ := types.ParseTenantID(tenantIDHeader)
+	// Parse tenant ID to extract tenantId and sectionID
+	tenantIDNum, sectionIDNum, _ := types.ParseTenantAndSectionID(tenantIDHeader)
 
-	log.Printf("[WaitingQueue] Creating entry for room %s, buildingId: %s, sectionId: %s", roomId, buildingID, sectionID)
+	// Convert to strings for priority config lookup
+	tenantIDStr := fmt.Sprintf("%d", tenantIDNum)
+	sectionIDStr := ""
+	if sectionIDNum > 0 {
+		sectionIDStr = fmt.Sprintf("%d", sectionIDNum)
+	}
+
+	log.Printf("[WaitingQueue] Creating entry for room %s, tenantId: %s, sectionId: %s", roomId, tenantIDStr, sectionIDStr)
 
 	// Load priority configuration
 	var priorityConfig *priority.PriorityConfig
 	if s.priorityRepo != nil {
 		var err error
-		priorityConfig, err = s.priorityRepo.GetConfig(ctx, buildingID, sectionID)
+		priorityConfig, err = s.priorityRepo.GetConfig(ctx, tenantIDStr, sectionIDStr)
 		if err != nil {
 			log.Printf("Warning: Failed to load priority config, using default: %v", err)
 			priorityConfig = priority.GetDefaultConfig()
@@ -68,10 +75,15 @@ func (s *WaitingQueue) CreateEntry(ctx context.Context, roomId string, cardData 
 	nextPosition := len(entries) + 1
 
 	// Create new entry with priority metadata
+	// Note: Entries are stored in tenant-specific databases, so no tenantId field needed
+	var sectionIDPtr *int64
+	if sectionIDNum > 0 {
+		sectionIDPtr = &sectionIDNum
+	}
+
 	entry := &Entry{
 		WaitingRoomID:              roomId,
-		TenantID:                   buildingID,
-		SectionID:                  sectionID,
+		SectionID:                  sectionIDPtr,
 		TicketNumber:               "", // Will be set by repository
 		QRToken:                    "", // Will be set by repository
 		Status:                     "WAITING",

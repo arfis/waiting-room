@@ -4,18 +4,35 @@ import { TenantConfigService } from './config.service';
 import { Observable, tap } from 'rxjs';
 
 export interface Tenant {
-  id: string;
-  buildingId: string;
-  sectionId: string;
+  id: string;              // MongoDB _id
+  tenantId: number;        // Numeric tenant ID
   name: string;
   description?: string;
+  databaseName: string;
+  status: 'active' | 'inactive';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Section {
+  id: string;              // MongoDB _id
+  sectionId: number;       // Numeric section ID
+  tenantId: number;        // Parent tenant ID
+  name: string;
+  description?: string;
+  status: 'active' | 'inactive';
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreateTenantRequest {
-  buildingId: string;
-  sectionId: string;
+  tenantId?: number;       // Optional: will be auto-generated if not provided
+  name: string;
+  description?: string;
+}
+
+export interface CreateSectionRequest {
+  sectionId?: number;      // Optional: will be auto-generated if not provided
   name: string;
   description?: string;
 }
@@ -26,9 +43,12 @@ export interface CreateTenantRequest {
 export class TenantService {
   private http = inject(HttpClient);
   private configService = inject(TenantConfigService);
-  
-  private _selectedTenantId = signal<string>('');
+
+  // Tenant signals
+  private _selectedTenantId = signal<number>(0);
+  private _selectedSectionId = signal<number>(0);
   private _tenants = signal<Tenant[]>([]);
+  private _sections = signal<Section[]>([]);
   private _loading = signal<boolean>(false);
   private _error = signal<string>('');
   private _showCreateForm = signal<boolean>(false);
@@ -36,7 +56,9 @@ export class TenantService {
 
   // Public readonly signals
   readonly selectedTenantId = this._selectedTenantId.asReadonly();
+  readonly selectedSectionId = this._selectedSectionId.asReadonly();
   readonly tenants = this._tenants.asReadonly();
+  readonly sections = this._sections.asReadonly();
   readonly loading = this._loading.asReadonly();
   readonly error = this._error.asReadonly();
   readonly showCreateForm = this._showCreateForm.asReadonly();
@@ -44,16 +66,17 @@ export class TenantService {
 
   constructor() {
     // Load selected tenant from localStorage on service initialization
-    // Check if we're in browser environment (not SSR)
     if (typeof window !== 'undefined' && window.localStorage) {
-      const savedTenantId = localStorage.getItem('selectedTenantId');
-      if (savedTenantId) {
-        console.log(`[TenantService] Loading saved tenant from localStorage: ${savedTenantId}`);
-        
-        // If it's in the old format (database ID without colon), we'll need to convert it
-        // after tenants are loaded. For now, just store it as-is.
-        // If it's already in the new format (buildingId:sectionId), use it directly.
-        this._selectedTenantId.set(savedTenantId);
+      const savedCompositeId = localStorage.getItem('selectedTenantId');
+      if (savedCompositeId) {
+        console.log(`[TenantService] Loading saved tenant from localStorage: ${savedCompositeId}`);
+
+        // Parse composite ID format: "1001" or "1001:2001"
+        const { tenantId, sectionId } = this.parseCompositeId(savedCompositeId);
+        this._selectedTenantId.set(tenantId);
+        if (sectionId) {
+          this._selectedSectionId.set(sectionId);
+        }
       } else {
         console.log(`[TenantService] No saved tenant found in localStorage`);
       }
@@ -63,21 +86,39 @@ export class TenantService {
     console.log(`[TenantService] Initialized with tenant ID: ${this._selectedTenantId() || 'none'}`);
   }
 
+  // Parse composite ID format "1001" or "1001:2001"
+  private parseCompositeId(compositeId: string): { tenantId: number; sectionId: number | null } {
+    const parts = compositeId.split(':');
+    const tenantId = parseInt(parts[0], 10);
+    const sectionId = parts.length > 1 ? parseInt(parts[1], 10) : null;
+    return { tenantId, sectionId };
+  }
+
+  // Format composite ID as "1001" or "1001:2001"
+  private formatCompositeId(tenantId: number, sectionId?: number): string {
+    if (sectionId) {
+      return `${tenantId}:${sectionId}`;
+    }
+    return `${tenantId}`;
+  }
+
+  // Tenant Management
+
   getTenants(): Observable<Tenant[]> {
     this._loading.set(true);
     this._error.set('');
-    
+
     return this.http.get<Tenant[]>(this.configService.adminTenantsUrl);
   }
 
-  getTenant(id: string): Observable<Tenant> {
-    return this.http.get<Tenant>(`${this.configService.adminTenantsUrl}/${id}`);
+  getTenant(tenantId: number): Observable<Tenant> {
+    return this.http.get<Tenant>(`${this.configService.adminTenantsUrl}/${tenantId}`);
   }
 
   createTenant(tenant: CreateTenantRequest): Observable<Tenant> {
     this._loading.set(true);
     this._error.set('');
-    
+
     return this.http.post<Tenant>(this.configService.adminTenantsUrl, tenant).pipe(
       tap({
         next: (createdTenant) => {
@@ -94,15 +135,20 @@ export class TenantService {
     );
   }
 
-  updateTenant(id: string, tenant: Partial<CreateTenantRequest>): Observable<Tenant> {
+  updateTenant(tenantId: number, tenant: Partial<CreateTenantRequest>): Observable<Tenant> {
     this._loading.set(true);
     this._error.set('');
-    
-    return this.http.put<Tenant>(`${this.configService.adminTenantsUrl}/${id}`, tenant).pipe(
+
+    return this.http.put<Tenant>(`${this.configService.adminTenantsUrl}/${tenantId}`, {
+      ...tenant,
+      tenantId
+    }).pipe(
       tap({
         next: () => {
           this._loading.set(false);
           this._error.set('');
+          // Reload tenants after update
+          this.loadTenants();
         },
         error: (error) => {
           this._loading.set(false);
@@ -112,11 +158,11 @@ export class TenantService {
     );
   }
 
-  deleteTenant(id: string): Observable<void> {
+  deleteTenant(tenantId: number): Observable<void> {
     this._loading.set(true);
     this._error.set('');
-    
-    return this.http.delete<void>(`${this.configService.adminTenantsUrl}/${id}`).pipe(
+
+    return this.http.delete<void>(`${this.configService.adminTenantsUrl}/${tenantId}`).pipe(
       tap({
         next: () => {
           this._loading.set(false);
@@ -135,38 +181,18 @@ export class TenantService {
   loadTenants(): void {
     this._loading.set(true);
     this._error.set('');
-    
+
     this.getTenants().subscribe({
       next: (tenants) => {
         this._tenants.set(tenants);
         this._loading.set(false);
         this._error.set('');
-        
-        // Migrate old format (database ID) to new format (buildingId:sectionId) if needed
+
+        // Verify selected tenant still exists
         const currentTenantId = this._selectedTenantId();
-        if (currentTenantId && !currentTenantId.includes(':')) {
-          // It's in the old format (database ID), convert to new format
-          const tenant = tenants.find(t => t.id === currentTenantId);
-          if (tenant) {
-            const fullTenantId = `${tenant.buildingId}:${tenant.sectionId}`;
-            console.log(`[TenantService] Migrating tenant ID from old format to new: ${currentTenantId} -> ${fullTenantId}`);
-            this._selectedTenantId.set(fullTenantId);
-            if (typeof window !== 'undefined' && window.localStorage) {
-              localStorage.setItem('selectedTenantId', fullTenantId);
-            }
-          } else {
-            console.warn(`[TenantService] Saved tenant ID ${currentTenantId} not found in tenants list, clearing`);
-            this._selectedTenantId.set('');
-            if (typeof window !== 'undefined' && window.localStorage) {
-              localStorage.removeItem('selectedTenantId');
-            }
-          }
-        }
-        
-        // Auto-select first tenant if none selected and auto-select is enabled
-        if (!this._selectedTenantId() && tenants.length > 0) {
-          // Only auto-select if explicitly enabled (for kiosk apps)
-          // For admin, this should be false
+        if (currentTenantId && !tenants.find(t => t.tenantId === currentTenantId)) {
+          console.warn(`[TenantService] Selected tenant ${currentTenantId} not found in tenants list, clearing`);
+          this.clearSelectedTenant();
         }
       },
       error: (error) => {
@@ -176,69 +202,227 @@ export class TenantService {
     });
   }
 
-  setSelectedTenant(tenantId: string): void {
-    console.log(`[TenantService] Setting selected tenant: ${tenantId}`);
-    console.log(`[TenantService] Previous tenant ID: ${this._selectedTenantId()}`);
-    
-    // Find the tenant to get the full identifier format
-    const tenant = this._tenants().find(t => t.id === tenantId);
-    let fullTenantId = tenantId; // Default to the ID if tenant not found
-    
-    if (tenant) {
-      // Store the full identifier format: "buildingId:sectionId"
-      fullTenantId = `${tenant.buildingId}:${tenant.sectionId}`;
-      console.log(`[TenantService] Converting tenant ID to full format: ${tenantId} -> ${fullTenantId}`);
-    } else {
-      // If tenant not found, check if it's already in the full format
-      if (tenantId.includes(':')) {
-        fullTenantId = tenantId;
-        console.log(`[TenantService] Tenant ID already in full format: ${fullTenantId}`);
-      } else {
-        console.warn(`[TenantService] Tenant with ID ${tenantId} not found in tenants list, using as-is`);
-      }
+  // Section Management
+
+  getSections(): Observable<Section[]> {
+    const tenantId = this._selectedTenantId();
+    if (!tenantId) {
+      throw new Error('No tenant selected');
     }
-    
-    this._selectedTenantId.set(fullTenantId);
-    // Check if we're in browser environment (not SSR)
-    if (typeof window !== 'undefined' && window.localStorage) {
-      localStorage.setItem('selectedTenantId', fullTenantId);
-      console.log(`[TenantService] Saved full tenant ID to localStorage: ${fullTenantId}`);
-      // Verify it was saved
-      const verify = localStorage.getItem('selectedTenantId');
-      console.log(`[TenantService] Verified localStorage value: ${verify}`);
-    }
-    // Double-check the signal was updated
-    const currentValue = this._selectedTenantId();
-    console.log(`[TenantService] Current selected tenant ID signal value after set: "${currentValue}"`);
-    console.log(`[TenantService] Signal value type: ${typeof currentValue}, length: ${currentValue?.length || 0}`);
+
+    this._loading.set(true);
+    this._error.set('');
+
+    return this.http.get<Section[]>(`${this.configService.adminTenantsUrl}/${tenantId}/sections`);
   }
-  
-  // Helper method to get tenant ID synchronously (for interceptors)
+
+  getSection(sectionId: number): Observable<Section> {
+    const tenantId = this._selectedTenantId();
+    if (!tenantId) {
+      throw new Error('No tenant selected');
+    }
+
+    return this.http.get<Section>(`${this.configService.adminTenantsUrl}/${tenantId}/sections/${sectionId}`);
+  }
+
+  createSection(section: CreateSectionRequest): Observable<Section> {
+    const tenantId = this._selectedTenantId();
+    if (!tenantId) {
+      throw new Error('No tenant selected');
+    }
+
+    this._loading.set(true);
+    this._error.set('');
+
+    return this.http.post<Section>(`${this.configService.adminTenantsUrl}/${tenantId}/sections`, {
+      ...section,
+      tenantId
+    }).pipe(
+      tap({
+        next: (createdSection) => {
+          this._loading.set(false);
+          this._error.set('');
+          // Reload sections list after creation
+          this.loadSections();
+        },
+        error: (error) => {
+          this._loading.set(false);
+          this._error.set(error.error?.message || 'Failed to create section');
+        }
+      })
+    );
+  }
+
+  updateSection(sectionId: number, section: Partial<CreateSectionRequest>): Observable<Section> {
+    const tenantId = this._selectedTenantId();
+    if (!tenantId) {
+      throw new Error('No tenant selected');
+    }
+
+    this._loading.set(true);
+    this._error.set('');
+
+    return this.http.put<Section>(`${this.configService.adminTenantsUrl}/${tenantId}/sections/${sectionId}`, {
+      ...section,
+      sectionId,
+      tenantId
+    }).pipe(
+      tap({
+        next: () => {
+          this._loading.set(false);
+          this._error.set('');
+          // Reload sections after update
+          this.loadSections();
+        },
+        error: (error) => {
+          this._loading.set(false);
+          this._error.set(error.error?.message || 'Failed to update section');
+        }
+      })
+    );
+  }
+
+  deleteSection(sectionId: number): Observable<void> {
+    const tenantId = this._selectedTenantId();
+    if (!tenantId) {
+      throw new Error('No tenant selected');
+    }
+
+    this._loading.set(true);
+    this._error.set('');
+
+    return this.http.delete<void>(`${this.configService.adminTenantsUrl}/${tenantId}/sections/${sectionId}`).pipe(
+      tap({
+        next: () => {
+          this._loading.set(false);
+          this._error.set('');
+          // Reload sections list after deletion
+          this.loadSections();
+        },
+        error: (error) => {
+          this._loading.set(false);
+          this._error.set(error.error?.message || 'Failed to delete section');
+        }
+      })
+    );
+  }
+
+  loadSections(): void {
+    const tenantId = this._selectedTenantId();
+    if (!tenantId) {
+      this._sections.set([]);
+      return;
+    }
+
+    this._loading.set(true);
+    this._error.set('');
+
+    this.getSections().subscribe({
+      next: (sections) => {
+        this._sections.set(sections);
+        this._loading.set(false);
+        this._error.set('');
+
+        // Verify selected section still exists
+        const currentSectionId = this._selectedSectionId();
+        if (currentSectionId && !sections.find(s => s.sectionId === currentSectionId)) {
+          console.warn(`[TenantService] Selected section ${currentSectionId} not found in sections list, clearing`);
+          this._selectedSectionId.set(0);
+        }
+      },
+      error: (error) => {
+        this._loading.set(false);
+        this._error.set(error.error?.message || 'Failed to load sections');
+      }
+    });
+  }
+
+  // Selection Management
+
+  setSelectedTenant(tenantId: number, sectionId?: number): void {
+    console.log(`[TenantService] Setting selected tenant: ${tenantId}, section: ${sectionId || 'none'}`);
+
+    this._selectedTenantId.set(tenantId);
+    this._selectedSectionId.set(sectionId || 0);
+
+    // Save composite ID to localStorage
+    const compositeId = this.formatCompositeId(tenantId, sectionId);
+
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem('selectedTenantId', compositeId);
+      console.log(`[TenantService] Saved composite ID to localStorage: ${compositeId}`);
+    }
+
+    // Load sections when tenant is selected
+    if (tenantId) {
+      this.loadSections();
+    }
+  }
+
+  setSelectedSection(sectionId: number): void {
+    console.log(`[TenantService] Setting selected section: ${sectionId}`);
+
+    const tenantId = this._selectedTenantId();
+    if (!tenantId) {
+      console.error('[TenantService] Cannot set section without tenant');
+      return;
+    }
+
+    this._selectedSectionId.set(sectionId);
+
+    // Update localStorage with composite ID
+    const compositeId = this.formatCompositeId(tenantId, sectionId);
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem('selectedTenantId', compositeId);
+      console.log(`[TenantService] Updated composite ID in localStorage: ${compositeId}`);
+    }
+  }
+
+  clearSelectedTenant(): void {
+    console.log('[TenantService] Clearing selected tenant');
+    this._selectedTenantId.set(0);
+    this._selectedSectionId.set(0);
+    this._sections.set([]);
+
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.removeItem('selectedTenantId');
+    }
+  }
+
+  // Helper method to get composite ID synchronously (for interceptors)
   getSelectedTenantIdSync(): string {
-    const value = this._selectedTenantId();
-    return value || '';
+    const tenantId = this._selectedTenantId();
+    const sectionId = this._selectedSectionId();
+
+    if (!tenantId) {
+      return '';
+    }
+
+    return this.formatCompositeId(tenantId, sectionId || undefined);
   }
 
   getSelectedTenant(): Tenant | null {
-    const fullTenantId = this._selectedTenantId();
-    if (!fullTenantId) return null;
-    
-    // Parse the full tenant ID format: "buildingId:sectionId"
-    const [buildingId, sectionId] = fullTenantId.split(':');
-    
-    // Find tenant by buildingId and sectionId
-    return this._tenants().find(t => t.buildingId === buildingId && t.sectionId === sectionId) || null;
+    const tenantId = this._selectedTenantId();
+    if (!tenantId) return null;
+
+    return this._tenants().find(t => t.tenantId === tenantId) || null;
   }
-  
-  // Get the tenant database ID from the full identifier format
-  getSelectedTenantDatabaseId(): string | null {
-    const tenant = this.getSelectedTenant();
-    return tenant?.id || null;
+
+  getSelectedSection(): Section | null {
+    const sectionId = this._selectedSectionId();
+    if (!sectionId) return null;
+
+    return this._sections().find(s => s.sectionId === sectionId) || null;
   }
 
   getTenantDisplayName(tenant: Tenant): string {
-    // Format: "Building:Section" (e.g., "Nemocnica Spiska nova ves:Kardiologia pavilon B")
-    return `${tenant.buildingId}:${tenant.sectionId}`;
+    // Format: "Tenant Name (ID: 1001)"
+    return `${tenant.name} (ID: ${tenant.tenantId})`;
+  }
+
+  getSectionDisplayName(section: Section): string {
+    // Format: "Section Name (ID: 2001)"
+    return `${section.name} (ID: ${section.sectionId})`;
   }
 
   clearError(): void {
@@ -252,21 +436,20 @@ export class TenantService {
   setError(error: string): void {
     this._error.set(error);
   }
-  
+
   requestCreateForm(): void {
     this._showCreateForm.set(true);
   }
-  
+
   clearCreateFormRequest(): void {
     this._showCreateForm.set(false);
   }
-  
+
   openCreateModal(): void {
     this._showCreateModal.set(true);
   }
-  
+
   closeCreateModal(): void {
     this._showCreateModal.set(false);
   }
 }
-
