@@ -104,6 +104,15 @@ services:
       - "traefik.http.routers.kiosk.service=kiosk"
       - "traefik.http.services.kiosk.loadbalancer.server.port=80"
       - "traefik.http.services.kiosk.loadbalancer.server.scheme=http"
+      # Route /api and /ws requests to the API service
+      - "traefik.http.routers.kiosk-api.rule=Host(`kiosk.${DOMAIN}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.kiosk-api.entrypoints=websecure"
+      - "traefik.http.routers.kiosk-api.tls.certresolver=le"
+      - "traefik.http.routers.kiosk-api.service=api"
+      - "traefik.http.routers.kiosk-ws.rule=Host(`kiosk.${DOMAIN}`) && PathPrefix(`/ws`)"
+      - "traefik.http.routers.kiosk-ws.entrypoints=websecure"
+      - "traefik.http.routers.kiosk-ws.tls.certresolver=le"
+      - "traefik.http.routers.kiosk-ws.service=api"
 
   # ============================================================
   # Mobile Application
@@ -127,6 +136,15 @@ services:
       - "traefik.http.routers.mobile.service=mobile"
       - "traefik.http.services.mobile.loadbalancer.server.port=80"
       - "traefik.http.services.mobile.loadbalancer.server.scheme=http"
+      # Route /api and /ws requests to the API service
+      - "traefik.http.routers.mobile-api.rule=Host(`mobile.${DOMAIN}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.mobile-api.entrypoints=websecure"
+      - "traefik.http.routers.mobile-api.tls.certresolver=le"
+      - "traefik.http.routers.mobile-api.service=api"
+      - "traefik.http.routers.mobile-ws.rule=Host(`mobile.${DOMAIN}`) && PathPrefix(`/ws`)"
+      - "traefik.http.routers.mobile-ws.entrypoints=websecure"
+      - "traefik.http.routers.mobile-ws.tls.certresolver=le"
+      - "traefik.http.routers.mobile-ws.service=api"
 
   # ============================================================
   # TV Display
@@ -150,6 +168,15 @@ services:
       - "traefik.http.routers.tv.service=tv"
       - "traefik.http.services.tv.loadbalancer.server.port=80"
       - "traefik.http.services.tv.loadbalancer.server.scheme=http"
+      # Route /api and /ws requests to the API service
+      - "traefik.http.routers.tv-api.rule=Host(`tv.${DOMAIN}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.tv-api.entrypoints=websecure"
+      - "traefik.http.routers.tv-api.tls.certresolver=le"
+      - "traefik.http.routers.tv-api.service=api"
+      - "traefik.http.routers.tv-ws.rule=Host(`tv.${DOMAIN}`) && PathPrefix(`/ws`)"
+      - "traefik.http.routers.tv-ws.entrypoints=websecure"
+      - "traefik.http.routers.tv-ws.tls.certresolver=le"
+      - "traefik.http.routers.tv-ws.service=api"
 
   # ============================================================
   # Backoffice
@@ -173,6 +200,15 @@ services:
       - "traefik.http.routers.backoffice.service=backoffice"
       - "traefik.http.services.backoffice.loadbalancer.server.port=80"
       - "traefik.http.services.backoffice.loadbalancer.server.scheme=http"
+      # Route /api and /ws requests to the API service
+      - "traefik.http.routers.backoffice-api.rule=Host(`backoffice.${DOMAIN}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.backoffice-api.entrypoints=websecure"
+      - "traefik.http.routers.backoffice-api.tls.certresolver=le"
+      - "traefik.http.routers.backoffice-api.service=api"
+      - "traefik.http.routers.backoffice-ws.rule=Host(`backoffice.${DOMAIN}`) && PathPrefix(`/ws`)"
+      - "traefik.http.routers.backoffice-ws.entrypoints=websecure"
+      - "traefik.http.routers.backoffice-ws.tls.certresolver=le"
+      - "traefik.http.routers.backoffice-ws.service=api"
 
   # ============================================================
   # Card Reader (optional)
