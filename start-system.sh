@@ -104,7 +104,7 @@ if [ ! -d "node_modules" ]; then
 fi
 if command -v npx >/dev/null 2>&1; then
   echo "Building all applications..."
-  if npx nx run-many --target=build --projects=kiosk,admin,backoffice,tv,mobile,ui,api-client,primeng-components --prod; then
+  if npx nx run-many --target=build --projects=kiosk,admin,backoffice,tv,mobile,ui,api-client,primeng-components --configuration=development; then
     echo "All applications built successfully!"
   else
     echo "Build failed! Please check the errors above."

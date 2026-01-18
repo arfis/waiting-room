@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { TenantService, Section, CreateSectionRequest } from '@lib/tenant';
+import { environment } from '../../environments/environment';
 
 @Component({
   selector: 'app-sections',
@@ -148,7 +149,7 @@ export class SectionsComponent implements OnInit {
     if (!tenant) return;
 
     // Construct WebSocket URL
-    const wsUrl = `ws://localhost:8080/ws/test-room?tenantId=${tenant.tenantId}:${section.sectionId}`;
+    const wsUrl = `${environment.wsUrl}/test-room?tenantId=${tenant.tenantId}:${section.sectionId}`;
 
     try {
       const ws = new WebSocket(wsUrl);

@@ -1,0 +1,1 @@
+git pull && docker compose -f docker-compose.prod.yml up -d --build                                                                                                                                                         1,1           Allgit pull && docker compose -f docker-compose.prod.yml up -d --build

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute } from '@angular/router';
 import { CardComponent } from '@waiting-room/primeng-components';
+import { environment } from '../../environments/environment';
 
 interface QueueEntry {
   entryId: string;
@@ -164,7 +165,7 @@ export class QueueComponent implements OnInit {
     this.isLoading.set(true);
     this.error.set(null);
 
-    this.http.get<QueueEntry>(`http://localhost:8080/api/queue-entries/token/${qrToken}`)
+    this.http.get<QueueEntry>(`${environment.apiUrl}/queue-entries/token/${qrToken}`)
       .subscribe({
         next: (entry) => {
           console.log('Queue entry loaded:', entry);

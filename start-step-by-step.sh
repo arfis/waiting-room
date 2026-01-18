@@ -34,23 +34,23 @@ echo "🏗️  Step 4: Building applications..."
 cd ui-nx
 
 echo "   Building kiosk..."
-npx nx build kiosk --prod
+npx nx build kiosk --configuration=development
 echo "   ✅ Kiosk built"
 
 echo "   Building admin..."
-npx nx build admin --prod
+npx nx build admin --configuration=development
 echo "   ✅ Admin built"
 
 echo "   Building backoffice..."
-npx nx build backoffice --prod
+npx nx build backoffice --configuration=development
 echo "   ✅ Backoffice built"
 
 echo "   Building tv..."
-npx nx build tv --prod
+npx nx build tv --configuration=development
 echo "   ✅ TV built"
 
 echo "   Building mobile..."
-npx nx build mobile --prod
+npx nx build mobile --configuration=development
 echo "   ✅ Mobile built"
 
 echo "✅ All applications built successfully!"
