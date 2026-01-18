@@ -8,6 +8,9 @@ export const TENANT_SERVICE_TOKEN = new InjectionToken<any>('TenantService');
 // Injection token for API URL - must be provided by each app
 export const API_URL_TOKEN = new InjectionToken<string>('API_URL_TOKEN');
 
+// Injection token for WebSocket URL - must be provided by each app
+export const WS_URL_TOKEN = new InjectionToken<string>('WS_URL_TOKEN');
+
 export interface WebSocketQueueEntry extends BaseQueueEntry {
   createdAt: string;
   cardData?: {
@@ -36,6 +39,7 @@ export class QueueWebSocketService {
   private http = inject(HttpClient);
   private injector = inject(Injector);
   private apiUrl = inject(API_URL_TOKEN, { optional: true }) || 'http://localhost:8080/api';
+  private wsBaseUrl = inject(WS_URL_TOKEN, { optional: true }) || 'ws://localhost:8080/ws';
   private _tenantService: any = null;
   private ws: WebSocket | null = null;
   private reconnectAttempts = 0;
@@ -301,21 +305,8 @@ export class QueueWebSocketService {
       return;
     }
     
-    // Build WebSocket URL with tenant ID as query parameter
-    // Convert HTTP API URL to WebSocket URL
-    // Example: http://localhost:8080/api -> ws://localhost:8080/ws
-    let wsBaseUrl: string;
-    try {
-      const apiUrlObj = new URL(this.apiUrl);
-      const wsProtocol = apiUrlObj.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsHost = apiUrlObj.host; // e.g., "localhost:8080"
-      // Remove /api suffix if present and replace with /ws
-      wsBaseUrl = `${wsProtocol}//${wsHost}/ws`;
-    } catch (e) {
-      // Fallback if URL parsing fails
-      console.warn('[QueueWebSocket] Failed to parse API URL, using default:', e);
-      wsBaseUrl = 'ws://localhost:8080/ws';
-    }
+    // Use the provided WebSocket base URL from configuration
+    const wsBaseUrl = this.wsBaseUrl;
     
     // Construct WebSocket URL with tenant ID as query parameter
     // The tenant ID format is "buildingId:sectionId"
