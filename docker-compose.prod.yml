@@ -62,6 +62,9 @@ services:
     environment:
       MONGODB_URI: mongodb://mongodb:27017/waiting_room
       ADDR: ":8080"
+      CONFIG_PATH: /app/config.prod.yaml
+    volumes:
+      - ./api/config.prod.yaml:/app/config.prod.yaml:ro
     depends_on:
       - mongodb
     networks:

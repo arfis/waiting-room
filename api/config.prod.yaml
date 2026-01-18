@@ -14,21 +14,25 @@ deepl:
   
 cors:
   allowed_origins:
-    - "https://yourdomain.com"  # Replace with your actual domain
+    # IMPORTANT: Replace 'yourdomain.com' with your actual domain before deploying
     - "https://kiosk.yourdomain.com"
     - "https://backoffice.yourdomain.com"
+    - "https://admin.yourdomain.com"
     - "https://tv.yourdomain.com"
     - "https://mobile.yourdomain.com"
+    - "https://api.yourdomain.com"
   allowed_methods:
     - "GET"
     - "POST"
     - "PUT"
     - "DELETE"
     - "OPTIONS"
+    - "PATCH"
   allowed_headers:
     - "Content-Type"
     - "Authorization"
     - "X-Requested-With"
+    - "X-Tenant-Id"
 
 websocket:
   enabled: true
