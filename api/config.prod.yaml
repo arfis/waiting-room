@@ -14,13 +14,12 @@ deepl:
   
 cors:
   allowed_origins:
-    # IMPORTANT: Replace 'yourdomain.com' with your actual domain before deploying
-    - "https://kiosk.yourdomain.com"
-    - "https://backoffice.yourdomain.com"
-    - "https://admin.yourdomain.com"
-    - "https://tv.yourdomain.com"
-    - "https://mobile.yourdomain.com"
-    - "https://api.yourdomain.com"
+    - "https://kiosk.waiting-room.soluqa.com"
+    - "https://backoffice.waiting-room.soluqa.com"
+    - "https://admin.waiting-room.soluqa.com"
+    - "https://tv.waiting-room.soluqa.com"
+    - "https://mobile.waiting-room.soluqa.com"
+    - "https://api.waiting-room.soluqa.com"
   allowed_methods:
     - "GET"
     - "POST"
