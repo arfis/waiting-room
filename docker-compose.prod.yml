@@ -99,6 +99,7 @@ services:
       - "traefik.http.routers.kiosk.tls.certresolver=le"
       - "traefik.http.routers.kiosk.service=kiosk"
       - "traefik.http.services.kiosk.loadbalancer.server.port=80"
+      - "traefik.http.services.kiosk.loadbalancer.server.scheme=http"
 
   # ============================================================
   # Mobile Application
@@ -121,6 +122,7 @@ services:
       - "traefik.http.routers.mobile.tls.certresolver=le"
       - "traefik.http.routers.mobile.service=mobile"
       - "traefik.http.services.mobile.loadbalancer.server.port=80"
+      - "traefik.http.services.mobile.loadbalancer.server.scheme=http"
 
   # ============================================================
   # TV Display
@@ -143,6 +145,7 @@ services:
       - "traefik.http.routers.tv.tls.certresolver=le"
       - "traefik.http.routers.tv.service=tv"
       - "traefik.http.services.tv.loadbalancer.server.port=80"
+      - "traefik.http.services.tv.loadbalancer.server.scheme=http"
 
   # ============================================================
   # Backoffice
@@ -165,6 +168,7 @@ services:
       - "traefik.http.routers.backoffice.tls.certresolver=le"
       - "traefik.http.routers.backoffice.service=backoffice"
       - "traefik.http.services.backoffice.loadbalancer.server.port=80"
+      - "traefik.http.services.backoffice.loadbalancer.server.scheme=http"
 
   # ============================================================
   # Card Reader (optional)
