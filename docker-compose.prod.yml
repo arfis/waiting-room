@@ -75,6 +75,7 @@ services:
       - "traefik.http.routers.api.rule=Host(`api.${DOMAIN}`)"
       - "traefik.http.routers.api.entrypoints=websecure"
       - "traefik.http.routers.api.tls.certresolver=le"
+      - "traefik.http.routers.api.service=api"
       - "traefik.http.services.api.loadbalancer.server.port=8080"
 
   # ============================================================
@@ -96,6 +97,7 @@ services:
       - "traefik.http.routers.kiosk.rule=Host(`kiosk.${DOMAIN}`)"
       - "traefik.http.routers.kiosk.entrypoints=websecure"
       - "traefik.http.routers.kiosk.tls.certresolver=le"
+      - "traefik.http.routers.kiosk.service=kiosk"
       - "traefik.http.services.kiosk.loadbalancer.server.port=80"
 
   # ============================================================
@@ -117,6 +119,7 @@ services:
       - "traefik.http.routers.mobile.rule=Host(`mobile.${DOMAIN}`)"
       - "traefik.http.routers.mobile.entrypoints=websecure"
       - "traefik.http.routers.mobile.tls.certresolver=le"
+      - "traefik.http.routers.mobile.service=mobile"
       - "traefik.http.services.mobile.loadbalancer.server.port=80"
 
   # ============================================================
@@ -138,6 +141,7 @@ services:
       - "traefik.http.routers.tv.rule=Host(`tv.${DOMAIN}`)"
       - "traefik.http.routers.tv.entrypoints=websecure"
       - "traefik.http.routers.tv.tls.certresolver=le"
+      - "traefik.http.routers.tv.service=tv"
       - "traefik.http.services.tv.loadbalancer.server.port=80"
 
   # ============================================================
@@ -159,6 +163,7 @@ services:
       - "traefik.http.routers.backoffice.rule=Host(`backoffice.${DOMAIN}`)"
       - "traefik.http.routers.backoffice.entrypoints=websecure"
       - "traefik.http.routers.backoffice.tls.certresolver=le"
+      - "traefik.http.routers.backoffice.service=backoffice"
       - "traefik.http.services.backoffice.loadbalancer.server.port=80"
 
   # ============================================================
