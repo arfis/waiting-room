@@ -24,6 +24,10 @@ services:
       # (optional) Dashboard - enable only if needed
       # - "--api.dashboard=true"
       # - "--api.insecure=true"
+      - "--accesslog=true"
+      - "--accesslog.format=json"
+      - "--log.level=DEBUG"
+
     ports:
       - "80:80"
       - "443:443"
