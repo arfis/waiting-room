@@ -9,9 +9,9 @@ services:
     container_name: waiting-room-traefik
     restart: unless-stopped
     command:
+      - "--providers.docker.network=waiting-room-public"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
-      - "--providers.docker.network=waiting-room_waiting-room-public"
       # EntryPoints
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
@@ -99,7 +99,6 @@ services:
       - waiting-room-public
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=waiting-room-public"
       - "traefik.http.routers.kiosk.rule=Host(`kiosk.${DOMAIN}`)"
       - "traefik.http.routers.kiosk.entrypoints=websecure"
       - "traefik.http.routers.kiosk.tls.certresolver=le"
@@ -132,7 +131,6 @@ services:
       - waiting-room-public
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=waiting-room-public"
       - "traefik.http.routers.mobile.rule=Host(`mobile.${DOMAIN}`)"
       - "traefik.http.routers.mobile.entrypoints=websecure"
       - "traefik.http.routers.mobile.tls.certresolver=le"
@@ -165,7 +163,6 @@ services:
       - waiting-room-public
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=waiting-room-public"
       - "traefik.http.routers.tv.rule=Host(`tv.${DOMAIN}`)"
       - "traefik.http.routers.tv.entrypoints=websecure"
       - "traefik.http.routers.tv.tls.certresolver=le"
@@ -198,7 +195,6 @@ services:
       - waiting-room-public
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=waiting-room-public"
       - "traefik.http.routers.backoffice.rule=Host(`backoffice.${DOMAIN}`)"
       - "traefik.http.routers.backoffice.entrypoints=websecure"
       - "traefik.http.routers.backoffice.tls.certresolver=le"
@@ -249,6 +245,8 @@ volumes:
 
 networks:
   waiting-room-internal:
+    name: waiting-room-internal
     driver: bridge
   waiting-room-public:
+    name: waiting-room-public
     driver: bridge
