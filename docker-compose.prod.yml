@@ -77,7 +77,6 @@ services:
       - waiting-room-public
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=waiting-room-public"
       - "traefik.http.routers.api.rule=Host(`api.${DOMAIN}`)"
       - "traefik.http.routers.api.entrypoints=websecure"
       - "traefik.http.routers.api.tls.certresolver=le"
