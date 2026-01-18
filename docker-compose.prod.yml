@@ -212,6 +212,38 @@ services:
       - "traefik.http.routers.backoffice-ws.service=api"
 
   # ============================================================
+  # Admin
+  # ============================================================
+  admin:
+    build:
+      context: ./ui-nx
+      dockerfile: Dockerfile.admin
+    container_name: waiting-room-admin
+    restart: unless-stopped
+    depends_on:
+      - api
+    networks:
+      - waiting-room-internal
+      - waiting-room-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.admin.rule=Host(`admin.${DOMAIN}`)"
+      - "traefik.http.routers.admin.entrypoints=websecure"
+      - "traefik.http.routers.admin.tls.certresolver=le"
+      - "traefik.http.routers.admin.service=admin"
+      - "traefik.http.services.admin.loadbalancer.server.port=80"
+      - "traefik.http.services.admin.loadbalancer.server.scheme=http"
+      # Route /api and /ws requests to the API service
+      - "traefik.http.routers.admin-api.rule=Host(`admin.${DOMAIN}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.admin-api.entrypoints=websecure"
+      - "traefik.http.routers.admin-api.tls.certresolver=le"
+      - "traefik.http.routers.admin-api.service=api"
+      - "traefik.http.routers.admin-ws.rule=Host(`admin.${DOMAIN}`) && PathPrefix(`/ws`)"
+      - "traefik.http.routers.admin-ws.entrypoints=websecure"
+      - "traefik.http.routers.admin-ws.tls.certresolver=le"
+      - "traefik.http.routers.admin-ws.service=api"
+
+  # ============================================================
   # Card Reader (optional)
   # ============================================================
   card-reader:
